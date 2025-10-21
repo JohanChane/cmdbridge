@@ -1,0 +1,15 @@
+[apt-file.parser_config]
+parser_type = "argparse"
+program_name = "apt-file"
+
+[[apt-file.sub_commands]]
+name = "search"
+
+[[apt-file.sub_commands.arguments]]
+name = "packages"
+nargs = "+"
+
+[[apt-file.sub_commands.arguments]]
+name = "regexp"
+opt = ["", "--regexp"]
+nargs = "0"

@@ -1,0 +1,37 @@
+# === 管理包的接口===
+
+[operations.install_remote]
+description = "Install packages from remote repositories"
+args = ["pkgs"]
+
+[operations.search_remote]
+description = "Search packages in remote repositories"
+args = ["pkgs"]
+
+[operations.search_local]
+description = "Search locally installed packages"
+args = ["pkgs"]
+
+[operations.list_installed]
+description = "List installed packages"
+args = []
+
+[operations.find_file_owner_remote_with_regexp]
+description = "Find which package owns the file from repository using regex"
+args = ["files"]
+
+[operations.force_refresh_repo_db]
+description = "Force refresh repository database"
+args = []
+
+[operations.install_with_config]
+description = "Install packages using specified configuration file"
+args = ["pkgs", "config_path"]
+
+[actions.download_source]
+description = "Download package source code"
+args = ["pkgs"]
+
+[operations.help]
+description = "Display help information"
+args = []

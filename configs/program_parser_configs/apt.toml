@@ -1,0 +1,46 @@
+[pacman.parser_config]
+parser_type = "argparse"
+program_name = "apt"
+
+[[apt.arguments]]
+name = "help"
+opt = ["-h", "--help"]
+nargs = "0"
+
+[[apt.sub_commands]]
+name = "install"
+
+[[apt.sub_commands.arguments]]
+name = "packages"
+nargs = "+"
+
+[[apt.sub_commands]]
+name = "search"
+
+[[apt.sub_commands.arguments]]
+name = "packages"
+nargs = "+"
+
+[[apt.sub_commands]]
+name = "list"
+
+[[apt.sub_commands.arguments]]
+name = "packages"
+nargs = "*"
+
+[[apt.sub_commands.arguments]]
+name = "installed"
+opt = ["", "--installed"]
+nargs = "0"
+
+[[apt.sub_commands]]
+name = "update"
+
+[[apt.sub_commands.arguments]]
+name = "packages"
+nargs = "*"
+
+[[apt.sub_commands.arguments]]
+name = "force_refresh_all"
+opt = ["", "--force-refresh-all"]
+nargs = "0"

@@ -1,0 +1,3 @@
+[global_settings]
+default_interface_type = "package"
+default_target_toolkit = "pacman"

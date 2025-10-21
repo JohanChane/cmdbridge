@@ -1,0 +1,5 @@
+__pycache__/
+cmdbridge.egg-info/
+build/
+dist/
+.tool-versions

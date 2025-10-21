@@ -1,0 +1,42 @@
+[pacman.parser_config]
+parser_type = "getopt"
+program_name = "pacman"
+
+[[pacman.arguments]]
+name = "help"
+opt = ["-h", "--help"]
+nargs = "0"
+
+[[pacman.arguments]]
+name = "targets"
+nargs = "+"
+
+[[pacman.arguments]]
+name = "S"
+opt = ["-S", ""]
+nargs = "0"
+
+[[pacman.arguments]]
+name = "s"
+opt = ["-s", ""]
+nargs = "0"
+
+[[pacman.arguments]]
+name = "Q"
+opt = ["-Q", ""]
+nargs = "0"
+
+[[pacman.arguments]]
+name = "F"
+opt = ["-F", ""]
+nargs = "0"
+
+[[pacman.arguments]]
+name = "x"
+opt = ["-x", ""]
+nargs = "0"
+
+[[pacman.arguments]]
+name = "y"
+opt = ["-y", ""]
+nargs = "0"
