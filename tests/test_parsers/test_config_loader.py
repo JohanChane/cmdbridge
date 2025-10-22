@@ -13,6 +13,7 @@ sys.path.insert(0, project_root)
 from parsers.config_loader import ConfigLoader, load_parser_config_from_data, load_parser_config_from_file
 from parsers.types import ParserConfig, ParserType, ArgumentConfig, ArgumentCount, SubCommandConfig
 
+import log
 
 class TestConfigLoader:
     """配置加载器测试类"""
@@ -315,4 +316,5 @@ class TestConfigLoader:
 
 
 if __name__ == "__main__":
+    log.set_level(log.LogLevel.DEBUG)
     pytest.main([__file__, "-v"])

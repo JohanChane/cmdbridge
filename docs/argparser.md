@@ -135,7 +135,6 @@ tree_apt = CommandNode(
     name="apt",
     arguments=[
         CommandArg(node_type=ArgType.FLAG, option_name="--help"),
-        CommandArg(node_type=ArgType.EXTRA, values=["abc"])
     ],
     subcommand=CommandNode(
         name="install",
@@ -143,6 +142,7 @@ tree_apt = CommandNode(
             CommandArg(node_type=ArgType.POSITIONAL, values=["vim", "git"]),
             CommandArg(node_type=ArgType.OPTION, option_name="--config", values=["path"]),
             CommandArg(node_type=ArgType.FLAG, option_name="--noconfirm")
+            CommandArg(node_type=ArgType.EXTRA, values=["abc"])             # 不放主命令了, 方便处理
         ]
     )
 )
@@ -401,6 +401,7 @@ program_name = "apt"
 name = "help"
 opt = ["-h", "--help"]
 nargs = "0"
+# required = true/false # 支持 required
 
 [[apt.sub_commands]]
 name = "install"

@@ -13,7 +13,7 @@ sys.path.insert(0, project_root)
 from parsers.getopt_parser import GetoptParser
 from parsers.types import CommandNode, CommandArg, ArgType, ParserConfig, ParserType, ArgumentConfig, ArgumentCount
 
-from log import set_level, LogLevel
+import log
 
 class TestGetoptParser:
     """getopt 解析器测试类"""
@@ -237,5 +237,5 @@ class TestGetoptParser:
 
 
 if __name__ == "__main__":
-    set_level(LogLevel.DEBUG)
+    log.set_level(log.LogLevel.DEBUG)
     pytest.main([__file__, "-v"])
