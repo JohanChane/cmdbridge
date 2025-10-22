@@ -1,3 +1,6 @@
+**更新文件：`docs/argparser.md`**
+
+```markdown
 ## 解析器的设计
 
 ```python
@@ -98,10 +101,11 @@ tokens_tar = [
     CommandToken(token_type=TokenType.FLAG, values=["-z"]),
     CommandToken(token_type=TokenType.FLAG, values=["-x"]),
     CommandToken(token_type=TokenType.FLAG, values=["-v"]),
-    CommandToken(token_type=TokenType.FLAG, values=["-f"]),
-    CommandToken(token_type=TokenType.OPTION_VALUE, values=["foo.tar.gz"]),  # argument for -f
+    CommandToken(token_type=TokenType.OPTION_NAME, values=["-f"]),
+    CommandToken(token_type=TokenType.OPTION_VALUE, values=["foo.tar.gz"]),
     CommandToken(token_type=TokenType.SEPARATOR, values=["--"]),
-    CommandToken(token_type=TokenType.EXTRA_ARG, values=["path_1 path_2"]),
+    CommandToken(token_type=TokenType.EXTRA_ARG, values=["path_1"]),
+    CommandToken(token_type=TokenType.EXTRA_ARG, values=["path_2"]),
 ]
 
 # === Command Tree ===
@@ -148,8 +152,8 @@ tree_pacman = CommandNode(
     name="pacman",
     arguments=[
         CommandArg(node_type=ArgType.FLAG, option_name="-S"),
-        CommandArg(node_type=ArgType.FLAG, option_name="-y", values=["2"]),  # use values to indicate repeat count
-        CommandArg(node_type=ArgType.OPTION, option_name="--config", values=["path_1", "path_2"]),  # merge same options
+        CommandArg(node_type=ArgType.FLAG, option_name="-y", repeat = 2),
+        CommandArg(node_type=ArgType.OPTION, option_name="--config", values=["path_1", "path_2"]),
     ]
 )
 
@@ -161,7 +165,7 @@ tree_tar = CommandNode(
         CommandArg(node_type=ArgType.FLAG, option_name="-x"),
         CommandArg(node_type=ArgType.FLAG, option_name="-v"),
         CommandArg(node_type=ArgType.OPTION, option_name="-f", values=["foo.tar.gz"]),
-        CommandArg(node_type=ArgType.EXTRA, values=["path_1 path_2"])
+        CommandArg(node_type=ArgType.EXTRA, values=["path_1", "path_2"])
     ]
 )
 ```

@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Optional, Union
 from dataclasses import dataclass, field
 
-# === ArgList ===
+# === CommandToken ===
 class TokenType(Enum):
     """Command line token types"""
     PROGRAM = "program"                 # Program name (e.g., git, pacman, apt)
@@ -77,6 +77,7 @@ class CommandArg:
     node_type: ArgType
     option_name: Optional[str] = None
     values: List[str] = field(default_factory=list)
+    repeat: Optional[int] = None  # 重复次数，仅 FLAG 类型使用
 
 @dataclass
 class CommandNode:
@@ -91,27 +92,77 @@ class ParserType(Enum):
     GETOPT = "getopt"
     ARGPARSE = "argparse"
 
-# 参数数量规范
-class ArgumentCount(Enum):
-    ZERO = "0"        # 无参数 (标志)
-    ZERO_OR_ONE = "?" # 可选参数
-    ZERO_OR_MORE = "*" # 零个或多个参数  
-    ONE_OR_MORE = "+"  # 一个或多个参数
-    EXACTLY_N = "n"    # 有 n 个参数
 
-# === 参数配置 ===
-# 解析器类型
-class ParserType(Enum):
-    GETOPT = "getopt"
-    ARGPARSE = "argparse"
 
-# 参数数量规范
-class ArgumentCount(Enum):
-    ZERO = "0"              # 无参数 (标志)
-    ZERO_OR_ONE = "?"       # 可选参数
-    ZERO_OR_MORE = "*"      # 零个或多个参数  
-    ONE_OR_MORE = "+"       # 一个或多个参数
-    EXACTLY_N = "n"         # 有 n 个参数
+# 参数配置
+@dataclass
+class ArgumentCount:
+    """参数数量规范"""
+    spec: str  # argparse 风格的 nargs 规范
+    
+    def __init__(self, spec: str):
+        """初始化参数数量规范"""
+        # 校验 nargs 字符串
+        valid_specs = {'?', '*', '+', '0'}
+        if (spec not in valid_specs and 
+            not spec.isdigit() and 
+            not self._is_valid_range(spec)):
+            raise ValueError(f"不支持的 nargs 值: {spec}。支持的格式: ?, *, +, 0, 数字, 或数字范围")
+        
+        self.spec = spec
+    
+    def _is_valid_range(self, spec: str) -> bool:
+        """检查是否是有效的数字范围格式，如 '1..3'"""
+        if '..' in spec:
+            parts = spec.split('..')
+            if len(parts) == 2:
+                return parts[0].isdigit() and (parts[1].isdigit() or parts[1] == '')
+        return False
+    
+    def __str__(self) -> str:
+        return self.spec
+    
+    def is_flag(self) -> bool:
+        """检查是否是标志参数（无参数）"""
+        return self.spec == '0'
+    
+    def validate_count(self, actual_count: int) -> bool:
+        """验证实际参数数量是否符合要求"""
+        if self.spec == '?':
+            return actual_count <= 1
+        elif self.spec == '*':
+            return True  # 任意数量
+        elif self.spec == '+':
+            return actual_count >= 1
+        elif self.spec.isdigit():
+            return actual_count == int(self.spec)
+        elif self.spec == '0':
+            return actual_count == 0
+        elif '..' in self.spec:
+            # 处理范围格式，如 '1..3' 或 '1..'
+            parts = self.spec.split('..')
+            min_count = int(parts[0])
+            max_count = int(parts[1]) if parts[1].isdigit() else None
+            
+            if actual_count < min_count:
+                return False
+            if max_count is not None and actual_count > max_count:
+                return False
+            return True
+        else:
+            # 默认情况，argparse 默认是 1
+            return actual_count == 1
+    
+    def is_required(self) -> bool:
+        """检查根据 nargs 是否是必需参数"""
+        # 只有 nargs='+' 或数字 > 0 时才是必需的
+        return self.spec == '+' or (self.spec.isdigit() and int(self.spec) > 0)
+    
+# 常用预设
+ArgumentCount.ZERO = ArgumentCount('0')           # 无参数 (标志)
+ArgumentCount.ZERO_OR_ONE = ArgumentCount('?')    # 可选参数
+ArgumentCount.ZERO_OR_MORE = ArgumentCount('*')   # 零个或多个
+ArgumentCount.ONE_OR_MORE = ArgumentCount('+')    # 一个或多个
 
 # 参数配置
 @dataclass
@@ -120,16 +171,16 @@ class ArgumentConfig:
     name: str                    # 参数名称
     opt: List[str]              # 选项名称列表 (如 ["-h", "--help"])
     nargs: ArgumentCount        # 参数数量规范
-    count: Optional[int] = None # 当 nargs=EXACTLY_N 时的具体数量
+    required: bool = False      # 是否是必需参数
     description: Optional[str] = None  # 参数描述
     
     def is_flag(self) -> bool:
         """检查是否是标志参数"""
-        return self.nargs == ArgumentCount.ZERO
+        return self.nargs.is_flag()
     
     def is_positional(self) -> bool:
         """检查是否是位置参数"""
-        return not self.opt or (self.opt and "" in self.opt)  # 空字符串或没有 opt 就是位置参数
+        return not self.opt or (self.opt and "" in self.opt)
     
     def is_option(self) -> bool:
         """检查是否是选项参数"""
@@ -137,28 +188,19 @@ class ArgumentConfig:
     
     def accepts_values(self) -> bool:
         """检查是否接受值"""
-        return self.nargs != ArgumentCount.ZERO
+        return not self.is_flag()
     
-    def get_expected_count(self) -> Union[int, str]:
+    def get_expected_count(self) -> str:
         """获取期望的参数数量"""
-        if self.nargs == ArgumentCount.ZERO:
-            return 0
-        elif self.nargs == ArgumentCount.EXACTLY_N and self.count is not None:
-            return self.count
-        else:
-            return self.nargs.value  # 返回符号 *, +, ?
+        return str(self.nargs)
     
-    def get_primary_name(self) -> str:
-        """获取主要名称（优先返回长选项名）"""
-        if not self.opt:
-            return self.name
-        
-        # 优先返回长选项名
-        for opt in self.opt:
-            if opt.startswith("--"):
-                return opt
-        # 返回第一个选项名
-        return self.opt[0] if self.opt else self.name
+    def validate_count(self, actual_count: int) -> bool:
+        """验证实际参数数量是否符合要求"""
+        return self.nargs.validate_count(actual_count)
+    
+    def is_required(self) -> bool:
+        """检查是否是必需参数"""
+        return self.required
 
 @dataclass
 class SubCommandConfig:
