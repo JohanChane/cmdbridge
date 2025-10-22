@@ -12,7 +12,7 @@ setup(
         'console_scripts': [
             'cmdbridge=cmdbridge.cli:cli',
             'cmdbridge-config=cmdbridge_config.main:main',
-            'cmdbridge-edit=cmdbridge_execute.main:main',
+            'cmdbridge-edit=cmdbridge_edit.main:main',
         ],
     },
     python_requires=">=3.7",

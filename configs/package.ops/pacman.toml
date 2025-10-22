@@ -17,7 +17,7 @@ cmd_format = "pacman -Fx {files}"
 [operations.force_refresh_repo_db.pacman]
 cmd_format = "pacman -Syy"
 
-[actions.download_source.pacman]
+[operations.download_source.pacman]
 cmd_format = "asp export {pkgs}"
 
 [operations.install_with_config]

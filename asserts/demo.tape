@@ -60,7 +60,7 @@ Enter
 Sleep 3s
 
 Sleep 0.5s
-Type "echo '2. Direct Action Execution'"
+Type "echo '2. Direct Operation Execution'"
 Enter
 Sleep 0.5s
 

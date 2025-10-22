@@ -28,7 +28,7 @@ args = []
 description = "Install packages using specified configuration file"
 args = ["pkgs", "config_path"]
 
-[actions.download_source]
+[operations.download_source]
 description = "Download package source code"
 args = ["pkgs"]
 

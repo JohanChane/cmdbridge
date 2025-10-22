@@ -26,11 +26,11 @@ pipx install .
 
 ```sh
 if command -v cmdbridge &>/dev/null; then
-  eval "$(_ACTMAP_COMPLETE=zsh_source cmdbridge)"
+  eval "$(_CMDBRIDGE_COMPLETE=zsh_source cmdbridge)"
 fi
 
 if command -v cmdbridge-edit &>/dev/null; then
-  eval "$(_ACTMAP_EXECUTE_COMPLETE=zsh_source cmdbridge-edit)"
+  eval "$(_CMDBRIDGE_EXECUTE_COMPLETE=zsh_source cmdbridge-edit)"
 fi
 
 alias am="cmdbridge"
@@ -63,7 +63,7 @@ default_target_cmdbridge = "<your default target>"  # `cmdbridge -t, --target` �
 
 cmde: 将映射之后的命令放到 line editor
 -   map: 自动检测 map 之后的命令来映射到 target cmdbridge
--   act: 使用 action name 来映射命令
+-   op: 使用 operation name 来映射命令
 
 cmde map:
 
@@ -74,14 +74,14 @@ cmde -t pip map -- pacman -Si neovim  # pip show neovim
 cmde -t pip map -- brew info neovim   # pip show neovim
 ```
 
-cmde act:
+cmde op:
 
 ```sh
-cmde act -- install vim git           # 如果 target cmdbridge 是 `pacman`, 则生成 `pacman -S vim git`
-cmde -t pip act -- info neovim        # 生成 `pip show neovim`
+cmde op -- install vim git           # 如果 target cmdbridge 是 `pacman`, 则生成 `pacman -S vim git`
+cmde -t pip op -- info neovim        # 生成 `pip show neovim`
 
 # 如果有动作 grep_log: cat foo.log bar.log | grep -i '{log_level}' | grep -i '{log_msg}'
-cmde act -- grep_log foo.log bar.log == ERROR == write
+cmde op -- grep_log foo.log bar.log == ERROR == write
 # 会生成 cat foo.log bar.log | grep -i 'ERROR' | grep -i 'write'
 ```
 
@@ -111,8 +111,8 @@ cmde map -- pacman -S search vim git
 ### 使用你熟悉的动作来安装 vim git
 
 ```sh
-# use `install` action
-cmdbridge act -- install vim git
+# use `install` operation
+cmdbridge op -- install vim git
 ```
 
 ### 临时切换目标
@@ -128,7 +128,7 @@ cmdbridge-edit -t pip map -- brew info <pkg>
 
 cmdbridge: 和 cmde 的区别是, 它只是输出映射后的命令
 -   map: 和 cmde map 的用法一样
--   act: 和 cmde act 的用法一样
+-   op: 和 cmde op 的用法一样
 
 ```sh
 # 将 apt 命令映射到 target cmdbridge
@@ -142,10 +142,10 @@ cmdbridge -t apt map -- pacman -S vim git  # 映射为: apt install vim git
 cmdbridge --output-cmdbridge pacman apt
 ```
 
-cmdbridge act:
+cmdbridge op:
 
 ```sh
-cmdbridge act -- install vim git
+cmdbridge op -- install vim git
 # 如果 target_cmdbridge 是 "pacman"，则执行: pacman -S vim git
 ```
 
@@ -175,17 +175,17 @@ cmdbridge --list-cmdbridges
 
 ```
 ℹ️ INFO: 📦 Package managers in current configuration:
-  ✅ apt - supports 15 actions
-  ✅ brew - supports 15 actions
-  ✅ cargo - supports 8 actions
-  ✅ chocolatey - supports 15 actions
-  ✅ dnf - supports 15 actions
-  ✅ npm - supports 8 actions
-  ✅ pacman - supports 15 actions
-  ✅ pip - supports 10 actions
-  ✅ scoop - supports 15 actions
-  ✅ winget - supports 15 actions
-  ✅ zypper - supports 15 actions
+  ✅ apt - supports 15 operations
+  ✅ brew - supports 15 operations
+  ✅ cargo - supports 8 operations
+  ✅ chocolatey - supports 15 operations
+  ✅ dnf - supports 15 operations
+  ✅ npm - supports 8 operations
+  ✅ pacman - supports 15 operations
+  ✅ pip - supports 10 operations
+  ✅ scoop - supports 15 operations
+  ✅ winget - supports 15 operations
+  ✅ zypper - supports 15 operations
 ```
 
 ### output-cmdbridge examples
@@ -198,7 +198,7 @@ cmdbridge --output-cmdbridge pacman apt
 
 ```
 ================================================================================
-Status Action          Source Command            Target Command
+Status Operation          Source Command            Target Command
 --------------------------------------------------------------------------------
 ✅    install         pacman -S {pkgs}          apt install {pkgs}
 ✅    remove          pacman -R {pkgs}          apt remove {pkgs}
@@ -226,7 +226,7 @@ cmdbridge --output-cmdbridge pacman pip
 
 ```
 ================================================================================
-Status Action          Source Command            Target Command
+Status Operation          Source Command            Target Command
 --------------------------------------------------------------------------------
 ✅    install         pacman -S {pkgs}          pip install {pkgs}
 ✅    remove          pacman -R {pkgs}          pip uninstall {pkgs}
