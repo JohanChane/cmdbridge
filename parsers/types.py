@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 from dataclasses import dataclass, field
 
 # === CommandToken ===
@@ -78,6 +78,68 @@ class CommandArg:
     option_name: Optional[str] = None
     values: List[str] = field(default_factory=list)
     repeat: Optional[int] = None  # 重复次数，仅 FLAG 类型使用
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """序列化为字典"""
+        result = {
+            "node_type": self.node_type.value,  # 使用枚举值的小写字符串
+            "values": self.values.copy(),
+        }
+        
+        # 只有非 None 的字段才包含
+        if self.option_name is not None:
+            result["option_name"] = self.option_name
+        if self.repeat is not None:
+            result["repeat"] = self.repeat
+            
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CommandArg':
+        """从字典反序列化"""
+        return cls(
+            node_type=ArgType(data["node_type"]),
+            option_name=data.get("option_name"),
+            values=data.get("values", []),
+            repeat=data.get("repeat")
+        )
+
+# 在 parsers/types.py 中修改 CommandArg
+@dataclass
+class CommandArg:
+    """Command argument in tree structure"""
+    node_type: ArgType
+    option_name: Optional[str] = None
+    values: List[str] = field(default_factory=list)
+    repeat: Optional[int] = None
+    is_placeholder: bool = False  # 新增：标记是否为占位符值
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """序列化为字典"""
+        result = {
+            "node_type": self.node_type.value,
+            "values": self.values.copy(),
+            "is_placeholder": self.is_placeholder  # 序列化标记
+        }
+        
+        # 只有非 None 的字段才包含
+        if self.option_name is not None:
+            result["option_name"] = self.option_name
+        if self.repeat is not None:
+            result["repeat"] = self.repeat
+            
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CommandArg':
+        """从字典反序列化"""
+        return cls(
+            node_type=ArgType(data["node_type"]),
+            option_name=data.get("option_name"),
+            values=data.get("values", []),
+            repeat=data.get("repeat"),
+            is_placeholder=data.get("is_placeholder", False)  # 反序列化标记
+        )
 
 @dataclass
 class CommandNode:
@@ -85,14 +147,41 @@ class CommandNode:
     name: str
     arguments: List[CommandArg] = field(default_factory=list)  # Arguments for current node
     subcommand: Optional['CommandNode'] = None                # Subcommand node (tree expansion)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """序列化为字典"""
+        result = {
+            "name": self.name,
+            "arguments": [arg.to_dict() for arg in self.arguments],
+        }
+        
+        # 只有非 None 的子命令才包含
+        if self.subcommand is not None:
+            result["subcommand"] = self.subcommand.to_dict()
+            
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CommandNode':
+        """从字典反序列化"""
+        arguments = [CommandArg.from_dict(arg_data) for arg_data in data.get("arguments", [])]
+        
+        node = cls(
+            name=data["name"],
+            arguments=arguments
+        )
+        
+        # 递归反序列化子命令
+        if "subcommand" in data and data["subcommand"] is not None:
+            node.subcommand = cls.from_dict(data["subcommand"])
+            
+        return node
 
 # === 参数配置 ===
 # 解析器类型
 class ParserType(Enum):
     GETOPT = "getopt"
     ARGPARSE = "argparse"
-
-
 
 # 参数配置
 @dataclass

@@ -447,3 +447,65 @@ apt_config = ParserConfig(
     ]
 )
 ```
+
+## 查找命令行对应的动作
+
+### 生成命令映射需要的数据
+
+操作接口文件 `package.ops`:
+
+```toml
+[operations.install_with_config]
+cmd_format = "apt install {pkgs} --config {config_path}"
+
+[operations.install_with_config]
+cmd_format = "pacman -S {pkgs} --config {config_path}"
+```
+
+```py
+class ArgType(Enum):
+    """Command tree node types"""
+    POSITIONAL = "positional"
+    OPTION = "option"
+    FLAG = "flag"
+    EXTRA = "extra"
+
+@dataclass
+class CommandArg:
+    """Command argument in tree structure"""
+    node_type: ArgType
+    option_name: Optional[str] = None
+    values: List[str] = field(default_factory=list)
+    repeat: Optional[int] = None  # 重复次数，仅 FLAG 类型使用
+```
+
+使用命令行解释器分析 cmd_format 生成下面的文件 `package.ops.cmd_mappings.toml`:
+
+```toml
+[[command_mappings.apt]]
+operation: ""
+params: {
+    pkgs: {cmd_arg: CommandArg  }
+    config_path: {cmd_arg: CommandArg }
+}
+cmd_node: CommandNode
+
+[[command_mappings.pacman]]
+operation: ""
+params: {
+    pkgs: {cmd_arg: CommandArg  }
+    config_path: {cmd_arg: CommandArg }
+}
+
+cmd_node: CommandNode
+```
+
+### 匹配命令的规则
+
+1. 程序名是否相同
+2. params 的数量是否相同
+3. CommandArg 是否相同, 忽略 `__param_n__` 的内容。
+4. 有多余的 CommandArg 则不匹配。
+4. cmd_node 是否相同, 忽略 `__param_n__` 的内容。
+
+如果上面有一条不匹配则表示匹配不成功。

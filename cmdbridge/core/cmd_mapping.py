@@ -1,0 +1,343 @@
+# cmdbridge/core/cmd_mapping.py
+
+"""
+命令映射核心模块 - 基于操作组的映射系统
+"""
+
+from typing import List, Dict, Any, Optional
+from parsers.types import CommandNode, CommandArg, ArgType
+from parsers.argparse_parser import ArgparseParser
+from parsers.getopt_parser import GetoptParser
+from parsers.types import ParserConfig, ParserType
+
+from log import debug, info, warning, error
+
+
+class CmdMapping:
+    """
+    命令映射器 - 将源命令映射到操作和参数
+    
+    输入: 
+      - source cmdline (字符串列表, 如 ["apt", "install", "vim"])
+      - cmd_mapping 配置数据 (包含 operation 字段)
+      - dst_operation_group (程序名, 如 "apt")
+    
+    输出: 
+      - {operation_name, params{pkgs:, path: }}
+    """
+    
+    def __init__(self, mapping_config: Dict[str, Any]):
+        """
+        初始化命令映射器
+        
+        Args:
+            mapping_config: CmdMappingCreator 生成的映射配置
+        """
+        self.mapping_config = mapping_config
+        self.source_parser_config = None  # 新增：保存源解析器配置
+    
+    def map_to_operation(self, source_cmdline: List[str], 
+                        source_parser_config: ParserConfig,
+                        dst_operation_group: str) -> Optional[Dict[str, Any]]:
+        """
+        将源命令映射到目标操作组的操作和参数
+        
+        Args:
+            source_cmdline: 源命令行参数列表
+            source_parser_config: 源程序的解析器配置
+            dst_operation_group: 目标操作组 (如 "apt", "pacman")
+            
+        Returns:
+            Optional[Dict[str, Any]]: 包含 operation_name 和 params 的字典，如果无法映射则返回 None
+        """
+        debug(f"开始映射命令到操作组 '{dst_operation_group}': {' '.join(source_cmdline)}")
+        
+        # 保存解析器配置供后续使用
+        self.source_parser_config = source_parser_config
+        
+        # 1. 解析源命令
+        source_parser = self._create_source_parser(source_parser_config)
+        source_node = source_parser.parse(source_cmdline)
+        
+        if not source_parser.validate(source_node):
+            warning(f"源命令验证失败: {' '.join(source_cmdline)}")
+            return None
+        
+        # 2. 在映射配置中查找匹配的操作
+        matched_mapping = self._find_matching_mapping(source_node, dst_operation_group)
+        if not matched_mapping:
+            debug(f"在操作组 '{dst_operation_group}' 中未找到匹配的命令映射")
+            return None
+        
+        # 3. 提取参数值 (保持顺序)
+        param_values = self._extract_parameter_values(source_node, matched_mapping["params"])
+        
+        # 4. 返回操作和参数
+        result = {
+            "operation_name": matched_mapping["operation"],
+            "params": param_values
+        }
+        
+        info(f"命令映射成功: {' '.join(source_cmdline)} -> {result}")
+        return result
+
+    def _normalize_option_name(self, option_name: Optional[str]) -> str:
+        """规范化选项名，对于长短参数优先返回长参数名"""
+        if not option_name:
+            return ""
+        
+        if not self.source_parser_config:
+            return option_name
+        
+        # 在解析器配置中查找对应的参数配置
+        arg_config = self.source_parser_config.find_argument(option_name)
+        if not arg_config:
+            # 如果在全局参数中没找到，尝试在子命令参数中查找
+            # 注意：这里简化处理，实际可能需要更复杂的查找逻辑
+            return option_name
+        
+        if arg_config.opt:
+            # 优先返回长参数名
+            for opt in arg_config.opt:
+                if opt.startswith("--"):
+                    return opt
+            # 如果没有长参数名，返回第一个选项名
+            return arg_config.opt[0]
+        
+        return option_name
+    
+    def _create_source_parser(self, source_parser_config: ParserConfig):
+        """创建源程序的解析器"""
+        if source_parser_config.parser_type == ParserType.ARGPARSE:
+            return ArgparseParser(source_parser_config)
+        elif source_parser_config.parser_type == ParserType.GETOPT:
+            return GetoptParser(source_parser_config)
+        else:
+            raise ValueError(f"不支持的解析器类型: {source_parser_config.parser_type}")
+    
+    def _find_matching_mapping(self, source_node: CommandNode, dst_operation_group: str) -> Optional[Dict[str, Any]]:
+        """
+        查找匹配的命令映射
+        
+        Args:
+            source_node: 解析后的源命令节点
+            dst_operation_group: 目标程序名
+            
+        Returns:
+            Optional[Dict[str, Any]]: 匹配的映射配置，如果没有匹配则返回 None
+        """
+        program_name = source_node.name
+        debug(f"在程序 {program_name} 中查找匹配的映射，目标程序: {dst_operation_group}")
+        
+        # 检查程序名是否匹配
+        if program_name != dst_operation_group:
+            debug(f"程序名不匹配: 源程序={program_name}, 目标程序={dst_operation_group}")
+            return None
+        
+        if program_name not in self.mapping_config:
+            debug(f"程序 {program_name} 不在映射配置中")
+            return None
+        
+        command_mappings = self.mapping_config[program_name].get("command_mappings", [])
+        debug(f"找到 {len(command_mappings)} 个可能的映射")
+        
+        for mapping in command_mappings:
+            if self._is_command_match(source_node, mapping):
+                debug(f"找到匹配的映射: {mapping['operation']}")
+                return mapping
+        
+        return None
+    
+    def _is_command_match(self, source_node: CommandNode, mapping: Dict[str, Any]) -> bool:
+        """
+        检查源命令是否与映射配置匹配
+        
+        匹配规则:
+        1. 程序名相同（已在外部检查）
+        2. 命令节点结构相同（名称、参数数量、子命令结构）
+        3. 参数结构相同（类型、选项名、重复次数、值数量）
+        4. 忽略占位符参数的具体值内容
+        """
+        # 1. 程序名匹配（已经在 _find_matching_mapping 中检查过）
+        
+        # 2. 反序列化映射配置中的 CommandNode
+        mapping_node = self._deserialize_command_node(mapping["cmd_node"])
+        
+        # 3. 深度比较命令节点结构，忽略占位符值内容
+        return self._compare_command_nodes_deep(source_node, mapping_node, ignore_param_values=True)
+    
+    def _compare_command_nodes_deep(self, node1: CommandNode, node2: CommandNode, ignore_param_values: bool = False) -> bool:
+        """深度比较两个命令节点结构（忽略参数顺序）"""
+        # 比较节点名称
+        if node1.name != node2.name:
+            return False
+        
+        # 比较子命令结构
+        if (node1.subcommand is None) != (node2.subcommand is None):
+            return False
+        
+        if node1.subcommand and node2.subcommand:
+            # 递归比较子命令
+            if not self._compare_command_nodes_deep(node1.subcommand, node2.subcommand, ignore_param_values):
+                return False
+        elif node1.subcommand or node2.subcommand:
+            return False
+        
+        # 比较参数数量
+        if len(node1.arguments) != len(node2.arguments):
+            return False
+        
+        # 创建参数特征集合用于比较（忽略顺序）
+        def get_arg_features(arg: CommandArg) -> tuple:
+            """获取 CommandArg 的特征元组（可哈希）"""
+            return (
+                arg.node_type.value,      # 参数类型
+                arg.option_name or "",    # 选项名
+                arg.repeat or 1,          # 重复次数
+            )
+        
+        # 使用集合比较参数特征
+        node1_features = {get_arg_features(arg) for arg in node1.arguments}
+        node2_features = {get_arg_features(arg) for arg in node2.arguments}
+        
+        debug(f"节点比较 - {node1.name}: {node1_features} vs {node2_features}")
+        return node1_features == node2_features
+    
+    def _compare_command_args_ignore_values(self, arg1: CommandArg, arg2: CommandArg) -> bool:
+        """比较两个 CommandArg，忽略参数值内容"""
+        # 比较参数类型
+        if arg1.node_type != arg2.node_type:
+            return False
+        
+        # 比较选项名（忽略占位符标记）
+        option1 = self._strip_placeholder_marker(arg1.option_name)
+        option2 = self._strip_placeholder_marker(arg2.option_name)
+        if option1 != option2:
+            return False
+        
+        # 比较重复次数
+        if arg1.repeat != arg2.repeat:
+            return False
+        
+        # 比较值数量
+        if len(arg1.values) != len(arg2.values):
+            return False
+        
+        # 忽略参数值内容比较，因为映射配置的值是占位符
+        return True
+    
+    def _strip_placeholder_marker(self, option_name: Optional[str]) -> Optional[str]:
+        """去除占位符标记"""
+        if option_name and option_name.startswith("__placeholder__"):
+            return option_name[15:]  # 去除 "__placeholder__" 前缀
+        return option_name
+    
+    def _has_extra_command_args(self, source_node: CommandNode, mapping_node: CommandNode) -> bool:
+        """
+        检查源命令是否有多余的 CommandArg
+        
+        Args:
+            source_node: 源命令节点
+            mapping_node: 映射配置的命令节点
+            
+        Returns:
+            bool: 如果源命令有映射配置中没有的 CommandArg，返回 True
+        """
+        def count_command_args(node: CommandNode) -> int:
+            """计算命令节点中的 CommandArg 总数"""
+            count = len(node.arguments)
+            current = node.subcommand
+            while current:
+                count += len(current.arguments)
+                current = current.subcommand
+            return count
+        
+        source_args_count = count_command_args(source_node)
+        mapping_args_count = count_command_args(mapping_node)
+        
+        debug(f"CommandArg 数量检查: 源命令={source_args_count}, 映射配置={mapping_args_count}")
+        
+        # 如果源命令的 CommandArg 数量多于映射配置，说明有多余的 CommandArg
+        return source_args_count > mapping_args_count
+    
+    def _extract_parameter_values(self, source_node: CommandNode, params_mapping: Dict[str, Any]) -> Dict[str, str]:
+        """
+        从源命令节点中提取参数值 (保持顺序)
+        
+        Args:
+            source_node: 源命令节点
+            params_mapping: 参数映射配置
+            
+        Returns:
+            Dict[str, str]: 参数名到参数值的映射 (多个值合并为单个字符串)
+        """
+        param_values = {}
+        
+        for param_name, param_info in params_mapping.items():
+            # 从源命令节点中提取参数值 (保持顺序)
+            values = self._find_parameter_values(source_node, param_info)
+            if values:
+                # 合并多个值为单个字符串
+                param_values[param_name] = " ".join(values)
+                debug(f"提取参数 {param_name} = '{param_values[param_name]}'")
+            else:
+                warning(f"无法提取参数 {param_name} 的值")
+        
+        return param_values
+    
+    def _find_parameter_values(self, source_node: CommandNode, param_info: Dict[str, Any]) -> List[str]:
+        """
+        在命令节点中查找参数值 (保持顺序)
+        
+        Args:
+            source_node: 源命令节点
+            param_info: 参数信息配置
+            
+        Returns:
+            List[str]: 参数值列表 (保持原始顺序)
+        """
+        cmd_arg_info = param_info.get("cmd_arg", {})
+        target_node_type = ArgType(cmd_arg_info["node_type"])
+        target_option_name = self._strip_placeholder_marker(cmd_arg_info.get("option_name"))
+        
+        values = []
+        
+        def search_in_node(node: CommandNode):
+            for arg in node.arguments:
+                # 检查参数类型和选项名是否匹配（忽略占位符标记）
+                arg_option_name = self._strip_placeholder_marker(arg.option_name)
+                if (arg.node_type == target_node_type and 
+                    arg_option_name == target_option_name):
+                    
+                    # 收集该参数的所有值
+                    values.extend(arg.values)
+                    debug(f"找到参数值: {arg.values} (类型: {arg.node_type.value}, 选项名: {arg.option_name})")
+                
+            # 在子命令中继续搜索
+            if node.subcommand:
+                search_in_node(node.subcommand)
+        
+        search_in_node(source_node)
+        
+        if not values:
+            debug(f"未找到参数值 (目标类型: {target_node_type.value}, 目标选项名: {target_option_name})")
+        
+        return values
+    
+    def _deserialize_command_node(self, serialized_node: Dict[str, Any]) -> CommandNode:
+        """反序列化 CommandNode"""
+        return CommandNode.from_dict(serialized_node)
+
+
+# 便捷函数
+def create_cmd_mapping(mapping_config: Dict[str, Any]) -> CmdMapping:
+    """
+    创建命令映射器实例
+    
+    Args:
+        mapping_config: 映射配置数据
+        
+    Returns:
+        CmdMapping: 命令映射器实例
+    """
+    return CmdMapping(mapping_config)

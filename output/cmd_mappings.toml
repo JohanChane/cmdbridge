@@ -1,0 +1,61 @@
+[apt]
+command_mappings = []
+
+[[pacman.command_mappings]]
+operation = "install_with_config"
+cmd_format = "pacman -S {pkgs} --config {config_path}"
+
+[pacman.command_mappings.params.pkgs]
+value_index = 0
+found_in = "positional"
+
+[pacman.command_mappings.params.pkgs.cmd_arg]
+node_type = "positional"
+values = [
+    "__param_pkgs__",
+    "__param_config_path__",
+]
+is_placeholder = false
+option_name = "__placeholder__targets"
+
+[pacman.command_mappings.params.config_path]
+value_index = 1
+found_in = "positional"
+
+[pacman.command_mappings.params.config_path.cmd_arg]
+node_type = "positional"
+values = [
+    "__param_pkgs__",
+    "__param_config_path__",
+]
+is_placeholder = false
+option_name = "__placeholder__targets"
+
+[pacman.command_mappings.cmd_node]
+name = "pacman"
+
+[[pacman.command_mappings.cmd_node.arguments]]
+node_type = "flag"
+values = []
+is_placeholder = false
+option_name = "-S"
+repeat = 1
+
+[[pacman.command_mappings.cmd_node.arguments]]
+node_type = "flag"
+values = []
+is_placeholder = false
+option_name = "--config"
+repeat = 1
+
+[[pacman.command_mappings.cmd_node.arguments]]
+node_type = "positional"
+values = [
+    "__param_pkgs__",
+    "__param_config_path__",
+]
+is_placeholder = false
+option_name = "__placeholder__targets"
+
+[base]
+command_mappings = []
