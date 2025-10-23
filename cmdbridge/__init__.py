@@ -8,7 +8,7 @@ __author__ = "CmdBridge Developer"
 # 导入主要模块以便可以直接从包级别访问
 from .cli import main, cli
 from .core.cmd_mapping import CmdMapping
-from .config.cmd_mapping_creator import CmdMappingCreator
+from .config.cmd_mapping_mgr import CmdMappingMgr
 
 # utils.config 不在 cmdbridge 包内，所以不能在这里导入
 # from utils.config import ConfigUtils
@@ -18,7 +18,7 @@ __all__ = [
     'main',
     'cli', 
     'CmdMapping',
-    'CmdMappingCreator',
+    'CmdMappingMgr',
     '__version__',
     '__author__',
 ]

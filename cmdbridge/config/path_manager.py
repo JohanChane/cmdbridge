@@ -1,5 +1,3 @@
-# cmdbridge/config/path_manager.py
-
 import os
 import shutil
 from pathlib import Path

@@ -9,7 +9,7 @@ from log import debug, info, warning, error
 from .path_manager import PathManager
 
 
-class OperationMappingCreator:
+class OperationMappingMgr:
     """操作映射创建器 - 生成分离的操作映射文件"""
     
     def __init__(self, domain_name: str):
@@ -23,19 +23,23 @@ class OperationMappingCreator:
         self.path_manager = PathManager.get_instance()
         self.domain_name = domain_name
     
-    def create_mappings(self) -> bool:
+    def create_mappings(self) -> Dict[str, Any]:
         """
         为指定领域创建分离的操作映射文件
         
         Returns:
-            bool: 创建是否成功
+            Dict[str, Any]: 包含操作映射数据的字典，结构为：
+            {
+                "operation_to_program": Dict[str, List[str]],  # 操作到程序的映射
+                "command_formats": Dict[str, Dict[str, str]]   # 程序到命令格式的映射
+            }
         """
         try:
             # 获取领域配置目录
             domain_config_dir = self.path_manager.get_config_operation_group_path(self.domain_name)
             if not domain_config_dir.exists():
                 warning(f"领域配置目录不存在: {domain_config_dir}")
-                return False
+                return {}
             
             # 获取操作映射缓存目录
             cache_dir = self.path_manager.get_operation_mappings_cache_path(self.domain_name)
@@ -102,6 +106,12 @@ class OperationMappingCreator:
                 if operation_name not in base_operations:
                     warning(f"操作 {operation_name} 在基础定义文件中未定义")
             
+            # 准备返回的数据
+            mapping_data = {
+                "operation_to_program": operation_groups,
+                "command_formats": command_formats_by_program
+            }
+            
             # 生成分离的文件
             
             # 1. 操作到程序映射文件
@@ -117,12 +127,11 @@ class OperationMappingCreator:
                     tomli_w.dump({"commands": command_formats}, f)
                 info(f"✅ 已生成 {program_name}_commands.toml 文件: {program_command_file}")
             
-            return True
+            return mapping_data
             
         except Exception as e:
             error(f"生成操作映射文件失败: {e}")
-            return False
-
+            return {}
 
 # 便捷函数
 def create_operation_mappings_for_domain(domain_name: str) -> bool:
@@ -135,8 +144,10 @@ def create_operation_mappings_for_domain(domain_name: str) -> bool:
     Returns:
         bool: 创建是否成功
     """
-    creator = OperationMappingCreator(domain_name)
-    return creator.create_mappings()
+    creator = OperationMappingMgr(domain_name)
+    mapping_data = creator.create_mappings()
+    # 只要有数据就认为是成功的
+    return bool(mapping_data)
 
 def create_operation_mappings_for_all_domains() -> bool:
     """

@@ -15,7 +15,7 @@ from log import debug, info, warning, error
 from .path_manager import PathManager
 
 
-class CmdMappingCreator:
+class CmdMappingMgr:
     """命令映射创建器 - 为每个程序组生成单独的映射配置文件"""
     
     def __init__(self, domain_name: str, group_name: str):
@@ -338,7 +338,7 @@ def create_cmd_mappings_for_group(domain_name: str, group_name: str) -> Dict[str
     Returns:
         Dict[str, Any]: 映射数据
     """
-    creator = CmdMappingCreator(domain_name, group_name)
+    creator = CmdMappingMgr(domain_name, group_name)
     mapping_data = creator.create_mappings()
     creator.write_to()
     return mapping_data

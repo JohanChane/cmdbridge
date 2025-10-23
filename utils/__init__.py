@@ -6,11 +6,11 @@ CmdBridge 工具模块
 提供配置管理和补全功能。
 """
 
-from .config import ConfigUtils
+from ..cmdbridge.config.config_mgr import ConfigMgr
 from .completion import CompletionUtils
 
 __all__ = [
-    'ConfigUtils',
+    'ConfigMgr',
     'CompletionUtils',
 ]
 

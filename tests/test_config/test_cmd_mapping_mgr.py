@@ -11,7 +11,7 @@ import sys
 project_root = os.path.join(os.path.dirname(__file__), '../..')
 sys.path.insert(0, project_root)
 
-from cmdbridge.config.cmd_mapping_creator import CmdMappingCreator, create_cmd_mappings
+from cmdbridge.config.cmd_mapping_mgr import CmdMappingMgr, create_cmd_mappings
 
 from log import set_level, LogLevel
 
@@ -228,7 +228,7 @@ nargs = "+"
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证占位符值存在
@@ -268,7 +268,7 @@ nargs = "+"
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证 operation 字段存在且格式正确
@@ -295,7 +295,7 @@ nargs = "+"
         self._create_parser_config_for_mixed()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证 apt 程序的 operation 字段
@@ -326,7 +326,7 @@ nargs = "+"
         
         # 创建映射并写入文件
         output_file = self.output_dir / "cmd_mappings.toml"
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         creator.create_mappings()
         creator.write_to(str(output_file))
         
@@ -352,7 +352,7 @@ nargs = "+"
         
         # 创建映射并写入文件
         output_file = self.output_dir / "cmd_mappings.toml"
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         creator.create_mappings()
         creator.write_to(str(output_file))
         
@@ -376,7 +376,7 @@ nargs = "+"
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证结果
@@ -401,7 +401,7 @@ nargs = "+"
         self._create_pacman_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证结果
@@ -417,7 +417,7 @@ nargs = "+"
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 查找 install_with_config 操作
@@ -442,7 +442,7 @@ nargs = "+"
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证 CommandNode 存在且结构正确
@@ -463,7 +463,7 @@ nargs = "+"
         
         # 创建映射并写入文件
         output_file = self.output_dir / "cmd_mappings.toml"
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         creator.create_mappings()
         creator.write_to(str(output_file))
         
@@ -511,7 +511,7 @@ nargs = "+"
         self._create_apt_group_file()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 应该有空映射数据
@@ -524,7 +524,7 @@ nargs = "+"
         invalid_group_dir = Path(self.temp_dir) / "nonexistent"
         
         with pytest.raises(FileNotFoundError):
-            creator = CmdMappingCreator(str(invalid_group_dir), str(self.parser_configs_dir))
+            creator = CmdMappingMgr(str(invalid_group_dir), str(self.parser_configs_dir))
             creator.create_mappings()
     
     def test_empty_group_file(self):
@@ -536,7 +536,7 @@ nargs = "+"
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 空文件应该没有命令映射
@@ -560,7 +560,7 @@ description = "This operation has no cmd_format"
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
+        creator = CmdMappingMgr(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 应该只有有效操作的映射

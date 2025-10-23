@@ -1,7 +1,7 @@
 # utils/completion.py
 
 from typing import List
-from .config import ConfigUtils
+from ..cmdbridge.config.config_mgr import ConfigMgr
 from cmdbridge.config.path_manager import PathManager
 from log import debug
 
@@ -15,7 +15,7 @@ class CompletionUtils:
         """
         # 直接使用 PathManager 单例
         self.path_manager = PathManager.get_instance()
-        self.config_utils = ConfigUtils()
+        self.config_utils = ConfigMgr()
         debug("初始化 CompletionUtils")
     
     def list_domains(self) -> List[str]:

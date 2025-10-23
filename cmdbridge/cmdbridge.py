@@ -7,8 +7,8 @@ from typing import Optional, List, Dict, Any
 import tomli
 
 from .config.path_manager import PathManager
-from utils.config import ConfigUtils
-from .config.cmd_mapping_creator import CmdMappingCreator
+from cmdbridge.config.config_mgr import ConfigMgr
+from .config.cmd_mapping_mgr import CmdMappingMgr
 from .core.cmd_mapping import CmdMapping
 from .core.operation_mapping import OperationMapping
 from log import debug, info, warning, error
@@ -26,7 +26,7 @@ class CmdBridge:
         #     configs_dir=str(self.path_manager.config_dir),
         #     cache_dir=str(self.path_manager.cache_dir)
         # )
-        self.config_utils = ConfigUtils()
+        self.config_utils = ConfigMgr()
 
         # 初始化命令映射器
         self.command_mapper = CmdMapping({})
@@ -204,7 +204,7 @@ class CmdBridge:
     def refresh_cmd_mappings(self) -> bool:
         """刷新所有命令映射缓存"""
         try:
-            success = self.config_utils.refresh_cmd_mapping()
+            success = self.config_utils.remove_cmd_mapping()
             if success:
                 # 先合并所有领域配置到缓存目录
                 info("合并领域配置到缓存...")
@@ -230,7 +230,7 @@ class CmdBridge:
                         for group_name in groups:
                             try:
                                 # 为每个程序组创建 CmdMappingCreator 实例
-                                group_creator = CmdMappingCreator(domain, group_name)
+                                group_creator = CmdMappingMgr(domain, group_name)
                                 
                                 # 生成映射数据
                                 mapping_data = group_creator.create_mappings()
@@ -247,7 +247,7 @@ class CmdBridge:
                                 continue
                         
                         # 使用 OperationMappingCreator 生成操作映射文件
-                        from .config.operation_mapping_creator import create_operation_mappings_for_domain
+                        from .config.operation_mapping_mgr import create_operation_mappings_for_domain
                         op_mapping_success = create_operation_mappings_for_domain(domain)
                         if op_mapping_success:
                             info(f"✅ 已完成 {domain} 领域的操作映射生成")
