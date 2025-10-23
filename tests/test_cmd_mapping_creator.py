@@ -23,12 +23,12 @@ class TestCmdMappingCreator:
         """测试设置"""
         # 创建临时目录结构
         self.temp_dir = tempfile.mkdtemp()
-        self.ops_dir = Path(self.temp_dir) / "package.ops"
+        self.domain_dir = Path(self.temp_dir) / "package.domain"
         self.parser_configs_dir = Path(self.temp_dir) / "program_parser_configs"
         self.output_dir = Path(self.temp_dir) / "output"
         
         # 创建目录
-        self.ops_dir.mkdir()
+        self.domain_dir.mkdir()
         self.parser_configs_dir.mkdir()
         self.output_dir.mkdir()
         
@@ -40,9 +40,9 @@ class TestCmdMappingCreator:
         import shutil
         shutil.rmtree(self.temp_dir)
     
-    def _create_apt_ops_file(self):
+    def _create_apt_group_file(self):
         """创建 APT 操作文件"""
-        apt_ops_content = """
+        apt_group_content = """
 [operations.install_remote]
 cmd_format = "apt install {pkgs}"
 
@@ -52,14 +52,14 @@ cmd_format = "apt search {query}"
 [operations.install_with_config]
 cmd_format = "apt install {pkgs} --config {config_path}"
 """
-        apt_file = self.ops_dir / "apt.toml"
+        apt_file = self.domain_dir / "apt.toml"
         with open(apt_file, 'w') as f:
-            f.write(apt_ops_content)
+            f.write(apt_group_content)
         return apt_file
     
-    def _create_pacman_ops_file(self):
+    def _create_pacman_group_file(self):
         """创建 Pacman 操作文件"""
-        pacman_ops_content = """
+        pacman_group_content = """
 [operations.install_remote]
 cmd_format = "pacman -S {pkgs}"
 
@@ -69,9 +69,9 @@ cmd_format = "pacman -Ss {query}"
 [operations.install_with_config]
 cmd_format = "pacman -S {pkgs} --config {config_path}"
 """
-        pacman_file = self.ops_dir / "pacman.toml"
+        pacman_file = self.domain_dir / "pacman.toml"
         with open(pacman_file, 'w') as f:
-            f.write(pacman_ops_content)
+            f.write(pacman_group_content)
         return pacman_file
     
     def _create_apt_parser_config(self):
@@ -146,9 +146,9 @@ nargs = "1"
             f.write(pacman_parser_content)
         return pacman_parser_file
 
-    def _create_ops_file_with_program_suffix(self):
+    def _create_group_file_with_program_suffix(self):
         """创建包含程序后缀的操作文件"""
-        ops_content = """
+        group_content = """
 [operations.install_remote.apt]
 cmd_format = "apt install {pkgs}"
 
@@ -158,10 +158,10 @@ cmd_format = "apt search {query}"
 [operations.install_remote.pacman]
 cmd_format = "pacman -S {pkgs}"
 """
-        ops_file = self.ops_dir / "mixed.toml"
-        with open(ops_file, 'w') as f:
-            f.write(ops_content)
-        return ops_file
+        operation_group_file = self.domain_dir / "mixed.toml"
+        with open(operation_group_file, 'w') as f:
+            f.write(group_content)
+        return operation_group_file
 
     def _create_parser_config_for_mixed(self):
         """创建混合程序的解析器配置"""
@@ -224,11 +224,11 @@ nargs = "+"
     def test_placeholder_values_generation(self):
         """测试占位符值生成"""
         # 创建测试文件
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证占位符值存在
@@ -264,11 +264,11 @@ nargs = "+"
     def test_operation_field_generation(self):
         """测试 operation 字段生成"""
         # 创建测试文件
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证 operation 字段存在且格式正确
@@ -291,11 +291,11 @@ nargs = "+"
     def test_operation_field_with_program_suffix(self):
         """测试包含程序后缀的 operation 字段生成"""
         # 创建包含程序后缀的操作文件
-        self._create_ops_file_with_program_suffix()
+        self._create_group_file_with_program_suffix()
         self._create_parser_config_for_mixed()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证 apt 程序的 operation 字段
@@ -321,12 +321,12 @@ nargs = "+"
     def test_operation_field_persistence(self):
         """测试 operation 字段在文件写入和读取中的持久性"""
         # 创建测试文件
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         self._create_apt_parser_config()
         
         # 创建映射并写入文件
         output_file = self.output_dir / "cmd_mappings.toml"
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         creator.create_mappings()
         creator.write_to(str(output_file))
         
@@ -347,12 +347,12 @@ nargs = "+"
     def test_placeholder_values_persistence(self):
         """测试占位符值在文件写入和读取中的持久性"""
         # 创建测试文件
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         self._create_apt_parser_config()
         
         # 创建映射并写入文件
         output_file = self.output_dir / "cmd_mappings.toml"
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         creator.create_mappings()
         creator.write_to(str(output_file))
         
@@ -372,11 +372,11 @@ nargs = "+"
     def test_create_mappings_basic(self):
         """测试基本映射创建"""
         # 创建测试文件
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证结果
@@ -395,13 +395,13 @@ nargs = "+"
     def test_create_mappings_multiple_programs(self):
         """测试多程序映射创建"""
         # 创建测试文件
-        self._create_apt_ops_file()
-        self._create_pacman_ops_file()
+        self._create_apt_group_file()
+        self._create_pacman_group_file()
         self._create_apt_parser_config()
         self._create_pacman_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证结果
@@ -413,11 +413,11 @@ nargs = "+"
     def test_parameter_mapping(self):
         """测试参数映射"""
         # 创建测试文件
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 查找 install_with_config 操作
@@ -438,11 +438,11 @@ nargs = "+"
     def test_command_node_generation(self):
         """测试 CommandNode 生成"""
         # 创建测试文件
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 验证 CommandNode 存在且结构正确
@@ -458,12 +458,12 @@ nargs = "+"
     def test_write_to_file(self):
         """测试写入文件"""
         # 创建测试文件
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         self._create_apt_parser_config()
         
         # 创建映射并写入文件
         output_file = self.output_dir / "cmd_mappings.toml"
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         creator.create_mappings()
         creator.write_to(str(output_file))
         
@@ -486,13 +486,13 @@ nargs = "+"
     def test_convenience_function(self):
         """测试便捷函数"""
         # 创建测试文件
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         self._create_apt_parser_config()
         
         # 使用便捷函数
         output_file = self.output_dir / "cmd_mappings.toml"
         create_cmd_mappings(
-            ops_dir=str(self.ops_dir),
+            domain_dir=str(self.domain_dir),
             parser_configs_dir=str(self.parser_configs_dir),
             output_path=str(output_file)
         )
@@ -508,35 +508,35 @@ nargs = "+"
     def test_missing_parser_config(self):
         """测试缺少解析器配置的情况"""
         # 只创建操作文件，不创建解析器配置
-        self._create_apt_ops_file()
+        self._create_apt_group_file()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 应该有空映射数据
         assert "apt" in mapping_data
         assert mapping_data["apt"]["command_mappings"] == []
     
-    def test_invalid_ops_directory(self):
+    def test_invalid_group_directory(self):
         """测试无效的操作目录"""
         # 使用不存在的目录
-        invalid_ops_dir = Path(self.temp_dir) / "nonexistent"
+        invalid_group_dir = Path(self.temp_dir) / "nonexistent"
         
         with pytest.raises(FileNotFoundError):
-            creator = CmdMappingCreator(str(invalid_ops_dir), str(self.parser_configs_dir))
+            creator = CmdMappingCreator(str(invalid_group_dir), str(self.parser_configs_dir))
             creator.create_mappings()
     
-    def test_empty_ops_file(self):
+    def test_empty_group_file(self):
         """测试空的操作文件"""
         # 创建空的操作文件
-        empty_file = self.ops_dir / "empty.toml"
+        empty_file = self.domain_dir / "empty.toml"
         empty_file.touch()
         
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 空文件应该没有命令映射
@@ -546,21 +546,21 @@ nargs = "+"
     def test_operation_without_cmd_format(self):
         """测试缺少 cmd_format 的操作"""
         # 创建包含无效操作的文件
-        invalid_ops_content = """
+        invalid_group_content = """
 [operations.valid_operation]
 cmd_format = "apt install {pkgs}"
 
 [operations.invalid_operation]
 description = "This operation has no cmd_format"
 """
-        invalid_file = self.ops_dir / "apt.toml"
+        invalid_file = self.domain_dir / "apt.toml"
         with open(invalid_file, 'w') as f:
-            f.write(invalid_ops_content)
+            f.write(invalid_group_content)
         
         self._create_apt_parser_config()
         
         # 创建映射
-        creator = CmdMappingCreator(str(self.ops_dir), str(self.parser_configs_dir))
+        creator = CmdMappingCreator(str(self.domain_dir), str(self.parser_configs_dir))
         mapping_data = creator.create_mappings()
         
         # 应该只有有效操作的映射

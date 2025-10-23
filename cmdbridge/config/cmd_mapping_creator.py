@@ -17,15 +17,15 @@ from log import debug, info, warning, error
 class CmdMappingCreator:
     """命令映射创建器 - 生成包含 CommandNode 和 operation 字段的映射配置"""
     
-    def __init__(self, ops_dir: str, parser_configs_dir: str):
+    def __init__(self, domain_dir: str, parser_configs_dir: str):
         """
         初始化命令映射创建器
         
         Args:
-            ops_dir: 操作接口文件夹路径 (如 package.ops, process.ops)
+            domain_dir: 操作接口文件夹路径 (如 package.domain, process.domain)
             parser_configs_dir: 解析器配置文件夹路径
         """
-        self.ops_dir = Path(ops_dir)
+        self.domain_dir = Path(domain_dir)
         self.parser_configs_dir = Path(parser_configs_dir)
         self.mapping_data = {}
     
@@ -36,43 +36,43 @@ class CmdMappingCreator:
         Returns:
             Dict[str, Any]: 映射数据，包含 operation 字段
         """
-        debug(f"开始创建命令映射，操作目录: {self.ops_dir}")
+        debug(f"开始创建命令映射，操作目录: {self.domain_dir}")
         
-        if not self.ops_dir.exists():
-            error(f"操作目录不存在: {self.ops_dir}")
-            raise FileNotFoundError(f"操作目录不存在: {self.ops_dir}")
+        if not self.domain_dir.exists():
+            error(f"操作目录不存在: {self.domain_dir}")
+            raise FileNotFoundError(f"操作目录不存在: {self.domain_dir}")
         
         # 处理所有操作文件
-        for ops_file in self.ops_dir.glob("*.toml"):
-            debug(f"处理操作文件: {ops_file}")
-            self._process_ops_file(ops_file)
+        for operation_group_file in self.domain_dir.glob("*.toml"):
+            debug(f"处理操作文件: {operation_group_file}")
+            self._process_group_file(operation_group_file)
         
         debug("命令映射创建完成")
         return self.mapping_data
     
-    def _process_ops_file(self, ops_file: Path):
+    def _process_group_file(self, operation_group_file: Path):
         """处理单个操作文件"""
         try:
-            with open(ops_file, 'rb') as f:
-                ops_data = tomli.load(f)
+            with open(operation_group_file, 'rb') as f:
+                group_data = tomli.load(f)
         except (tomli.TOMLDecodeError, Exception) as e:
-            warning(f"无法解析操作文件 {ops_file}: {e}")
+            warning(f"无法解析操作文件 {operation_group_file}: {e}")
             return
         
         # 获取程序名称（从文件名）
-        program_name = ops_file.stem
+        program_name = operation_group_file.stem
         debug(f"处理程序: {program_name}")
         
         if program_name not in self.mapping_data:
             self.mapping_data[program_name] = {"command_mappings": []}
         
         # 处理所有操作
-        if "operations" in ops_data:
-            for operation_key, operation_config in ops_data["operations"].items():
+        if "operations" in group_data:
+            for operation_key, operation_config in group_data["operations"].items():
                 debug(f"处理操作键: {operation_key}")
                 self._process_operation(program_name, operation_key, operation_config)
         else:
-            debug(f"文件 {ops_file} 中没有 operations 部分")
+            debug(f"文件 {operation_group_file} 中没有 operations 部分")
     
     def _process_operation(self, program_name: str, operation_key: str, operation_config: Dict[str, Any]):
         """处理单个操作"""
@@ -321,15 +321,15 @@ class CmdMappingCreator:
 
 
 # 便捷函数
-def create_cmd_mappings(ops_dir: str, parser_configs_dir: str, output_path: str) -> None:
+def create_cmd_mappings(domain_dir: str, parser_configs_dir: str, output_path: str) -> None:
     """
     便捷函数：创建命令映射并写入文件
     
     Args:
-        ops_dir: 操作接口文件夹路径
+        domain_dir: 操作接口文件夹路径
         parser_configs_dir: 解析器配置文件夹路径  
         output_path: 输出文件路径
     """
-    creator = CmdMappingCreator(ops_dir, parser_configs_dir)
+    creator = CmdMappingCreator(domain_dir, parser_configs_dir)
     creator.create_mappings()
     creator.write_to(output_path)
