@@ -1,4 +1,6 @@
-## 查找命令行对应的动作
+## cmd_mapping
+
+查找命令行对应的动作
 
 ### 生成命令映射需要的数据
 
@@ -57,3 +59,7 @@ cmd_node: CommandNode
 2. 命令节点结构相同（名称、参数数量、子命令结构）
 3. 参数结构相同（类型、选项名、重复次数、值数量）
 4. 忽略占位符参数的具体值内容
+
+## operation_mapping
+
+operation_mapping: operation => 

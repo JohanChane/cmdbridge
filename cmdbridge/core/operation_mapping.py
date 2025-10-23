@@ -1,40 +1,69 @@
 # cmdbridge/core/operation_mapping.py
 
-import os
-from typing import Dict, Any, Optional
-from pathlib import Path
 import tomli
+from typing import Dict, List, Optional
+from pathlib import Path
 
 from log import debug, info, warning, error
-from utils import ConfigUtils
+from ..config.path_manager import PathManager
 
 
 class OperationMapping:
-    """
-    操作映射器 - 根据操作名称和参数生成目标命令
-    
-    输入: operation_name, params, dst_operation_domain_name, dst_operation_group_name
-    输出: cmdline (命令行字符串)
-    """
+    """操作映射器 - 根据操作名称和参数生成目标命令"""
 
+    def __init__(self):
+        """初始化操作映射器"""
+        # 直接使用 PathManager 单例
+        self.path_manager = PathManager.get_instance()
+        self.operation_to_program = {}
+        self.command_formats = {}
+        self._load_operation_mapping()
 
-    def __init__(self, configs_dir: str, cache_dir: str):
-        """
-        初始化操作映射器
+    def _load_operation_mapping(self) -> None:
+        """加载操作映射和命令格式"""
+        debug("开始加载操作映射...")
         
-        Args:
-            configs_dir: 配置目录路径
-            cache_dir: 缓存目录路径
-        """
-        self.configs_dir = Path(configs_dir)
-        self.cache_dir = Path(cache_dir)
-        self.operations_cache = {}  # 缓存加载的操作配置
-        # 初始化配置工具 - 使用正确的路径
-        # cache_dir = self.configs_dir.parent / "cache"
-        # self.config_utils = ConfigUtils(
-        #     configs_dir=self.configs_dir,
-        #     cache_dir=cache_dir
-        # )
+        domains = self.path_manager.list_domains()
+        if not domains:
+            warning("未找到任何领域配置")
+            return
+        
+        for domain in domains:
+            mapping_file = self.path_manager.get_config_operation_group_path(domain) / "operation_mapping.toml"
+            debug(f"检查操作映射文件: {mapping_file}")
+            
+            if mapping_file.exists():
+                try:
+                    with open(mapping_file, 'rb') as f:
+                        mapping_data = tomli.load(f)
+                    
+                    # 加载操作到程序映射
+                    if "operation_to_program" in mapping_data:
+                        for op_name, programs in mapping_data["operation_to_program"].items():
+                            if op_name not in self.operation_to_program:
+                                self.operation_to_program[op_name] = []
+                            # 去重并添加
+                            for program in programs:
+                                if program not in self.operation_to_program[op_name]:
+                                    self.operation_to_program[op_name].append(program)
+                            debug(f"加载操作映射: {op_name} -> {self.operation_to_program[op_name]}")
+                    
+                    # 加载命令格式
+                    if "command_formats" in mapping_data:
+                        for program, formats in mapping_data["command_formats"].items():
+                            if program not in self.command_formats:
+                                self.command_formats[program] = {}
+                            self.command_formats[program].update(formats)
+                            debug(f"加载命令格式: {program} -> {len(formats)} 个操作")
+                            
+                except Exception as e:
+                    warning(f"加载操作映射文件失败 {mapping_file}: {e}")
+                    import traceback
+                    debug(f"详细错误: {traceback.format_exc()}")
+            else:
+                debug(f"操作映射文件不存在: {mapping_file}")
+        
+        info(f"操作映射加载完成: {len(self.operation_to_program)} 个操作, {len(self.command_formats)} 个程序")
 
     def generate_command(self, operation_name: str, params: Dict[str, str],
                         dst_operation_domain_name: str, 
@@ -45,97 +74,47 @@ class OperationMapping:
         Args:
             operation_name: 操作名称
             params: 参数字典
-            dst_operation_domain_name: 目标操作组名称 (如 "package", "process")
-            dst_operation_group_name: 目标程序名 (如 "apt", "pacman")
+            dst_operation_domain_name: 目标领域名称
+            dst_operation_group_name: 目标程序名称
             
         Returns:
             str: 生成的命令行字符串
             
         Raises:
-            ValueError: 如果操作不存在或参数不匹配
+            ValueError: 如果操作不支持或找不到命令格式
         """
-        debug(f"开始生成命令: 操作={operation_name}, 目标组={dst_operation_domain_name}, 目标程序={dst_operation_group_name}")
-        debug(f"参数: {params}")
+        debug(f"开始生成命令: 操作={operation_name}, 目标程序={dst_operation_group_name}, 参数={params}")
         
-        # 1. 加载操作配置
-        operation_config = self._load_operation_config(
-            dst_operation_domain_name, dst_operation_group_name, operation_name
-        )
+        # 1. 检查操作是否支持目标程序
+        supported_programs = self.operation_to_program.get(operation_name, [])
+        if dst_operation_group_name not in supported_programs:
+            raise ValueError(f"操作 {operation_name} 不支持程序 {dst_operation_group_name}，支持的程序: {supported_programs}")
         
-        if not operation_config:
-            raise ValueError(f"未找到操作配置: {operation_name} for {dst_operation_group_name}")
+        # 2. 直接从命令格式映射中获取命令格式
+        program_formats = self.command_formats.get(dst_operation_group_name, {})
+        cmd_format = program_formats.get(operation_name)
         
-        # 2. 获取命令格式
-        cmd_format = operation_config.get("cmd_format")
         if not cmd_format:
-            raise ValueError(f"操作 {operation_name} 缺少 cmd_format")
+            raise ValueError(f"未找到命令格式: {operation_name} for {dst_operation_group_name}")
         
+        # 3. 替换参数
         debug(f"使用命令格式: {cmd_format}")
-        
-        # 3. 替换参数，直接返回字符串
         cmdline = self._replace_parameters(cmd_format, params)
         
         info(f"生成命令成功: {cmdline}")
         return cmdline
-        
-    def _load_operation_config(self, domain_name: str, program_name: str, 
-                            operation_name: str) -> Optional[Dict[str, Any]]:
-        """加载操作配置 - 直接从缓存目录读取合并后的配置"""
-        cache_key = f"{domain_name}.{program_name}.{operation_name}"
-        
-        if cache_key in self.operations_cache:
-            return self.operations_cache[cache_key]
-        
-        # 使用传递的缓存目录
-        cache_file = self.cache_dir / "domains" / f"{domain_name}.domain" / f"{program_name}.toml"
-        
-        debug(f"查找缓存文件: {cache_file}")
-        debug(f"缓存文件是否存在: {cache_file.exists()}")
-        
-        if cache_file.exists():
-            try:
-                with open(cache_file, 'rb') as f:
-                    cached_data = tomli.load(f)
-                
-                debug(f"缓存文件内容: {cached_data}")
-                
-                operations = cached_data.get("operations", {})
-                debug(f"所有操作键: {list(operations.keys())}")
-                
-                # 查找操作配置
-                operation_config = None
-                
-                # 首先尝试直接的操作名
-                if operation_name in operations:
-                    op_data = operations[operation_name]
-                    debug(f"找到操作数据: {op_data}")
-                    
-                    # 检查是否是嵌套结构：{'apt': {'cmd_format': ...}}
-                    if isinstance(op_data, dict) and program_name in op_data:
-                        operation_config = op_data[program_name]
-                        debug(f"从嵌套结构中提取 {program_name} 的配置: {operation_config}")
-                    # 如果是直接配置：{'cmd_format': ...}
-                    elif isinstance(op_data, dict) and 'cmd_format' in op_data:
-                        operation_config = op_data
-                        debug(f"使用直接配置: {operation_config}")
-                
-                if operation_config:
-                    self.operations_cache[cache_key] = operation_config
-                    debug(f"最终操作配置: {operation_config}")
-                    return operation_config
-                else:
-                    debug(f"未找到操作 {operation_name} 的配置")
-                    
-            except Exception as e:
-                warning(f"加载缓存配置失败: {e}")
-                import traceback
-                debug(f"详细错误: {traceback.format_exc()}")
-        
-        warning(f"未找到操作配置: {operation_name} for {program_name} (缓存文件: {cache_file})")
-        return None
-    
+
     def _replace_parameters(self, cmd_format: str, params: Dict[str, str]) -> str:
-        """替换命令格式中的参数占位符"""
+        """
+        替换命令格式中的参数占位符
+        
+        Args:
+            cmd_format: 命令格式字符串
+            params: 参数字典
+            
+        Returns:
+            str: 替换后的命令字符串
+        """
         result = cmd_format
         
         for param_name, param_value in params.items():
@@ -154,38 +133,130 @@ class OperationMapping:
         
         return result
 
+    def list_supported_operations(self, program_name: str) -> List[str]:
+        """
+        列出程序支持的所有操作
+        
+        Args:
+            program_name: 程序名称
+            
+        Returns:
+            List[str]: 支持的操作名称列表
+        """
+        supported_ops = []
+        for op_name, programs in self.operation_to_program.items():
+            if program_name in programs:
+                supported_ops.append(op_name)
+        
+        debug(f"程序 {program_name} 支持 {len(supported_ops)} 个操作: {supported_ops}")
+        return sorted(supported_ops)
+
+    def list_supported_programs(self, operation_name: str) -> List[str]:
+        """
+        列出操作支持的所有程序
+        
+        Args:
+            operation_name: 操作名称
+            
+        Returns:
+            List[str]: 支持的程序名称列表
+        """
+        programs = self.operation_to_program.get(operation_name, [])
+        debug(f"操作 {operation_name} 支持 {len(programs)} 个程序: {programs}")
+        return sorted(programs)
+
+    def get_all_operations(self) -> List[str]:
+        """
+        获取所有可用的操作名称
+        
+        Returns:
+            List[str]: 所有操作名称列表
+        """
+        operations = list(self.operation_to_program.keys())
+        debug(f"共有 {len(operations)} 个可用操作: {operations}")
+        return sorted(operations)
+
+    def get_all_programs(self) -> List[str]:
+        """
+        获取所有可用的程序名称
+        
+        Returns:
+            List[str]: 所有程序名称列表
+        """
+        programs = list(self.command_formats.keys())
+        debug(f"共有 {len(programs)} 个可用程序: {programs}")
+        return sorted(programs)
+
+    def is_operation_supported(self, operation_name: str, program_name: str) -> bool:
+        """
+        检查操作是否支持指定程序
+        
+        Args:
+            operation_name: 操作名称
+            program_name: 程序名称
+            
+        Returns:
+            bool: 是否支持
+        """
+        supported = program_name in self.operation_to_program.get(operation_name, [])
+        debug(f"操作 {operation_name} 支持程序 {program_name}: {supported}")
+        return supported
+
+    def get_command_format(self, operation_name: str, program_name: str) -> Optional[str]:
+        """
+        获取指定操作和程序的命令格式
+        
+        Args:
+            operation_name: 操作名称
+            program_name: 程序名称
+            
+        Returns:
+            Optional[str]: 命令格式字符串，如果不存在则返回 None
+        """
+        program_formats = self.command_formats.get(program_name, {})
+        cmd_format = program_formats.get(operation_name)
+        debug(f"获取命令格式: {operation_name}.{program_name} -> {cmd_format}")
+        return cmd_format
+
+    def reload(self) -> None:
+        """
+        重新加载操作映射配置
+        
+        用于在配置更新后刷新内存中的映射数据
+        """
+        debug("重新加载操作映射...")
+        self.operation_to_program.clear()
+        self.command_formats.clear()
+        self._load_operation_mapping()
+        info("操作映射重新加载完成")
+
 
 # 便捷函数
-def create_operation_mapping(configs_dir: str) -> OperationMapping:
+def create_operation_mapping() -> OperationMapping:
     """
     创建操作映射器实例
     
-    Args:
-        configs_dir: 配置目录路径
-        
     Returns:
         OperationMapping: 操作映射器实例
     """
-    return OperationMapping(configs_dir)
+    return OperationMapping()
 
 
 def generate_command_from_operation(operation_name: str, params: Dict[str, str],
                                   dst_operation_domain_name: str,
-                                  dst_operation_group_name: str,
-                                  configs_dir: str) -> str:
+                                  dst_operation_group_name: str) -> str:
     """
     便捷函数：直接从操作生成命令
     
     Args:
         operation_name: 操作名称
         params: 参数字典
-        dst_operation_domain_name: 目标操作组名称
+        dst_operation_domain_name: 目标领域名称
         dst_operation_group_name: 目标程序名
-        configs_dir: 配置目录路径
         
     Returns:
         str: 生成的命令行字符串
     """
-    mapping = OperationMapping(configs_dir)
+    mapping = OperationMapping()
     return mapping.generate_command(operation_name, params, 
                                   dst_operation_domain_name, dst_operation_group_name)

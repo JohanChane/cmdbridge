@@ -1,27 +1,27 @@
 # === 动作命令实现 ===
-[operations.install_remote.apt]
+[operations.install_remote]
 cmd_format = "apt install {pkgs}"
 
-[operations.search_remote.apt]
+[operations.search_remote]
 cmd_format = "apt search {pkgs}"
 
-[operations.search_local.apt]
+[operations.search_local]
 cmd_format = "apt list --installed {pkgs}"
 
-[operations.list_installed.apt]
+[operations.list_installed]
 cmd_format = "apt list --installed"
 
-[operations.find_file_owner_remote_with_regexp.apt-file]
+[operations.find_file_owner_remote_with_regexp]
 cmd_format = "apt-file search --regexp {files}"
 
-[operations.force_refresh_repo_db.apt]
+[operations.force_refresh_repo_db]
 cmd_format = "apt update --force-refresh-all"
 
-[operations.download_source.apt]
+[operations.download_source]
 cmd_format = "apt source {pkgs}"
 
 [operations.install_with_config]
 cmd_format = "apt install {pkgs} --config {config_path}"
 
-[operations.help.apt]
+[operations.help]
 cmd_format = "apt --help"

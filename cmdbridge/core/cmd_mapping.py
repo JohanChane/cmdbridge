@@ -35,7 +35,7 @@ class CmdMapping:
         """
         self.mapping_config = mapping_config
         self.source_parser_config = None  # 新增：保存源解析器配置
-    
+
     def map_to_operation(self, source_cmdline: List[str], 
                         source_parser_config: ParserConfig,
                         dst_operation_group: str) -> Optional[Dict[str, Any]]:
@@ -129,11 +129,7 @@ class CmdMapping:
         program_name = source_node.name
         debug(f"在程序 {program_name} 中查找匹配的映射，目标程序: {dst_operation_group}")
         
-        # 检查程序名是否匹配
-        if program_name != dst_operation_group:
-            debug(f"程序名不匹配: 源程序={program_name}, 目标程序={dst_operation_group}")
-            return None
-        
+        # 检查程序名是否在映射配置中（移除程序名必须匹配的限制）
         if program_name not in self.mapping_config:
             debug(f"程序 {program_name} 不在映射配置中")
             return None
@@ -147,7 +143,6 @@ class CmdMapping:
                 return mapping
         
         return None
-    
     def _is_command_match(self, source_node: CommandNode, mapping: Dict[str, Any]) -> bool:
         """
         检查源命令是否与映射配置匹配
@@ -187,12 +182,12 @@ class CmdMapping:
         if len(node1.arguments) != len(node2.arguments):
             return False
         
-        # 创建参数特征集合用于比较（忽略顺序）
+        # 创建参数特征集合用于比较（忽略占位符值和 is_placeholder 标记）
         def get_arg_features(arg: CommandArg) -> tuple:
             """获取 CommandArg 的特征元组（可哈希）"""
             return (
                 arg.node_type.value,      # 参数类型
-                arg.option_name or "",    # 选项名
+                arg.option_name or "",    # 选项名（保持原样）
                 arg.repeat or 1,          # 重复次数
             )
         
@@ -286,28 +281,18 @@ class CmdMapping:
         return param_values
     
     def _find_parameter_values(self, source_node: CommandNode, param_info: Dict[str, Any]) -> List[str]:
-        """
-        在命令节点中查找参数值 (保持顺序)
-        
-        Args:
-            source_node: 源命令节点
-            param_info: 参数信息配置
-            
-        Returns:
-            List[str]: 参数值列表 (保持原始顺序)
-        """
+        """在命令节点中查找参数值 (保持顺序)"""
         cmd_arg_info = param_info.get("cmd_arg", {})
         target_node_type = ArgType(cmd_arg_info["node_type"])
-        target_option_name = self._strip_placeholder_marker(cmd_arg_info.get("option_name"))
+        target_option_name = cmd_arg_info.get("option_name")  # 直接使用，不需要去除占位符标记
         
         values = []
         
         def search_in_node(node: CommandNode):
             for arg in node.arguments:
-                # 检查参数类型和选项名是否匹配（忽略占位符标记）
-                arg_option_name = self._strip_placeholder_marker(arg.option_name)
+                # 检查参数类型和选项名是否匹配（直接比较，不处理占位符标记）
                 if (arg.node_type == target_node_type and 
-                    arg_option_name == target_option_name):
+                    arg.option_name == target_option_name):
                     
                     # 收集该参数的所有值
                     values.extend(arg.values)

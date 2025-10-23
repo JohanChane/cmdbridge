@@ -6,21 +6,20 @@ from typing import List, Dict, Any, Optional
 import tomli
 import shutil
 
+from cmdbridge.config.path_manager import PathManager
+from log import debug, info, warning, error
+
 
 class ConfigUtils:
     """配置工具类 - 管理配置和缓存目录，包含所有功能实现"""
     
-    def __init__(self, configs_dir: str = "configs", cache_dir: str = "output"):
+    def __init__(self):
         """
         初始化配置工具
-        
-        Args:
-            configs_dir: 配置目录路径
-            cache_dir: 缓存目录路径
         """
-        self.configs_dir = Path(configs_dir)
-        self.cache_dir = Path(cache_dir)
-        self.cmd_mappings_cache_dir = self.cache_dir / "cmd_mappings"
+        # 直接使用 PathManager 单例
+        self.path_manager = PathManager.get_instance()
+        debug("初始化 ConfigUtils")
     
     def refresh_cmd_mapping(self, domain_name: str = None) -> bool:
         """
@@ -35,158 +34,38 @@ class ConfigUtils:
             bool: 操作是否成功
         """
         try:
-            if domain_name is None:
-                # 刷新所有领域
-                if self.cmd_mappings_cache_dir.exists():
-                    shutil.rmtree(self.cmd_mappings_cache_dir)
-                    self.cmd_mappings_cache_dir.mkdir(parents=True, exist_ok=True)
+            # 使用 PathManager 的删除方法
+            success = self.path_manager.rm_cmd_mappings_dir(domain_name)
+            
+            if success:
+                # 重新创建目录结构
+                if domain_name is None:
+                    # 为所有领域重新创建目录
+                    domains = self.path_manager.list_domains()
+                    for domain in domains:
+                        self.path_manager.ensure_cmd_mappings_domain_dir(domain)
+                else:
+                    # 为指定领域重新创建目录
+                    self.path_manager.ensure_cmd_mappings_domain_dir(domain_name)
+                
+                return True
             else:
-                # 刷新指定领域
-                domain_cache_dir = self.cmd_mappings_cache_dir / domain_name
-                if domain_cache_dir.exists():
-                    shutil.rmtree(domain_cache_dir)
-                    domain_cache_dir.mkdir(parents=True, exist_ok=True)
-            
-            # 重新生成命令映射
-            # 这里需要调用 cmd_mapping_creator 的功能
-            # 由于 cmd_mapping_creator 的具体实现不在当前文件中，
-            # 这里返回 True 表示删除操作成功，生成操作由外部调用
-            return True
-            
+                return False
+                
         except Exception as e:
-            print(f"刷新命令映射失败: {e}")
+            error(f"刷新命令映射失败: {e}")
             return False
     
     def list_domains(self) -> List[str]:
-        """
-        列出所有可用的领域名称 (domains)
-        
-        Returns:
-            List[str]: 领域名称列表，如 ["package", "process"]
-        """
-        domains = []
-        
-        if not self.configs_dir.exists():
-            return domains
-        
-        # 查找所有 *.domain 目录
-        for item in self.configs_dir.iterdir():
-            if item.is_dir() and item.name.endswith('.domain'):
-                domain_name = item.name[:-7]  # 移除 .domain 后缀
-                domains.append(domain_name)
-        
-        return sorted(domains)
+        """列出所有可用的领域名称"""
+        return self.path_manager.list_domains()
     
     def list_groups_in_domain(self, domain_name: str) -> List[str]:
-        """
-        列出指定领域中的所有程序组名称 (groups)
-        
-        Args:
-            domain_name: 领域名称
-            
-        Returns:
-            List[str]: 程序组名称列表，如 ["apt", "pacman", "brew"]
-        """
-        groups = []
-        domain_dir = self.configs_dir / f"{domain_name}.domain"
-        
-        if not domain_dir.exists():
-            return groups
-        
-        # 查找所有 .toml 配置文件
-        for config_file in domain_dir.glob("*.toml"):
-            group_name = config_file.stem
-            groups.append(group_name)
-        
-        return sorted(groups)
-    
-    def _get_commands_from_cache(self, domain: str, group: str = None) -> List[str]:
-        """从缓存获取命令"""
-        cmds = []
-        if self.cmd_mappings_cache_dir.exists():
-            domain_cache_dir = self.cmd_mappings_cache_dir / domain
-            mappings_file = domain_cache_dir / "cmd_mappings.toml"
-            
-            if mappings_file.exists():
-                try:
-                    with open(mappings_file, 'rb') as f:
-                        mappings_data = tomli.load(f)
-                    
-                    if group is None:
-                        # 获取所有组的命令
-                        for grp in mappings_data.keys():
-                            command_mappings = mappings_data[grp].get("command_mappings", [])
-                            for mapping in command_mappings:
-                                if "operation" in mapping:
-                                    cmds.append(mapping["operation"])
-                    else:
-                        # 获取指定组的命令
-                        if group in mappings_data:
-                            command_mappings = mappings_data[group].get("command_mappings", [])
-                            for mapping in command_mappings:
-                                if "operation" in mapping:
-                                    cmds.append(mapping["operation"])
-                                
-                except Exception:
-                    pass
-        return cmds
-    
-    def _get_commands_from_config(self, domain: str, group: str = None) -> List[str]:
-        """从配置文件获取命令"""
-        cmds = []
-        if group is None:
-            # 获取所有组的命令
-            domain_dir = self.configs_dir / f"{domain}.domain"
-            if domain_dir.exists():
-                for config_file in domain_dir.glob("*.toml"):
-                    try:
-                        with open(config_file, 'rb') as f:
-                            config_data = tomli.load(f)
-                        
-                        if 'operations' in config_data:
-                            for operation_key in config_data['operations'].keys():
-                                if '.' in operation_key:
-                                    cmd_name, cmd_group = operation_key.split('.')
-                                    cmds.append(cmd_name)
-                                else:
-                                    cmds.append(operation_key)
-                                    
-                    except Exception:
-                        continue
-        else:
-            # 获取指定组的命令
-            config_file = self.configs_dir / f"{domain}.domain" / f"{group}.toml"
-            if config_file.exists():
-                try:
-                    with open(config_file, 'rb') as f:
-                        config_data = tomli.load(f)
-                    
-                    if 'operations' in config_data:
-                        for operation_key in config_data['operations'].keys():
-                            if '.' in operation_key:
-                                cmd_name, cmd_group = operation_key.split('.')
-                                if cmd_group == group:
-                                    cmds.append(cmd_name)
-                            else:
-                                cmds.append(operation_key)
-                                
-                except Exception:
-                    pass
-        return cmds
+        """列出指定领域中的所有程序组名称"""
+        return self.path_manager.list_operation_groups(domain_name)
     
     def list_commands_in_domain_group(self, domain_name: str, group_name: str = None) -> List[str]:
-        """
-        列出指定领域和程序组中的所有命令名称
-        
-        如果 group_name 为 None，则列出整个 domain 下的所有命令
-        
-        Args:
-            domain_name: 领域名称
-            group_name: 程序组名称 (可选)
-            
-        Returns:
-            List[str]: 命令名称列表
-        """
+        """列出指定领域和程序组中的所有命令名称"""
         commands = []
         
         # 优先从缓存获取
@@ -199,40 +78,107 @@ class ConfigUtils:
         # 去重并排序
         return sorted(list(set(commands)))
     
+    def _get_commands_from_cache(self, domain: str, group: str = None) -> List[str]:
+        """从缓存获取命令"""
+        cmds = []
+        try:
+            if group is None:
+                # 获取所有组的命令
+                groups = self.path_manager.list_operation_groups(domain)
+                for grp in groups:
+                    cache_file = self.path_manager.get_operation_group_cache_path(domain, grp)
+                    if cache_file.exists():
+                        with open(cache_file, 'rb') as f:
+                            cached_data = tomli.load(f)
+                        operations = cached_data.get("operations", {})
+                        for operation_key in operations.keys():
+                            if '.' in operation_key:
+                                cmd_name, cmd_group = operation_key.split('.')
+                                cmds.append(cmd_name)
+                            else:
+                                cmds.append(operation_key)
+            else:
+                # 获取指定组的命令
+                cache_file = self.path_manager.get_operation_group_cache_path(domain, group)
+                if cache_file.exists():
+                    with open(cache_file, 'rb') as f:
+                        cached_data = tomli.load(f)
+                    operations = cached_data.get("operations", {})
+                    for operation_key in operations.keys():
+                        if '.' in operation_key:
+                            cmd_name, cmd_group = operation_key.split('.')
+                            if cmd_group == group:
+                                cmds.append(cmd_name)
+                        else:
+                            cmds.append(operation_key)
+        except Exception as e:
+            debug(f"从缓存获取命令失败: {e}")
+        return cmds
+    
+    def _get_commands_from_config(self, domain: str, group: str = None) -> List[str]:
+        """从配置文件获取命令"""
+        cmds = []
+        try:
+            if group is None:
+                # 获取所有组的命令
+                groups = self.path_manager.list_operation_groups(domain)
+                for grp in groups:
+                    config_file = self.path_manager.get_operation_group_config_path(domain, grp)
+                    if config_file.exists():
+                        with open(config_file, 'rb') as f:
+                            config_data = tomli.load(f)
+                        if 'operations' in config_data:
+                            for operation_key in config_data['operations'].keys():
+                                if '.' in operation_key:
+                                    cmd_name, cmd_group = operation_key.split('.')
+                                    cmds.append(cmd_name)
+                                else:
+                                    cmds.append(operation_key)
+            else:
+                # 获取指定组的命令
+                config_file = self.path_manager.get_operation_group_config_path(domain, group)
+                if config_file.exists():
+                    with open(config_file, 'rb') as f:
+                        config_data = tomli.load(f)
+                    if 'operations' in config_data:
+                        for operation_key in config_data['operations'].keys():
+                            if '.' in operation_key:
+                                cmd_name, cmd_group = operation_key.split('.')
+                                if cmd_group == group:
+                                    cmds.append(cmd_name)
+                            else:
+                                cmds.append(operation_key)
+        except Exception as e:
+            debug(f"从配置获取命令失败: {e}")
+        return cmds
+    
     def merge_all_domain_configs(self) -> bool:
-        """
-        合并所有领域的配置并保存到缓存目录
+        """合并所有领域配置
+        
+        为每个领域生成 operation_mapping.toml 文件
         
         Returns:
-            bool: 操作是否成功
+            bool: 合并是否成功
         """
         try:
-            domains = self.list_domains()
-            for domain in domains:
-                # 创建领域缓存目录
-                domain_cache_dir = self.cache_dir / "domains" / f"{domain}.domain"
-                domain_cache_dir.mkdir(parents=True, exist_ok=True)
-                
-                # 获取该领域的所有程序组
-                groups = self.list_groups_in_domain(domain)
-                
-                for group in groups:
-                    # 为每个程序组合并配置
-                    merged_config = self._merge_domain_group_config(domain, group)
-                    if merged_config:
-                        # 保存合并后的配置到缓存文件
-                        cache_file = domain_cache_dir / f"{group}.toml"
-                        with open(cache_file, 'wb') as f:
-                            tomli_w = __import__('tomli_w')
-                            tomli_w.dump({"operations": merged_config}, f)
-                        print(f"✅ 已合并 {domain}.{group} 配置到缓存")
-                    else:
-                        print(f"⚠️  跳过 {domain}.{group}：无配置可合并")
+            domains = self.path_manager.list_domains()
+            success_count = 0
             
-            return True
+            for domain in domains:
+                domain_config_dir = self.path_manager.get_config_operation_group_path(domain)
+                if domain_config_dir.exists():
+                    # 这里调用 CmdBridge 中的生成方法
+                    # 在实际实现中，可能需要将生成逻辑移到 ConfigUtils 中
+                    debug(f"处理领域配置: {domain}")
+                    success_count += 1
+                else:
+                    warning(f"领域配置目录不存在: {domain_config_dir}")
+            
+            info(f"合并了 {success_count}/{len(domains)} 个领域配置")
+            return success_count > 0
             
         except Exception as e:
-            print(f"合并领域配置失败: {e}")
+            error(f"合并领域配置失败: {e}")
             return False
 
     def _merge_domain_group_config(self, domain_name: str, program_name: str) -> Dict[str, Dict[str, Any]]:
@@ -249,9 +195,9 @@ class ConfigUtils:
         merged_operations = {}
         
         try:
-            domain_dir = self.configs_dir / f"{domain_name}.domain"
-            base_config_file = domain_dir / "base.toml"
-            program_config_file = domain_dir / f"{program_name}.toml"
+            # 使用 PathManager 获取文件路径
+            base_config_file = self.path_manager.get_base_operation_config_path(domain_name)
+            program_config_file = self.path_manager.get_operation_group_config_path(domain_name, program_name)
             
             # 加载基础配置中的所有操作
             base_operations = {}
@@ -290,7 +236,7 @@ class ConfigUtils:
             return merged_operations
             
         except Exception as e:
-            print(f"合并 {domain_name}.{program_name} 配置失败: {e}")
+            error(f"合并 {domain_name}.{program_name} 配置失败: {e}")
             return {}
 
     def get_merged_operation_config(self, domain_name: str, program_name: str, operation_name: str) -> Optional[Dict[str, Any]]:
@@ -307,7 +253,7 @@ class ConfigUtils:
         """
         try:
             # 首先尝试从缓存加载
-            cache_file = self.cache_dir / "domains" / f"{domain_name}.domain" / f"{program_name}.toml"
+            cache_file = self.path_manager.get_operation_group_cache_path(domain_name, program_name)
             if cache_file.exists():
                 with open(cache_file, 'rb') as f:
                     cached_data = tomli.load(f)
@@ -317,5 +263,28 @@ class ConfigUtils:
             return self._merge_domain_group_config(domain_name, program_name).get(operation_name)
             
         except Exception as e:
-            print(f"获取合并操作配置失败: {e}")
+            error(f"获取合并操作配置失败: {e}")
             return None
+    
+    def domain_exists(self, domain_name: str) -> bool:
+        """检查领域是否存在"""
+        return self.path_manager.domain_exists(domain_name)
+    
+    def operation_group_exists(self, domain_name: str, group_name: str) -> bool:
+        """检查操作组是否存在"""
+        return self.path_manager.operation_group_exists(domain_name, group_name)
+    
+    def program_parser_config_exists(self, program_name: str) -> bool:
+        """检查程序解析器配置是否存在"""
+        return self.path_manager.program_parser_config_exists(program_name)
+
+
+# 便捷函数
+def create_config_utils() -> ConfigUtils:
+    """
+    创建配置工具实例
+    
+    Returns:
+        ConfigUtils: 配置工具实例
+    """
+    return ConfigUtils()

@@ -1,15 +1,27 @@
 # cmdbridge/config/path_manager.py
 
 import os
+import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+
+from log import debug, info, warning, error
 
 
 class PathManager:
-    """路径管理器 - 统一管理配置和缓存目录路径"""
+    """路径管理器 - 统一管理配置和缓存目录路径（单例模式）"""
     
-    def __init__(self, 
-                 config_dir: Optional[str] = None,
+    _instance = None
+    
+    def __new__(cls, config_dir: Optional[str] = None, 
+                cache_dir: Optional[str] = None,
+                program_parser_config_dir: Optional[str] = None):
+        if cls._instance is None:
+            cls._instance = super(PathManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
+    def __init__(self, config_dir: Optional[str] = None, 
                  cache_dir: Optional[str] = None,
                  program_parser_config_dir: Optional[str] = None):
         """
@@ -20,6 +32,9 @@ class PathManager:
             cache_dir: 缓存目录路径，如果为 None 则使用默认路径
             program_parser_config_dir: 程序解析器配置目录路径，如果为 None 则基于 config_dir
         """
+        if self._initialized:
+            return
+            
         # 设置默认路径
         self._config_dir = Path(
             config_dir or os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
@@ -37,12 +52,25 @@ class PathManager:
         
         # 确保目录存在
         self._ensure_directories()
+        self._initialized = True
     
     def _ensure_directories(self) -> None:
         """确保必要的目录存在"""
         self._config_dir.mkdir(parents=True, exist_ok=True)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         self._program_parser_config_dir.mkdir(parents=True, exist_ok=True)
+    
+    @classmethod
+    def get_instance(cls) -> 'PathManager':
+        """获取单例实例"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+    
+    @classmethod
+    def reset_instance(cls):
+        """重置单例实例（主要用于测试）"""
+        cls._instance = None
     
     def list_domains(self) -> List[str]:
         """
@@ -135,7 +163,7 @@ class PathManager:
         """
         return self._config_dir / f"{domain_name}.domain"
     
-    def get_cache_operation_group_path(self, domain_name: str) -> Path:
+    def get_cache_domain_path(self, domain_name: str) -> Path:
         """
         获取缓存目录中的操作组文件路径
         
@@ -195,7 +223,7 @@ class PathManager:
         Returns:
             Path: 操作组缓存文件路径
         """
-        return self.get_cache_operation_group_path(domain_name) / f"{group_name}.toml"
+        return self.get_cache_domain_path(domain_name) / f"{group_name}.toml"
     
     def get_base_operation_config_path(self, domain_name: str) -> Path:
         """
@@ -209,19 +237,104 @@ class PathManager:
         """
         return self.get_config_operation_group_path(domain_name) / "base.toml"
     
-    # 私有方法 - 不暴露给外部使用
-    def _get_config_domain_path(self) -> Path:
-        """获取配置领域目录路径（内部使用）"""
-        return self._config_dir
+    def get_cmd_mappings_domain_dir(self, domain_name: str) -> Path:
+        """
+        获取命令映射领域目录路径
+        
+        Args:
+            domain_name: 领域名称
+            
+        Returns:
+            Path: 命令映射领域目录路径
+        """
+        return self._cache_dir / "cmd_mappings" / domain_name
     
-    def _get_cache_domain_path(self) -> Path:
-        """获取缓存领域目录路径（内部使用）"""
-        return self._cache_dir / "domains"
+    def ensure_cmd_mappings_domain_dir(self, domain_name: str) -> None:
+        """
+        确保命令映射领域目录存在
+        
+        Args:
+            domain_name: 领域名称
+        """
+        cmd_mappings_dir = self.get_cmd_mappings_domain_dir(domain_name)
+        cmd_mappings_dir.mkdir(parents=True, exist_ok=True)
     
-    def _get_cmd_mappings_domain_path(self) -> Path:
-        """获取命令映射领域目录路径（内部使用）"""
-        return self._cache_dir / "cmd_mappings"
-    
+    def rm_cmd_mappings_dir(self, domain_name: Optional[str] = None) -> bool:
+        """
+        删除命令映射目录
+        
+        Args:
+            domain_name: 领域名称，如果为 None 则删除所有命令映射目录
+            
+        Returns:
+            bool: 删除是否成功
+        """
+        try:
+            if domain_name is None:
+                # 删除所有命令映射目录
+                cmd_mappings_dir = self._cache_dir / "cmd_mappings"
+                if cmd_mappings_dir.exists():
+                    shutil.rmtree(cmd_mappings_dir)
+                    debug(f"已删除所有命令映射目录: {cmd_mappings_dir}")
+                return True
+            else:
+                # 删除指定领域的命令映射目录
+                domain_cmd_mappings_dir = self.get_cmd_mappings_domain_dir(domain_name)
+                if domain_cmd_mappings_dir.exists():
+                    shutil.rmtree(domain_cmd_mappings_dir)
+                    debug(f"已删除 {domain_name} 领域的命令映射目录: {domain_cmd_mappings_dir}")
+                return True
+        except Exception as e:
+            error(f"删除命令映射目录失败: {e}")
+            return False
+
+    def rm_domain_cache_dir(self, domain_name: Optional[str] = None) -> bool:
+        """
+        删除领域缓存目录
+        
+        Args:
+            domain_name: 领域名称，如果为 None 则删除所有领域缓存目录
+            
+        Returns:
+            bool: 删除是否成功
+        """
+        try:
+            if domain_name is None:
+                # 删除所有领域缓存目录
+                domains_cache_dir = self._cache_dir / "domains"
+                if domains_cache_dir.exists():
+                    shutil.rmtree(domains_cache_dir)
+                    debug(f"已删除所有领域缓存目录: {domains_cache_dir}")
+                return True
+            else:
+                # 删除指定领域的缓存目录
+                domain_cache_dir = self.get_cache_domain_path(domain_name)
+                if domain_cache_dir.exists():
+                    shutil.rmtree(domain_cache_dir)
+                    debug(f"已删除 {domain_name} 领域的缓存目录: {domain_cache_dir}")
+                return True
+        except Exception as e:
+            error(f"删除领域缓存目录失败: {e}")
+            return False
+
+    def rm_all_cache_dirs(self) -> bool:
+        """
+        删除所有缓存目录
+        
+        Returns:
+            bool: 删除是否成功
+        """
+        try:
+            if self._cache_dir.exists():
+                shutil.rmtree(self._cache_dir)
+                # 重新创建空的缓存目录
+                self._cache_dir.mkdir(parents=True, exist_ok=True)
+                debug(f"已删除并重新创建所有缓存目录: {self._cache_dir}")
+            return True
+        except Exception as e:
+            error(f"删除所有缓存目录失败: {e}")
+            return False
+
     # 属性访问器
     @property
     def config_dir(self) -> Path:

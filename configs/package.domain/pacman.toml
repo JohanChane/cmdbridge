@@ -1,27 +1,27 @@
 # === 动作命令实现 ===
-[operations.install_remote.pacman]
+[operations.install_remote]
 cmd_format = "pacman -S {pkgs}"
 
-[operations.search_remote.pacman]
+[operations.search_remote]
 cmd_format = "pacman -Ss {pkgs}"
 
-[operations.search_local.pacman]
+[operations.search_local]
 cmd_format = "pacman -Qs {pkgs}"
 
-[operations.list_installed.pacman]
+[operations.list_installed]
 cmd_format = "pacman -Q"
 
-[operations.find_file_owner_remote_with_regexp.pacman]
+[operations.find_file_owner_remote_with_regexp]
 cmd_format = "pacman -Fx {files}"
 
-[operations.force_refresh_repo_db.pacman]
+[operations.force_refresh_repo_db]
 cmd_format = "pacman -Syy"
 
-[operations.download_source.pacman]
+[operations.download_source]
 cmd_format = "asp export {pkgs}"
 
 [operations.install_with_config]
 cmd_format = "pacman -S {pkgs} --config {config_path}"
 
-[operations.help.pacman]
+[operations.help]
 cmd_format = "pacman -h"

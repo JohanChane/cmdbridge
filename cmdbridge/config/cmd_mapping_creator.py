@@ -12,6 +12,7 @@ from parsers.getopt_parser import GetoptParser
 from parsers.config_loader import load_parser_config_from_file
 
 from log import debug, info, warning, error
+from .path_manager import PathManager
 
 
 class CmdMappingCreator:
@@ -25,6 +26,10 @@ class CmdMappingCreator:
             domain_dir: 操作接口文件夹路径 (如 package.domain, process.domain)
             parser_configs_dir: 解析器配置文件夹路径
         """
+        # 使用单例 PathManager
+        self.path_manager = PathManager.get_instance()
+        
+        # 保存原始路径用于兼容性
         self.domain_dir = Path(domain_dir)
         self.parser_configs_dir = Path(parser_configs_dir)
         self.mapping_data = {}
@@ -52,18 +57,27 @@ class CmdMappingCreator:
         
     def _process_group_file(self, operation_group_file: Path):
         """处理单个操作文件"""
-        # 跳过 base.toml 等只有操作定义的文件
-        if operation_group_file.stem == "base":
+        # 使用 PathManager 的方法来获取程序名称
+        program_name = operation_group_file.stem
+        
+        # 检查是否是基础配置文件
+        if program_name == "base":
             debug(f"跳过基础操作文件: {operation_group_file}")
             return
         
+        # 使用 PathManager 检查程序解析器配置是否存在
+        if not self.path_manager.program_parser_config_exists(program_name):
+            warning(f"跳过 {program_name}: 缺少解析器配置")
+            return
+        
+        # 加载操作文件内容
         try:
             with open(operation_group_file, 'rb') as f:
                 group_data = tomli.load(f)
         except (tomli.TOMLDecodeError, Exception) as e:
             warning(f"无法解析操作文件 {operation_group_file}: {e}")
             return
-        
+    
         # 获取程序名称（从文件名）
         program_name = operation_group_file.stem
         debug(f"处理程序: {program_name}")
@@ -89,7 +103,6 @@ class CmdMappingCreator:
         debug(f"分析命令格式: {cmd_format}")
         
         # 从 operation_key 提取 operation_name
-        # operation_key 格式可能是 "install_remote.apt" 或 "install_remote"
         operation_parts = operation_key.split('.')
         if len(operation_parts) > 1 and operation_parts[-1] == program_name:
             # 如果 operation_key 包含程序名，如 "install_remote.apt"
@@ -98,7 +111,7 @@ class CmdMappingCreator:
             # 如果 operation_key 不包含程序名，如 "install_remote"
             operation_name = operation_key
         
-        debug(f"提取操作名: {operation_name}")
+        debug(f"提取操作名: {operation_name} (原始键: {operation_key}, 程序: {program_name})")
         
         # 生成示例命令并解析得到 CommandNode
         cmd_node, param_mapping = self._parse_command_and_map_params(cmd_format, program_name)
@@ -237,7 +250,6 @@ class CmdMappingCreator:
     
     def _mark_placeholder_args(self, cmd_node: CommandNode, cmd_format: str):
         """标记包含占位符值的参数"""
-        # 从 cmd_format 中提取所有参数名
         import re
         param_names = re.findall(r'\{(\w+)\}', cmd_format)
         
@@ -246,17 +258,14 @@ class CmdMappingCreator:
                 # 检查这个参数的值是否包含占位符模式
                 for value in arg.values:
                     if any(f"__param_{name}" in value for name in param_names):
-                        # 设置自定义标记（通过 option_name 或特殊字段）
-                        # 由于不能修改 CommandArg 结构，我们通过其他方式标记
-                        if arg.option_name:
-                            arg.option_name = f"__placeholder__{arg.option_name}"
-                        else:
-                            arg.option_name = "__placeholder__"
+                        # 只设置 is_placeholder 标记，不修改 option_name
+                        arg.is_placeholder = True
+                        debug(f"标记占位符参数: {arg.option_name}, 值: {arg.values}")
                         break
-            
-            # 递归处理子命令
-            if n.subcommand:
-                mark_node(n.subcommand)
+                
+                # 递归处理子命令
+                if n.subcommand:
+                    mark_node(n.subcommand)
         
         mark_node(cmd_node)
     
