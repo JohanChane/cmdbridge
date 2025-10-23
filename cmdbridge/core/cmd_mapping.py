@@ -9,6 +9,7 @@ from parsers.types import CommandNode, CommandArg, ArgType
 from parsers.argparse_parser import ArgparseParser
 from parsers.getopt_parser import GetoptParser
 from parsers.types import ParserConfig, ParserType
+from ..config.path_manager import PathManager
 
 from log import debug, info, warning, error
 
@@ -31,10 +32,64 @@ class CmdMapping:
         初始化命令映射器
         
         Args:
-            mapping_config: CmdMappingCreator 生成的映射配置
+            mapping_config: 单个程序组的映射配置
         """
         self.mapping_config = mapping_config
-        self.source_parser_config = None  # 新增：保存源解析器配置
+        self.source_parser_config = None
+
+    @classmethod
+    def load_from_cache(cls, domain_name: str, group_name: str) -> 'CmdMapping':
+        """
+        从缓存加载指定程序组的命令映射
+        
+        Args:
+            domain_name: 领域名称
+            group_name: 程序组名称
+            
+        Returns:
+            CmdMapping: 命令映射器实例
+        """
+        path_manager = PathManager.get_instance()
+        cache_file = path_manager.get_cmd_mappings_domain_dir(domain_name) / f"{group_name}.toml"
+        
+        if not cache_file.exists():
+            debug(f"缓存文件不存在: {cache_file}")
+            return cls({})
+        
+        try:
+            with open(cache_file, 'rb') as f:
+                mapping_config = tomli.load(f)
+            debug(f"从缓存加载 {domain_name}.{group_name} 的命令映射")
+            return cls(mapping_config)
+        except Exception as e:
+            error(f"加载缓存文件失败 {cache_file}: {e}")
+            return cls({})
+
+    @classmethod
+    def load_all_for_domain(cls, domain_name: str) -> Dict[str, 'CmdMapping']:
+        """
+        加载指定领域的所有程序组命令映射
+        
+        Args:
+            domain_name: 领域名称
+            
+        Returns:
+            Dict[str, CmdMapping]: 程序组名到命令映射器的字典
+        """
+        path_manager = PathManager.get_instance()
+        cache_dir = path_manager.get_cmd_mappings_domain_dir(domain_name)
+        
+        if not cache_dir.exists():
+            return {}
+        
+        mappings = {}
+        for cache_file in cache_dir.glob("*.toml"):
+            group_name = cache_file.stem
+            if group_name != "base":  # 跳过基础配置文件
+                mappings[group_name] = cls.load_from_cache(domain_name, group_name)
+        
+        debug(f"加载 {domain_name} 领域的 {len(mappings)} 个程序组映射")
+        return mappings
 
     def map_to_operation(self, source_cmdline: List[str], 
                         source_parser_config: ParserConfig,

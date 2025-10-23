@@ -16,58 +16,53 @@ from .path_manager import PathManager
 
 
 class CmdMappingCreator:
-    """命令映射创建器 - 生成包含 CommandNode 和 operation 字段的映射配置"""
+    """命令映射创建器 - 为每个程序组生成单独的映射配置文件"""
     
-    def __init__(self, domain_dir: str, parser_configs_dir: str):
+    def __init__(self, domain_name: str, group_name: str):
         """
         初始化命令映射创建器
         
         Args:
-            domain_dir: 操作接口文件夹路径 (如 package.domain, process.domain)
-            parser_configs_dir: 解析器配置文件夹路径
+            domain_name: 领域名称 (如 "package", "process")
+            group_name: 程序组名称 (如 "apt", "pacman")
         """
         # 使用单例 PathManager
         self.path_manager = PathManager.get_instance()
-        
-        # 保存原始路径用于兼容性
-        self.domain_dir = Path(domain_dir)
-        self.parser_configs_dir = Path(parser_configs_dir)
+        self.domain_name = domain_name
+        self.group_name = group_name
         self.mapping_data = {}
     
     def create_mappings(self) -> Dict[str, Any]:
         """
-        创建命令映射
+        创建指定程序组的命令映射
         
         Returns:
             Dict[str, Any]: 映射数据，包含 operation 字段
         """
-        debug(f"开始创建命令映射，操作目录: {self.domain_dir}")
+        debug(f"开始创建 {self.domain_name}.{self.group_name} 的命令映射")
         
-        if not self.domain_dir.exists():
-            error(f"操作目录不存在: {self.domain_dir}")
-            raise FileNotFoundError(f"操作目录不存在: {self.domain_dir}")
+        # 获取操作组配置文件路径
+        group_file = self.path_manager.get_operation_group_config_path(self.domain_name, self.group_name)
+        if not group_file.exists():
+            error(f"操作组配置文件不存在: {group_file}")
+            raise FileNotFoundError(f"操作组配置文件不存在: {group_file}")
         
-        # 处理所有操作文件
-        for operation_group_file in self.domain_dir.glob("*.toml"):
-            debug(f"处理操作文件: {operation_group_file}")
-            self._process_group_file(operation_group_file)
+        # 检查程序解析器配置是否存在
+        if not self.path_manager.program_parser_config_exists(self.group_name):
+            warning(f"跳过 {self.group_name}: 缺少解析器配置")
+            return {}
         
-        debug("命令映射创建完成")
+        # 处理单个操作组文件
+        self._process_group_file(group_file)
+        
+        debug(f"{self.domain_name}.{self.group_name} 命令映射创建完成")
         return self.mapping_data
         
     def _process_group_file(self, operation_group_file: Path):
-        """处理单个操作文件"""
-        # 使用 PathManager 的方法来获取程序名称
-        program_name = operation_group_file.stem
-        
+        """处理单个操作组文件"""
         # 检查是否是基础配置文件
-        if program_name == "base":
+        if self.group_name == "base":
             debug(f"跳过基础操作文件: {operation_group_file}")
-            return
-        
-        # 使用 PathManager 检查程序解析器配置是否存在
-        if not self.path_manager.program_parser_config_exists(program_name):
-            warning(f"跳过 {program_name}: 缺少解析器配置")
             return
         
         # 加载操作文件内容
@@ -78,22 +73,20 @@ class CmdMappingCreator:
             warning(f"无法解析操作文件 {operation_group_file}: {e}")
             return
     
-        # 获取程序名称（从文件名）
-        program_name = operation_group_file.stem
-        debug(f"处理程序: {program_name}")
+        debug(f"处理程序组: {self.group_name}")
         
-        if program_name not in self.mapping_data:
-            self.mapping_data[program_name] = {"command_mappings": []}
+        # 初始化映射数据
+        self.mapping_data[self.group_name] = {"command_mappings": []}
         
         # 处理所有操作
         if "operations" in group_data:
             for operation_key, operation_config in group_data["operations"].items():
                 debug(f"处理操作键: {operation_key}")
-                self._process_operation(program_name, operation_key, operation_config)
+                self._process_operation(operation_key, operation_config)
         else:
             debug(f"文件 {operation_group_file} 中没有 operations 部分")
     
-    def _process_operation(self, program_name: str, operation_key: str, operation_config: Dict[str, Any]):
+    def _process_operation(self, operation_key: str, operation_config: Dict[str, Any]):
         """处理单个操作"""
         if "cmd_format" not in operation_config:
             warning(f"操作 {operation_key} 缺少 cmd_format，跳过")
@@ -104,17 +97,17 @@ class CmdMappingCreator:
         
         # 从 operation_key 提取 operation_name
         operation_parts = operation_key.split('.')
-        if len(operation_parts) > 1 and operation_parts[-1] == program_name:
+        if len(operation_parts) > 1 and operation_parts[-1] == self.group_name:
             # 如果 operation_key 包含程序名，如 "install_remote.apt"
             operation_name = '.'.join(operation_parts[:-1])
         else:
             # 如果 operation_key 不包含程序名，如 "install_remote"
             operation_name = operation_key
         
-        debug(f"提取操作名: {operation_name} (原始键: {operation_key}, 程序: {program_name})")
+        debug(f"提取操作名: {operation_name} (原始键: {operation_key}, 程序组: {self.group_name})")
         
         # 生成示例命令并解析得到 CommandNode
-        cmd_node, param_mapping = self._parse_command_and_map_params(cmd_format, program_name)
+        cmd_node, param_mapping = self._parse_command_and_map_params(cmd_format, self.group_name)
         if not cmd_node:
             error(f"无法解析命令: {cmd_format}")
             return
@@ -127,8 +120,8 @@ class CmdMappingCreator:
             "cmd_node": self._serialize_command_node(cmd_node)
         }
         
-        self.mapping_data[program_name]["command_mappings"].append(mapping_entry)
-        debug(f"为 {program_name} 创建映射: {operation_name}, {len(param_mapping)} 个参数")
+        self.mapping_data[self.group_name]["command_mappings"].append(mapping_entry)
+        debug(f"为 {self.group_name} 创建映射: {operation_name}, {len(param_mapping)} 个参数")
     
     def _parse_command_and_map_params(self, cmd_format: str, program_cmd: str) -> tuple[Optional[CommandNode], Dict[str, Any]]:
         """解析命令并映射参数"""
@@ -217,7 +210,8 @@ class CmdMappingCreator:
     
     def _load_parser_config(self, program_cmd: str) -> Optional[ParserConfig]:
         """加载解析器配置"""
-        parser_config_file = self.parser_configs_dir / f"{program_cmd}.toml"
+        # 使用 PathManager 获取解析器配置文件路径
+        parser_config_file = self.path_manager.get_program_parser_config_path(program_cmd)
         
         if not parser_config_file.exists():
             warning(f"找不到程序 {program_cmd} 的解析器配置: {parser_config_file}")
@@ -311,18 +305,16 @@ class CmdMappingCreator:
         """序列化 CommandNode 对象"""
         return node.to_dict()
     
-    def write_to(self, path: str) -> None:
+    def write_to(self) -> None:
         """
-        将映射数据写入文件
-        
-        Args:
-            path: 输出文件路径
+        将映射数据写入缓存文件
         """
         if not self.mapping_data:
             warning("没有映射数据可写入，请先调用 create_mappings()")
             return
         
-        output_path = Path(path)
+        # 使用 PathManager 获取缓存文件路径 - 统一目录结构
+        output_path = self.path_manager.get_cmd_mappings_cache_path(self.domain_name, self.group_name)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         try:
@@ -335,15 +327,52 @@ class CmdMappingCreator:
 
 
 # 便捷函数
-def create_cmd_mappings(domain_dir: str, parser_configs_dir: str, output_path: str) -> None:
+def create_cmd_mappings_for_group(domain_name: str, group_name: str) -> Dict[str, Any]:
     """
-    便捷函数：创建命令映射并写入文件
+    便捷函数：为指定领域的程序组创建命令映射
     
     Args:
-        domain_dir: 操作接口文件夹路径
-        parser_configs_dir: 解析器配置文件夹路径  
-        output_path: 输出文件路径
+        domain_name: 领域名称
+        group_name: 程序组名称
+        
+    Returns:
+        Dict[str, Any]: 映射数据
     """
-    creator = CmdMappingCreator(domain_dir, parser_configs_dir)
-    creator.create_mappings()
-    creator.write_to(output_path)
+    creator = CmdMappingCreator(domain_name, group_name)
+    mapping_data = creator.create_mappings()
+    creator.write_to()
+    return mapping_data
+
+def create_cmd_mappings_for_domain(domain_name: str) -> Dict[str, Dict[str, Any]]:
+    """
+    便捷函数：为指定领域的所有程序组创建命令映射
+    
+    Args:
+        domain_name: 领域名称
+        
+    Returns:
+        Dict[str, Dict[str, Any]]: 所有程序组的映射数据
+    """
+    path_manager = PathManager.get_instance()
+    groups = path_manager.list_operation_groups(domain_name)
+    
+    all_mappings = {}
+    for group_name in groups:
+        try:
+            mapping_data = create_cmd_mappings_for_group(domain_name, group_name)
+            all_mappings[group_name] = mapping_data
+            info(f"✅ 已为 {domain_name}.{group_name} 创建命令映射")
+        except Exception as e:
+            error(f"❌ 为 {domain_name}.{group_name} 创建命令映射失败: {e}")
+    
+    return all_mappings
+
+def create_cmd_mappings_for_all_domains() -> None:
+    """
+    便捷函数：为所有领域的所有程序组创建命令映射
+    """
+    path_manager = PathManager.get_instance()
+    domains = path_manager.list_domains()
+    
+    for domain in domains:
+        create_cmd_mappings_for_domain(domain)

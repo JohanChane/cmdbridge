@@ -20,8 +20,8 @@ class OperationMapping:
         self._load_operation_mapping()
 
     def _load_operation_mapping(self) -> None:
-        """加载操作映射和命令格式"""
-        debug("开始加载操作映射...")
+        """从缓存目录加载分离的操作映射文件"""
+        debug("开始从缓存加载操作映射...")
         
         domains = self.path_manager.list_domains()
         if not domains:
@@ -29,17 +29,18 @@ class OperationMapping:
             return
         
         for domain in domains:
-            mapping_file = self.path_manager.get_config_operation_group_path(domain) / "operation_mapping.toml"
-            debug(f"检查操作映射文件: {mapping_file}")
+            # 获取操作映射缓存目录
+            cache_dir = self.path_manager.get_operation_mappings_cache_path(domain)
             
-            if mapping_file.exists():
+            # 1. 加载操作到程序映射文件
+            operation_to_program_file = cache_dir / "operation_to_program.toml"
+            if operation_to_program_file.exists():
                 try:
-                    with open(mapping_file, 'rb') as f:
-                        mapping_data = tomli.load(f)
+                    with open(operation_to_program_file, 'rb') as f:
+                        operation_data = tomli.load(f)
                     
-                    # 加载操作到程序映射
-                    if "operation_to_program" in mapping_data:
-                        for op_name, programs in mapping_data["operation_to_program"].items():
+                    if "operation_to_program" in operation_data:
+                        for op_name, programs in operation_data["operation_to_program"].items():
                             if op_name not in self.operation_to_program:
                                 self.operation_to_program[op_name] = []
                             # 去重并添加
@@ -47,21 +48,28 @@ class OperationMapping:
                                 if program not in self.operation_to_program[op_name]:
                                     self.operation_to_program[op_name].append(program)
                             debug(f"加载操作映射: {op_name} -> {self.operation_to_program[op_name]}")
-                    
-                    # 加载命令格式
-                    if "command_formats" in mapping_data:
-                        for program, formats in mapping_data["command_formats"].items():
-                            if program not in self.command_formats:
-                                self.command_formats[program] = {}
-                            self.command_formats[program].update(formats)
-                            debug(f"加载命令格式: {program} -> {len(formats)} 个操作")
                             
                 except Exception as e:
-                    warning(f"加载操作映射文件失败 {mapping_file}: {e}")
-                    import traceback
-                    debug(f"详细错误: {traceback.format_exc()}")
+                    warning(f"加载操作到程序映射文件失败 {operation_to_program_file}: {e}")
             else:
-                debug(f"操作映射文件不存在: {mapping_file}")
+                debug(f"操作到程序映射文件不存在: {operation_to_program_file}")
+            
+            # 2. 加载所有程序的命令格式文件
+            for command_file in cache_dir.glob("*_commands.toml"):
+                program_name = command_file.stem.replace("_commands", "")
+                
+                try:
+                    with open(command_file, 'rb') as f:
+                        command_data = tomli.load(f)
+                    
+                    if "commands" in command_data:
+                        if program_name not in self.command_formats:
+                            self.command_formats[program_name] = {}
+                        self.command_formats[program_name].update(command_data["commands"])
+                        debug(f"加载 {program_name} 命令格式: {len(command_data['commands'])} 个命令")
+                            
+                except Exception as e:
+                    warning(f"加载命令格式文件失败 {command_file}: {e}")
         
         info(f"操作映射加载完成: {len(self.operation_to_program)} 个操作, {len(self.command_formats)} 个程序")
 
@@ -90,7 +98,7 @@ class OperationMapping:
         if dst_operation_group_name not in supported_programs:
             raise ValueError(f"操作 {operation_name} 不支持程序 {dst_operation_group_name}，支持的程序: {supported_programs}")
         
-        # 2. 直接从命令格式映射中获取命令格式
+        # 2. 从目标程序的命令格式文件中获取命令格式
         program_formats = self.command_formats.get(dst_operation_group_name, {})
         cmd_format = program_formats.get(operation_name)
         
@@ -103,7 +111,7 @@ class OperationMapping:
         
         info(f"生成命令成功: {cmdline}")
         return cmdline
-
+    
     def _replace_parameters(self, cmd_format: str, params: Dict[str, str]) -> str:
         """
         替换命令格式中的参数占位符

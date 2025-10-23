@@ -35,10 +35,7 @@ class CmdBridge:
         self.operation_mapper = OperationMapping()
         
         # 初始化映射创建器
-        self.mapping_creator = CmdMappingCreator(
-            domain_dir=str(self.path_manager.config_dir),
-            parser_configs_dir=str(self.path_manager.program_parser_config_dir)
-        )
+        # self.mapping_creator = CmdMappingCreator()
         
         # 初始化映射配置缓存
         self._mapping_config_cache = {}
@@ -83,22 +80,23 @@ class CmdBridge:
         
         return None
 
-    def _get_mapping_config(self, domain: str) -> Dict[str, Any]:
-        """获取指定领域的映射配置"""
-        if domain not in self._mapping_config_cache:
-            # 从缓存文件加载该领域的映射配置
-            cache_file = self.path_manager.get_cmd_mappings_cache_path(domain)
+    def _get_mapping_config(self, domain: str, group_name: str) -> Dict[str, Any]:
+        """获取指定领域和程序组的映射配置"""
+        cache_key = f"{domain}.{group_name}"
+        if cache_key not in self._mapping_config_cache:
+            # 从缓存文件加载该程序组的映射配置
+            cache_file = self.path_manager.get_cmd_mappings_domain_dir(domain) / f"{group_name}.toml"
             if cache_file.exists():
                 try:
                     with open(cache_file, 'rb') as f:
-                        self._mapping_config_cache[domain] = tomli.load(f)
+                        self._mapping_config_cache[cache_key] = tomli.load(f)
                 except Exception as e:
-                    warning(f"加载 {domain} 映射配置失败: {e}")
-                    self._mapping_config_cache[domain] = {}
+                    warning(f"加载 {cache_key} 映射配置失败: {e}")
+                    self._mapping_config_cache[cache_key] = {}
             else:
-                self._mapping_config_cache[domain] = {}
+                self._mapping_config_cache[cache_key] = {}
         
-        return self._mapping_config_cache[domain]
+        return self._mapping_config_cache[cache_key]
 
     def map_command(self, domain: Optional[str], src_group: Optional[str], 
                 dest_group: Optional[str], command_args: List[str]) -> Optional[str]:
@@ -120,7 +118,7 @@ class CmdBridge:
                     return None
             
             # 动态加载映射配置
-            mapping_config = self._get_mapping_config(domain)
+            mapping_config = self._get_mapping_config(domain, src_group)
             
             # 重新初始化命令映射器
             self.command_mapper = CmdMapping(mapping_config)
@@ -207,11 +205,7 @@ class CmdBridge:
             return None
         
     def refresh_cmd_mappings(self) -> bool:
-        """刷新所有命令映射缓存
-        
-        Returns:
-            bool: 刷新是否成功
-        """
+        """刷新所有命令映射缓存"""
         try:
             success = self.config_utils.refresh_cmd_mapping()
             if success:
@@ -226,29 +220,39 @@ class CmdBridge:
                 for domain in domains:
                     # 确保缓存目录存在
                     self.path_manager.ensure_cmd_mappings_domain_dir(domain)
-                    
-                    # 构建领域目录路径
+                    self.path_manager.get_operation_mappings_cache_path(domain).mkdir(parents=True, exist_ok=True)
+
+                    # 获取领域配置目录
                     domain_config_dir = self.path_manager.get_config_operation_group_path(domain)
                     parser_configs_dir = self.path_manager.program_parser_config_dir
                     
                     if domain_config_dir.exists() and parser_configs_dir.exists():
-                        # 为每个领域创建新的 CmdMappingCreator 实例
-                        domain_creator = CmdMappingCreator(
-                            domain_dir=str(domain_config_dir),
-                            parser_configs_dir=str(parser_configs_dir)
-                        )
+                        # 获取该领域的所有程序组
+                        groups = self.path_manager.list_operation_groups(domain)
                         
-                        # 生成映射数据
-                        mapping_data = domain_creator.create_mappings()
+                        for group_name in groups:
+                            try:
+                                # 为每个程序组创建 CmdMappingCreator 实例
+                                group_creator = CmdMappingCreator(domain, group_name)
+                                
+                                # 生成映射数据
+                                mapping_data = group_creator.create_mappings()
+                                
+                                if mapping_data:  # 如果有映射数据才写入
+                                    # 写入映射文件
+                                    group_creator.write_to()
+                                    info(f"✅ 已生成 {domain}.{group_name} 的命令映射")
+                                else:
+                                    warning(f"⚠️ {domain}.{group_name} 没有生成映射数据")
+                                    
+                            except Exception as e:
+                                error(f"❌ 生成 {domain}.{group_name} 的命令映射失败: {e}")
+                                continue
                         
-                        # 写入映射文件
-                        mapping_file = self.path_manager.get_cmd_mappings_cache_path(domain)
-                        domain_creator.write_to(str(mapping_file))
-                        
-                        # 生成 operation_mapping.toml 文件
+                        # 生成 operation_mapping.toml 文件到缓存目录
                         self._generate_operation_mapping_file(domain, domain_config_dir)
                         
-                        info(f"✅ 已生成 {domain} 领域的命令映射")
+                        info(f"✅ 已完成 {domain} 领域所有程序组的命令映射生成")
                     else:
                         warning(f"⚠️  跳过 {domain} 领域：配置目录不存在")
                 
@@ -257,24 +261,17 @@ class CmdBridge:
         except Exception as e:
             error(f"刷新命令映射失败: {e}")
             return False
-
-    def _generate_operation_mapping_file(self, domain: str, domain_config_dir: Path) -> bool:
-        """为指定领域生成 operation_mapping.toml 文件
         
-        Args:
-            domain: 领域名称
-            domain_config_dir: 领域配置目录路径
-            
-        Returns:
-            bool: 生成是否成功
-        """
+    def _generate_operation_mapping_file(self, domain: str, domain_config_dir: Path) -> bool:
+        """为指定领域生成分离的操作映射文件到缓存目录"""
         try:
-            # 获取操作映射文件路径
-            mapping_file = domain_config_dir / "operation_mapping.toml"
+            # 获取操作映射缓存目录
+            cache_dir = self.path_manager.get_operation_mappings_cache_path(domain)
+            cache_dir.mkdir(parents=True, exist_ok=True)
             
             # 收集所有操作组文件
             operation_groups = {}
-            command_formats = {}
+            command_formats_by_program = {}
             
             # 遍历所有 .toml 配置文件（排除 base.toml）
             for config_file in domain_config_dir.glob("*.toml"):
@@ -305,33 +302,38 @@ class CmdBridge:
                             if program_name not in operation_groups[operation_name]:
                                 operation_groups[operation_name].append(program_name)
                             
-                            # 添加到命令格式映射
-                            if program_name not in command_formats:
-                                command_formats[program_name] = {}
+                            # 按程序分组收集命令格式
+                            if program_name not in command_formats_by_program:
+                                command_formats_by_program[program_name] = {}
                             
                             if "cmd_format" in operation_config:
-                                command_formats[program_name][operation_name] = operation_config["cmd_format"]
+                                command_formats_by_program[program_name][operation_name] = operation_config["cmd_format"]
                                 
                 except Exception as e:
                     warning(f"解析操作组文件 {config_file} 失败: {e}")
                     continue
             
-            # 构建 operation_mapping 数据
-            operation_mapping_data = {
-                "operation_to_program": operation_groups,
-                "command_formats": command_formats
-            }
+            # 生成分离的文件
             
-            # 写入文件
-            with open(mapping_file, 'wb') as f:
+            # 1. 操作到程序映射文件
+            operation_to_program_file = cache_dir / "operation_to_program.toml"
+            with open(operation_to_program_file, 'wb') as f:
                 import tomli_w
-                tomli_w.dump(operation_mapping_data, f)
+                tomli_w.dump({"operation_to_program": operation_groups}, f)
+            info(f"✅ 已生成 operation_to_program.toml 文件: {operation_to_program_file}")
             
-            info(f"✅ 已生成 operation_mapping.toml 文件: {mapping_file}")
+            # 2. 为每个程序生成单独的命令格式文件
+            for program_name, command_formats in command_formats_by_program.items():
+                program_command_file = cache_dir / f"{program_name}_commands.toml"
+                with open(program_command_file, 'wb') as f:
+                    import tomli_w
+                    tomli_w.dump({"commands": command_formats}, f)
+                info(f"✅ 已生成 {program_name}_commands.toml 文件: {program_command_file}")
+            
             return True
             
         except Exception as e:
-            error(f"生成 operation_mapping.toml 文件失败: {e}")
+            error(f"生成操作映射文件失败: {e}")
             return False
         
     def init_config(self) -> bool:

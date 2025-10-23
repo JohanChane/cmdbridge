@@ -187,20 +187,40 @@ class PathManager:
         """
         return self._program_parser_config_dir / f"{program_name}.toml"
     
-    def get_cmd_mappings_cache_path(self, domain_name: str) -> Path:
+    def get_cmd_mappings_cache_path(self, domain_name: str, group_name: Optional[str] = None) -> Path:
         """
         获取命令映射缓存文件路径
         
         Args:
             domain_name: 领域名称
+            group_name: 程序组名称，如果为 None 则返回目录路径
             
         Returns:
-            Path: 命令映射缓存文件路径
+            Path: 命令映射缓存文件路径或目录路径
         """
-        return self._cache_dir / "cmd_mappings" / domain_name / "cmd_mappings.toml"
-    
+        if group_name:
+            return self._cache_dir / "cmd_mappings" / f"{domain_name}.domain" / f"{group_name}.toml"
+        else:
+            return self._cache_dir / "cmd_mappings" / f"{domain_name}.domain"
+        
+    def get_operation_mappings_cache_path(self, domain_name: str, group_name: Optional[str] = None) -> Path:
+        """
+        获取操作映射缓存文件路径
+        
+        Args:
+            domain_name: 领域名称
+            group_name: 程序组名称，如果为 None 则返回目录路径
+            
+        Returns:
+            Path: 操作映射缓存文件路径或目录路径
+        """
+        if group_name:
+            return self._cache_dir / "operation_mappings" / f"{domain_name}.domain" / f"{group_name}.toml"
+        else:
+            return self._cache_dir / "operation_mappings" / f"{domain_name}.domain"
+
     def get_operation_group_config_path(self, domain_name: str, group_name: str) -> Path:
-        """
+        """ 
         获取特定操作组的配置文件路径
         
         Args:
@@ -238,17 +258,12 @@ class PathManager:
         return self.get_config_operation_group_path(domain_name) / "base.toml"
     
     def get_cmd_mappings_domain_dir(self, domain_name: str) -> Path:
-        """
-        获取命令映射领域目录路径
-        
-        Args:
-            domain_name: 领域名称
-            
-        Returns:
-            Path: 命令映射领域目录路径
-        """
-        return self._cache_dir / "cmd_mappings" / domain_name
-    
+        """获取命令映射领域目录路径"""
+        return self.get_cmd_mappings_cache_path(domain_name)
+    def get_operation_mappings_domain_dir(self, domain_name: str) -> Path:
+        """获取操作映射领域目录路径"""
+        return self.get_operation_mappings_cache_path(domain_name)
+
     def ensure_cmd_mappings_domain_dir(self, domain_name: str) -> None:
         """
         确保命令映射领域目录存在
@@ -409,3 +424,16 @@ class PathManager:
         """
         config_path = self.get_program_parser_config_path(program_name)
         return config_path.exists()
+    
+    def get_group_mapping_cache_path(self, domain_name: str, group_name: str) -> Path:
+        """
+        获取程序组映射缓存文件路径
+        
+        Args:
+            domain_name: 领域名称
+            group_name: 程序组名称
+            
+        Returns:
+            Path: 程序组映射缓存文件路径
+        """
+        return self.get_cmd_mappings_domain_dir(domain_name) / f"{group_name}.toml"
