@@ -1,6 +1,10 @@
 # cmdbridge/core/operation_mapping.py
 
-import tomli
+import sys
+if sys.version_info >= (3, 11):
+    import tomllib as tomli
+else:
+    import tomli
 from typing import Dict, List, Optional
 from pathlib import Path
 

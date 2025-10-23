@@ -5,7 +5,10 @@ import os
 import sys
 from pathlib import Path
 import tempfile
-import tomli
+if sys.version_info >= (3, 11):
+    import tomllib as tomli
+else:
+    import tomli
 import tomli_w
 
 # 添加项目根目录到 Python 路径

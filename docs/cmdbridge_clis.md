@@ -4,6 +4,7 @@ cmdbridge: 输出映射后的命令
 
 ```
 cmdbridge [-h/--help]
+cmdbridge [--debug]
 # `--` 不能省略
 cmdbridge map [-d <domain> -s <src_group> -t <dst_group>] -- pacman -S vim  # `-s <src_group>`: 只有无法识别才需要使用
 cmdbridge op [-d <domain> -t <dst_group>] -- install vim
@@ -34,12 +35,25 @@ cmdbridge --refresh-cmd-mappings
 缓存的默认路径: "${XDG_CACHE_HOME:-$HOME/.cache}"/cmdbridge
 cmd_mappings 缓存的路径: "${XDG_CACHE_HOME:-$HOME/.cache}"/cmdbridge/cmd_mappings/{domain}
 
+输出动作映射:
+
+```
+cmdbridge list [-d <domain> -t <dst_group>] --op-mappings 
+```
+
+输出命令之间的映射:
+
+```
+cmdbridge list [-d <domain> -s <src_group> -t <dst_group>] --cmd-mappings
+```
+
 ## cmdbridge-edit
 
 cmdbridge-edit: 将映射后命令放在用户的 line_editor
 
 ```
 cmdbridge-edit [-h/--help]
+cmdbridge-edit [--debug]
 # `--` 不能省略
 cmdbridge-edit map [-d <domain> -s <src_group> -t <dst_group>] -- pacman -S vim
 cmdbridge-edit op [-d <domain> -t <dst_group>] -- install vim

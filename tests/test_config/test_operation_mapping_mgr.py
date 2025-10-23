@@ -3,7 +3,10 @@
 import pytest
 import os, sys
 import tempfile
-import tomli
+if sys.version_info >= (3, 11):
+    import tomllib as tomli
+else:
+    import tomli
 import tomli_w
 from pathlib import Path
 import sys

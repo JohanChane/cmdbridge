@@ -1,9 +1,12 @@
 # utils/config.py
 
-import os
+import os, sys
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-import tomli
+if sys.version_info >= (3, 11):
+    import tomllib as tomli
+else:
+    import tomli
 import shutil
 
 from cmdbridge.config.path_manager import PathManager

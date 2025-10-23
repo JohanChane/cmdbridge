@@ -7,12 +7,10 @@ __author__ = "CmdBridge Developer"
 
 # 导入主要模块以便可以直接从包级别访问
 from .cli import main, cli
+from .cli_helper import CmdBridgeCLIHelper, create_cli_helper  # 新增
 from .core.cmd_mapping import CmdMapping
 from .config.cmd_mapping_mgr import CmdMappingMgr
-from .cmdbridge import CmdBridge  # 新增：导出 CmdBridge 类
-
-# utils.config 不在 cmdbridge 包内，所以不能在这里导入
-# from utils.config import ConfigUtils
+from .cmdbridge import CmdBridge
 
 # 定义公开的API
 __all__ = [
@@ -21,6 +19,8 @@ __all__ = [
     'CmdMapping',
     'CmdMappingMgr',
     'CmdBridge',
+    'CmdBridgeCLIHelper',  # 新增
+    'create_cli_helper',   # 新增
     '__version__',
     '__author__',
 ]

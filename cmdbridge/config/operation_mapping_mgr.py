@@ -1,9 +1,14 @@
 # cmdbridge/config/operation_mapping_creator.py
 
-import tomli
-import tomli_w
+import sys
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+
+import tomli_w  # type: ignore
+if sys.version_info >= (3, 11):
+    import tomllib as tomli
+else:
+    import tomli
 
 from log import debug, info, warning, error
 from .path_manager import PathManager

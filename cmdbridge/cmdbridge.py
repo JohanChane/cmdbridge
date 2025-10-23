@@ -22,11 +22,7 @@ class CmdBridge:
         self.path_manager = PathManager()
         
         # 初始化配置工具
-        # self.config_utils = ConfigUtils(
-        #     configs_dir=str(self.path_manager.config_dir),
-        #     cache_dir=str(self.path_manager.cache_dir)
-        # )
-        self.config_utils = ConfigMgr()
+        self.config_mgr = ConfigMgr()
 
         # 初始化命令映射器
         self.command_mapper = CmdMapping({})
@@ -196,11 +192,11 @@ class CmdBridge:
     def refresh_cmd_mappings(self) -> bool:
         """刷新所有命令映射缓存"""
         try:
-            success = self.config_utils.remove_cmd_mapping()
+            success = self.config_mgr.remove_cmd_mapping()
             if success:
                 # 先合并所有领域配置到缓存目录
                 info("合并领域配置到缓存...")
-                merge_success = self.config_utils.merge_all_domain_configs()
+                merge_success = self.config_mgr.merge_all_domain_configs()
                 if not merge_success:
                     warning("合并领域配置失败")
                 
