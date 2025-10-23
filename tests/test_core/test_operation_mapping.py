@@ -27,9 +27,9 @@ class TestOperationMapping:
         self.temp_dir = tempfile.mkdtemp()
         self.configs_dir = Path(self.temp_dir)
         
-        # 创建 package.groups 目录
-        package_groups_dir = self.configs_dir / "package.groups"
-        package_groups_dir.mkdir(parents=True)
+        # 创建 package.domain 目录
+        package_domain_dir = self.configs_dir / "package.domain"
+        package_domain_dir.mkdir(parents=True)
         
         # 创建 apt.toml 配置文件
         apt_config = {
@@ -49,7 +49,7 @@ class TestOperationMapping:
             }
         }
         
-        apt_file = package_groups_dir / "apt.toml"
+        apt_file = package_domain_dir / "apt.toml"
         with open(apt_file, 'wb') as f:  # 使用二进制模式
             tomli_w = __import__('tomli_w')
             tomli_w.dump(apt_config, f)
@@ -69,14 +69,14 @@ class TestOperationMapping:
             }
         }
         
-        pacman_file = package_groups_dir / "pacman.toml"
+        pacman_file = package_domain_dir / "pacman.toml"
         with open(pacman_file, 'wb') as f:  # 使用二进制模式
             tomli_w = __import__('tomli_w')
             tomli_w.dump(pacman_config, f)
         
-        # 创建 process.groups 目录和配置文件
-        process_groups_dir = self.configs_dir / "process.groups"
-        process_groups_dir.mkdir(parents=True)
+        # 创建 process.domain 目录和配置文件
+        process_domain_dir = self.configs_dir / "process.domain"
+        process_domain_dir.mkdir(parents=True)
         
         process_config = {
             "operations": {
@@ -86,7 +86,7 @@ class TestOperationMapping:
             }
         }
         
-        process_file = process_groups_dir / "process.toml"
+        process_file = process_domain_dir / "process.toml"
         with open(process_file, 'wb') as f:  # 使用二进制模式
             tomli_w = __import__('tomli_w')
             tomli_w.dump(process_config, f)
@@ -105,7 +105,7 @@ class TestOperationMapping:
         cmdline = mapping.generate_command(
             operation_name="install_remote",
             params={"pkgs": "vim git"},
-            dst_operation_groups_name="package",
+            dst_operation_domain_name="package",
             dst_operation_group_name="apt"
         )
         
@@ -121,7 +121,7 @@ class TestOperationMapping:
         cmdline = mapping.generate_command(
             operation_name="search_remote",
             params={"query": "python"},
-            dst_operation_groups_name="package",
+            dst_operation_domain_name="package",
             dst_operation_group_name="apt"
         )
         
@@ -137,7 +137,7 @@ class TestOperationMapping:
         cmdline = mapping.generate_command(
             operation_name="install_with_config",
             params={"pkgs": "vim", "config_path": "custom.conf"},
-            dst_operation_groups_name="package",
+            dst_operation_domain_name="package",
             dst_operation_group_name="apt"
         )
         
@@ -153,7 +153,7 @@ class TestOperationMapping:
         cmdline = mapping.generate_command(
             operation_name="list_installed",
             params={},
-            dst_operation_groups_name="package",
+            dst_operation_domain_name="package",
             dst_operation_group_name="apt"
         )
         
@@ -169,7 +169,7 @@ class TestOperationMapping:
         cmdline = mapping.generate_command(
             operation_name="install_remote",
             params={"pkgs": "vim"},
-            dst_operation_groups_name="package",
+            dst_operation_domain_name="package",
             dst_operation_group_name="pacman"
         )
         
@@ -189,7 +189,7 @@ class TestOperationMapping:
                 "log_level": "ERROR", 
                 "log_msg": "connection"
             },
-            dst_operation_groups_name="process",
+            dst_operation_domain_name="process",
             dst_operation_group_name="process"
         )
         
@@ -207,7 +207,7 @@ class TestOperationMapping:
             mapping.generate_command(
                 operation_name="nonexistent_operation",
                 params={"pkgs": "vim"},
-                dst_operation_groups_name="package",
+                dst_operation_domain_name="package",
                 dst_operation_group_name="apt"
             )
     
@@ -221,7 +221,7 @@ class TestOperationMapping:
             mapping.generate_command(
                 operation_name="install_remote",
                 params={"pkgs": "vim"},
-                dst_operation_groups_name="package", 
+                dst_operation_domain_name="package", 
                 dst_operation_group_name="nonexistent"
             )
     
@@ -235,7 +235,7 @@ class TestOperationMapping:
             mapping.generate_command(
                 operation_name="install_remote",
                 params={"pkgs": "vim"},
-                dst_operation_groups_name="nonexistent",
+                dst_operation_domain_name="nonexistent",
                 dst_operation_group_name="apt"
             )
     
@@ -248,7 +248,7 @@ class TestOperationMapping:
         cmdline = mapping.generate_command(
             operation_name="install_with_config",
             params={"pkgs": "vim"},  # 缺少 config_path
-            dst_operation_groups_name="package",
+            dst_operation_domain_name="package",
             dst_operation_group_name="apt"
         )
         
@@ -264,7 +264,7 @@ class TestOperationMapping:
         cmdline = generate_command_from_operation(
             operation_name="install_remote",
             params={"pkgs": "test-package"},
-            dst_operation_groups_name="package",
+            dst_operation_domain_name="package",
             dst_operation_group_name="apt",
             configs_dir=str(self.configs_dir)
         )
@@ -283,7 +283,7 @@ class TestOperationMapping:
         cmdline = mapping.generate_command(
             operation_name="install_remote",
             params={"pkgs": "test-package"},
-            dst_operation_groups_name="package",
+            dst_operation_domain_name="package",
             dst_operation_group_name="apt"
         )
         
@@ -299,7 +299,7 @@ class TestOperationMapping:
         cmdline = mapping.generate_command(
             operation_name="install_remote",
             params={"pkgs": "package-with-dash package_with_underscore"},
-            dst_operation_groups_name="package",
+            dst_operation_domain_name="package",
             dst_operation_group_name="apt"
         )
         
@@ -316,7 +316,7 @@ class TestOperationMapping:
         cmdline = mapping.generate_command(
             operation_name="update",
             params={},
-            dst_operation_groups_name="package", 
+            dst_operation_domain_name="package", 
             dst_operation_group_name="pacman"
         )
         

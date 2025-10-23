@@ -12,7 +12,7 @@ class OperationMapping:
     """
     操作映射器 - 根据操作名称和参数生成目标命令
     
-    输入: operation_name, params, dst_operation_groups_name, dst_operation_group_name
+    输入: operation_name, params, dst_operation_domain_name, dst_operation_group_name
     输出: cmdline (命令行字符串)
     """
     
@@ -21,13 +21,13 @@ class OperationMapping:
         初始化操作映射器
         
         Args:
-            configs_dir: 配置目录路径，包含 *.groups 文件夹
+            configs_dir: 配置目录路径，包含 *.domain 文件夹
         """
         self.configs_dir = Path(configs_dir)
         self.operations_cache = {}  # 缓存加载的操作配置
     
     def generate_command(self, operation_name: str, params: Dict[str, str],
-                        dst_operation_groups_name: str, 
+                        dst_operation_domain_name: str, 
                         dst_operation_group_name: str) -> str:
         """
         生成目标命令
@@ -35,7 +35,7 @@ class OperationMapping:
         Args:
             operation_name: 操作名称
             params: 参数字典
-            dst_operation_groups_name: 目标操作组名称 (如 "package", "process")
+            dst_operation_domain_name: 目标操作组名称 (如 "package", "process")
             dst_operation_group_name: 目标程序名 (如 "apt", "pacman")
             
         Returns:
@@ -44,12 +44,12 @@ class OperationMapping:
         Raises:
             ValueError: 如果操作不存在或参数不匹配
         """
-        debug(f"开始生成命令: 操作={operation_name}, 目标组={dst_operation_groups_name}, 目标程序={dst_operation_group_name}")
+        debug(f"开始生成命令: 操作={operation_name}, 目标组={dst_operation_domain_name}, 目标程序={dst_operation_group_name}")
         debug(f"参数: {params}")
         
         # 1. 加载操作配置
         operation_config = self._load_operation_config(
-            dst_operation_groups_name, dst_operation_group_name, operation_name
+            dst_operation_domain_name, dst_operation_group_name, operation_name
         )
         
         if not operation_config:
@@ -68,17 +68,17 @@ class OperationMapping:
         info(f"生成命令成功: {cmdline}")
         return cmdline
     
-    def _load_operation_config(self, groups_name: str, program_name: str, 
+    def _load_operation_config(self, domain_name: str, program_name: str, 
                               operation_name: str) -> Optional[Dict[str, Any]]:
         """加载操作配置"""
-        cache_key = f"{groups_name}.{program_name}.{operation_name}"
+        cache_key = f"{domain_name}.{program_name}.{operation_name}"
         
         if cache_key in self.operations_cache:
             return self.operations_cache[cache_key]
         
         # 构建配置文件路径
-        groups_dir = self.configs_dir / f"{groups_name}.groups"
-        config_file = groups_dir / f"{program_name}.toml"
+        domain_dir = self.configs_dir / f"{domain_name}.domain"
+        config_file = domain_dir / f"{program_name}.toml"
         
         if not config_file.exists():
             warning(f"配置文件不存在: {config_file}")
@@ -152,7 +152,7 @@ def create_operation_mapping(configs_dir: str) -> OperationMapping:
 
 
 def generate_command_from_operation(operation_name: str, params: Dict[str, str],
-                                  dst_operation_groups_name: str,
+                                  dst_operation_domain_name: str,
                                   dst_operation_group_name: str,
                                   configs_dir: str) -> str:
     """
@@ -161,7 +161,7 @@ def generate_command_from_operation(operation_name: str, params: Dict[str, str],
     Args:
         operation_name: 操作名称
         params: 参数字典
-        dst_operation_groups_name: 目标操作组名称
+        dst_operation_domain_name: 目标操作组名称
         dst_operation_group_name: 目标程序名
         configs_dir: 配置目录路径
         
@@ -170,4 +170,4 @@ def generate_command_from_operation(operation_name: str, params: Dict[str, str],
     """
     mapping = OperationMapping(configs_dir)
     return mapping.generate_command(operation_name, params, 
-                                  dst_operation_groups_name, dst_operation_group_name)
+                                  dst_operation_domain_name, dst_operation_group_name)

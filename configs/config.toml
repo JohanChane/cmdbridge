@@ -1,3 +1,3 @@
 [global_settings]
-default_interface_type = "package"
-default_target_toolkit = "pacman"
+default_operation_domain = "package"
+default_operation_group = "pacman"
