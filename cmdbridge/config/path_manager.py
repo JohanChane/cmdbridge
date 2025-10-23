@@ -437,3 +437,27 @@ class PathManager:
             Path: 程序组映射缓存文件路径
         """
         return self.get_cmd_mappings_domain_dir(domain_name) / f"{group_name}.toml"
+    
+    def get_domain_base_config_path(self, domain_name: str) -> Path:
+        """
+        获取领域基础配置文件路径
+        
+        Args:
+            domain_name: 领域名称
+            
+        Returns:
+            Path: 领域基础配置文件路径
+        """
+        return self._config_dir / f"{domain_name}.domain.base.toml"
+
+    def domain_base_config_exists(self, domain_name: str) -> bool:
+        """
+        检查领域基础配置文件是否存在
+        
+        Args:
+            domain_name: 领域名称
+            
+        Returns:
+            bool: 基础配置文件是否存在
+        """
+        return self.get_domain_base_config_path(domain_name).exists()

@@ -273,13 +273,23 @@ class CmdBridge:
             operation_groups = {}
             command_formats_by_program = {}
             
-            # 遍历所有 .toml 配置文件（排除 base.toml）
+            # 1. 首先加载领域基础文件
+            base_file = self.path_manager.get_domain_base_config_path(domain)  # 使用新方法
+            base_operations = {}
+            if base_file.exists():
+                try:
+                    with open(base_file, 'rb') as f:
+                        base_data = tomli.load(f)
+                    if "operations" in base_data:
+                        base_operations = base_data["operations"]
+                    debug(f"加载基础操作定义: {base_file}")
+                except Exception as e:
+                    warning(f"解析基础操作文件 {base_file} 失败: {e}")
+            
+            # 2. 遍历程序组目录中的所有程序文件
             for config_file in domain_config_dir.glob("*.toml"):
-                if config_file.stem == "base":
-                    continue
-                    
                 program_name = config_file.stem
-                debug(f"处理操作组文件: {config_file}")
+                debug(f"处理程序文件: {config_file}")
                 
                 try:
                     with open(config_file, 'rb') as f:
@@ -310,8 +320,13 @@ class CmdBridge:
                                 command_formats_by_program[program_name][operation_name] = operation_config["cmd_format"]
                                 
                 except Exception as e:
-                    warning(f"解析操作组文件 {config_file} 失败: {e}")
+                    warning(f"解析程序文件 {config_file} 失败: {e}")
                     continue
+            
+            # 3. 验证所有程序实现的操作都在基础定义中有对应
+            for operation_name in operation_groups.keys():
+                if operation_name not in base_operations:
+                    warning(f"操作 {operation_name} 在基础定义文件中未定义")
             
             # 生成分离的文件
             
@@ -351,17 +366,35 @@ class CmdBridge:
             info(f"初始化配置目录: {self.path_manager.config_dir}")
             info(f"初始化缓存目录: {self.path_manager.cache_dir}")
             
-            # 复制 domain 配置
+            # 复制领域基础文件
+            base_files = list(default_configs_dir.glob("*.domain.base.toml"))
+            if base_files:
+                info("复制领域基础文件...")
+                for base_file in base_files:
+                    dest_file = self.path_manager.config_dir / base_file.name
+                    if dest_file.exists():
+                        info(f"  跳过已存在的: {base_file.name}")
+                    else:
+                        shutil.copy2(base_file, dest_file)
+                        info(f"  已复制: {base_file.name}")
+            else:
+                warning("未找到任何领域基础文件")
+            
+            # 复制领域配置目录
             domain_dirs = list(default_configs_dir.glob("*.domain"))
             if domain_dirs:
-                info("复制领域配置...")
+                info("复制领域配置目录...")
                 for domain_dir in domain_dirs:
-                    dest_domain_dir = self.path_manager.get_config_operation_group_path(domain_dir.stem)
-                    if dest_domain_dir.exists():
-                        info(f"  跳过已存在的: {domain_dir.name}")
-                    else:
-                        shutil.copytree(domain_dir, dest_domain_dir)
-                        info(f"  已复制: {domain_dir.name}")
+                    # 检查是否是目录（排除 .domain.base.toml 文件）
+                    if domain_dir.is_dir():
+                        dest_domain_dir = self.path_manager.get_config_operation_group_path(domain_dir.stem)
+                        if dest_domain_dir.exists():
+                            info(f"  跳过已存在的: {domain_dir.name}")
+                        else:
+                            shutil.copytree(domain_dir, dest_domain_dir)
+                            info(f"  已复制: {domain_dir.name}")
+            else:
+                warning("未找到任何领域配置目录")
             
             # 复制 program_parser_configs
             parser_configs_dir = default_configs_dir / "program_parser_configs"
@@ -421,7 +454,7 @@ class CmdBridge:
             if refresh_success:
                 info("✅ 配置初始化完成！")
                 info(f"   配置目录: {self.path_manager.config_dir}")
-                info(f"   缓存目录: self.path_manager.cache_dir")
+                info(f"   缓存目录: {self.path_manager.cache_dir}")
                 return True
             else:
                 error("❌ 配置初始化完成，但刷新缓存失败")
@@ -429,4 +462,4 @@ class CmdBridge:
                 
         except Exception as e:
             error(f"初始化配置失败: {e}")
-            return False
+            return False  
