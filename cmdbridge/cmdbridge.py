@@ -155,16 +155,7 @@ class CmdBridge:
 
     def map_operation(self, domain: Optional[str], dest_group: Optional[str], 
                     operation_args: List[str]) -> Optional[str]:
-        """映射操作和参数 - 调用 core 中的实现
-        
-        Args:
-            domain: 领域名称
-            dest_group: 目标程序组
-            operation_args: 操作参数列表
-            
-        Returns:
-            Optional[str]: 映射后的命令字符串，如果失败则返回 None
-        """
+        """映射操作和参数"""
         try:
             # 将参数列表合并为操作字符串
             operation_str = ' '.join(operation_args)
@@ -180,6 +171,7 @@ class CmdBridge:
             if not parts:
                 return None
             
+            # 第一个参数是操作名，其余是包名
             operation_name = parts[0]
             params = {}
             

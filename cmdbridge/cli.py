@@ -3,7 +3,7 @@
 import click
 import sys
 from typing import Optional, List
-from log import set_level, LogLevel
+from log import set_level, LogLevel, error
 
 from .cmdbridge import CmdBridge
 
@@ -14,6 +14,40 @@ class CmdBridgeCLI:
     def __init__(self):
         # 初始化 CmdBridge 核心功能
         self.cmdbridge = CmdBridge()
+
+    def _get_default_domain(self) -> str:
+        """获取默认领域"""
+        return self.cmdbridge._get_default_domain()
+    
+    def _get_default_group(self) -> str:
+        """获取默认程序组"""
+        return self.cmdbridge._get_default_group()
+    
+    def map_command(self, domain: Optional[str], src_group: Optional[str], 
+                   dest_group: Optional[str], command_args: List[str]) -> bool:
+        """映射完整命令并输出到 line editor"""
+        result = self.cmdbridge.map_command(domain, src_group, dest_group, command_args)
+        if result:
+            # 输出映射后的命令到标准输出
+            # 使用特殊返回码 113 表示成功映射（供 shell 函数识别）
+            click.echo(result)
+            return True
+        else:
+            click.echo("错误: 无法映射命令", err=True)
+            return False
+    
+    def map_operation(self, domain: Optional[str], dest_group: Optional[str], 
+                    operation_args: List[str]) -> bool:
+        """映射操作和参数并输出到 line editor"""
+        result = self.cmdbridge.map_operation(domain, dest_group, operation_args)
+        if result:
+            # 输出映射后的命令到标准输出
+            # 使用特殊返回码 113 表示成功映射（供 shell 函数识别）
+            click.echo(result)
+            return True
+        else:
+            click.echo("错误: 无法映射操作", err=True)
+            return False
 
     def _init_config(self) -> bool:
         """初始化用户配置"""
@@ -35,15 +69,44 @@ class CmdBridgeCLI:
             return False
     
     def map_operation(self, domain: Optional[str], dest_group: Optional[str], 
-                    operation_args: List[str]) -> bool:
+                    operation_args: List[str]) -> Optional[str]:
         """映射操作和参数"""
-        result = self.cmdbridge.map_operation(domain, dest_group, operation_args)
-        if result:
-            click.echo(result)
-            return True
-        else:
-            click.echo("错误: 无法映射操作", err=True)
-            return False
+        try:
+            # 将参数列表合并为操作字符串
+            operation_str = ' '.join(operation_args)
+            if not operation_str:
+                return None
+            
+            # 设置默认值
+            domain = domain or self._get_default_domain()
+            dest_group = dest_group or self._get_default_group()
+            
+            # 解析操作字符串，提取操作名和参数
+            parts = operation_str.split()
+            if not parts:
+                return None
+            
+            # 第一个参数是操作名，其余是包名
+            operation_name = parts[0]
+            params = {}
+            
+            # 简单参数解析：假设后续参数都是包名
+            if len(parts) > 1:
+                params = {"pkgs": " ".join(parts[1:])}
+            
+            # 调用 OperationMapping 生成命令
+            result = self.operation_mapper.generate_command(
+                operation_name=operation_name,
+                params=params,
+                dst_operation_domain_name=domain,
+                dst_operation_group_name=dest_group
+            )
+            
+            return result
+                
+        except Exception as e:
+            error(f"操作映射失败: {e}")
+            return None
 
 
 class CustomCommand(click.Command):

@@ -80,7 +80,7 @@ class OperationMapping:
         生成目标命令
         
         Args:
-            operation_name: 操作名称
+            operation_name: 操作名称 (如 "install_remote", "search_remote")
             params: 参数字典
             dst_operation_domain_name: 目标领域名称
             dst_operation_group_name: 目标程序名称
@@ -115,7 +115,6 @@ class OperationMapping:
         
         info(f"生成命令成功: {cmdline}")
         return cmdline
-    
     def _replace_parameters(self, cmd_format: str, params: Dict[str, str]) -> str:
         """
         替换命令格式中的参数占位符

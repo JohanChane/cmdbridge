@@ -9,6 +9,7 @@ __author__ = "CmdBridge Developer"
 from .cli import main, cli
 from .core.cmd_mapping import CmdMapping
 from .config.cmd_mapping_mgr import CmdMappingMgr
+from .cmdbridge import CmdBridge  # 新增：导出 CmdBridge 类
 
 # utils.config 不在 cmdbridge 包内，所以不能在这里导入
 # from utils.config import ConfigUtils
@@ -19,6 +20,7 @@ __all__ = [
     'cli', 
     'CmdMapping',
     'CmdMappingMgr',
+    'CmdBridge',
     '__version__',
     '__author__',
 ]

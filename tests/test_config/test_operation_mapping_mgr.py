@@ -1,7 +1,7 @@
 # tests/test_config/test_operation_mapping_mgr.py
 
 import pytest
-import os
+import os, sys
 import tempfile
 import tomli
 import tomli_w
