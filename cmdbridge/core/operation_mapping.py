@@ -6,6 +6,7 @@ from pathlib import Path
 import tomli
 
 from log import debug, info, warning, error
+from utils import ConfigUtils
 
 
 class OperationMapping:
@@ -15,17 +16,26 @@ class OperationMapping:
     输入: operation_name, params, dst_operation_domain_name, dst_operation_group_name
     输出: cmdline (命令行字符串)
     """
-    
-    def __init__(self, configs_dir: str):
+
+
+    def __init__(self, configs_dir: str, cache_dir: str):
         """
         初始化操作映射器
         
         Args:
-            configs_dir: 配置目录路径，包含 *.domain 文件夹
+            configs_dir: 配置目录路径
+            cache_dir: 缓存目录路径
         """
         self.configs_dir = Path(configs_dir)
+        self.cache_dir = Path(cache_dir)
         self.operations_cache = {}  # 缓存加载的操作配置
-    
+        # 初始化配置工具 - 使用正确的路径
+        # cache_dir = self.configs_dir.parent / "cache"
+        # self.config_utils = ConfigUtils(
+        #     configs_dir=self.configs_dir,
+        #     cache_dir=cache_dir
+        # )
+
     def generate_command(self, operation_name: str, params: Dict[str, str],
                         dst_operation_domain_name: str, 
                         dst_operation_group_name: str) -> str:
@@ -67,54 +77,62 @@ class OperationMapping:
         
         info(f"生成命令成功: {cmdline}")
         return cmdline
-    
+        
     def _load_operation_config(self, domain_name: str, program_name: str, 
-                              operation_name: str) -> Optional[Dict[str, Any]]:
-        """加载操作配置"""
+                            operation_name: str) -> Optional[Dict[str, Any]]:
+        """加载操作配置 - 直接从缓存目录读取合并后的配置"""
         cache_key = f"{domain_name}.{program_name}.{operation_name}"
         
         if cache_key in self.operations_cache:
             return self.operations_cache[cache_key]
         
-        # 构建配置文件路径
-        domain_dir = self.configs_dir / f"{domain_name}.domain"
-        config_file = domain_dir / f"{program_name}.toml"
+        # 使用传递的缓存目录
+        cache_file = self.cache_dir / "domains" / f"{domain_name}.domain" / f"{program_name}.toml"
         
-        if not config_file.exists():
-            warning(f"配置文件不存在: {config_file}")
-            return None
+        debug(f"查找缓存文件: {cache_file}")
+        debug(f"缓存文件是否存在: {cache_file.exists()}")
         
-        try:
-            with open(config_file, 'rb') as f:
-                config_data = tomli.load(f)
-            
-            # 查找操作配置
-            operations = config_data.get("operations", {})
-            
-            # 查找匹配的操作键
-            operation_key = None
-            for key in operations.keys():
-                # 支持两种格式: "operation_name.program" 或 "operation_name"
-                key_parts = key.split('.')
-                if len(key_parts) == 2 and key_parts[0] == operation_name and key_parts[1] == program_name:
-                    operation_key = key
-                    break
-                elif len(key_parts) == 1 and key_parts[0] == operation_name:
-                    operation_key = key
-                    break
-            
-            if operation_key and operation_key in operations:
-                operation_config = operations[operation_key]
-                self.operations_cache[cache_key] = operation_config
-                debug(f"加载操作配置: {operation_key} -> {operation_config}")
-                return operation_config
-            
-            warning(f"未找到操作配置: {operation_name} in {config_file}")
-            return None
-            
-        except Exception as e:
-            error(f"加载操作配置失败: {e}")
-            return None
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'rb') as f:
+                    cached_data = tomli.load(f)
+                
+                debug(f"缓存文件内容: {cached_data}")
+                
+                operations = cached_data.get("operations", {})
+                debug(f"所有操作键: {list(operations.keys())}")
+                
+                # 查找操作配置
+                operation_config = None
+                
+                # 首先尝试直接的操作名
+                if operation_name in operations:
+                    op_data = operations[operation_name]
+                    debug(f"找到操作数据: {op_data}")
+                    
+                    # 检查是否是嵌套结构：{'apt': {'cmd_format': ...}}
+                    if isinstance(op_data, dict) and program_name in op_data:
+                        operation_config = op_data[program_name]
+                        debug(f"从嵌套结构中提取 {program_name} 的配置: {operation_config}")
+                    # 如果是直接配置：{'cmd_format': ...}
+                    elif isinstance(op_data, dict) and 'cmd_format' in op_data:
+                        operation_config = op_data
+                        debug(f"使用直接配置: {operation_config}")
+                
+                if operation_config:
+                    self.operations_cache[cache_key] = operation_config
+                    debug(f"最终操作配置: {operation_config}")
+                    return operation_config
+                else:
+                    debug(f"未找到操作 {operation_name} 的配置")
+                    
+            except Exception as e:
+                warning(f"加载缓存配置失败: {e}")
+                import traceback
+                debug(f"详细错误: {traceback.format_exc()}")
+        
+        warning(f"未找到操作配置: {operation_name} for {program_name} (缓存文件: {cache_file})")
+        return None
     
     def _replace_parameters(self, cmd_format: str, params: Dict[str, str]) -> str:
         """替换命令格式中的参数占位符"""

@@ -1,4 +1,4 @@
-[pacman.parser_config]
+[apt.parser_config]
 parser_type = "argparse"
 program_name = "apt"
 

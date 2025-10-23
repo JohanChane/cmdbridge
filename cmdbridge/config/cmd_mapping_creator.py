@@ -49,9 +49,14 @@ class CmdMappingCreator:
         
         debug("命令映射创建完成")
         return self.mapping_data
-    
+        
     def _process_group_file(self, operation_group_file: Path):
         """处理单个操作文件"""
+        # 跳过 base.toml 等只有操作定义的文件
+        if operation_group_file.stem == "base":
+            debug(f"跳过基础操作文件: {operation_group_file}")
+            return
+        
         try:
             with open(operation_group_file, 'rb') as f:
                 group_data = tomli.load(f)

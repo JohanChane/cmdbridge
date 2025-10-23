@@ -6,12 +6,14 @@ import os
 import shutil
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from log import set_level, LogLevel
 import tomli
 
 # 根据您的项目结构修正导入
 from utils.config import ConfigUtils
 from .config.cmd_mapping_creator import CmdMappingCreator
 from .core.cmd_mapping import CmdMapping  # 根据您的文件，应该是 cmd_mapping.py
+from .core.operation_mapping import OperationMapping
 
 
 class CmdBridgeCLI:
@@ -37,14 +39,24 @@ class CmdBridgeCLI:
             cache_dir=self.cache_dir
         )
         
-        # 初始化命令映射器 - 根据您的实际类名调整
-        self.command_mapper = None
+        # 初始化命令映射器
+        self.command_mapper = CmdMapping({})  # 初始化为空配置
+        
+        # 初始化操作映射器
+        self.operation_mapper = OperationMapping(
+            configs_dir=str(self.config_dir),
+            cache_dir=str(self.cache_dir)  # 添加缓存目录参数
+        )
+        
         
         # 初始化映射创建器
         self.mapping_creator = CmdMappingCreator(
-            configs_dir=self.config_dir,
-            cache_dir=self.cache_dir
+            domain_dir=str(self.config_dir),
+            parser_configs_dir=str(self.config_dir / "program_parser_configs")
         )
+        
+        # 初始化映射配置缓存
+        self._mapping_config_cache = {}
         
         # 加载全局配置
         self.global_config = self._load_global_config()
@@ -228,16 +240,50 @@ default_operation_group = "pacman"
         try:
             success = self.config_utils.refresh_cmd_mapping()
             if success:
-                # 重新生成所有映射
+                # 先合并所有领域配置到缓存目录
+                click.echo("合并领域配置到缓存...")
+                merge_success = self.config_utils.merge_all_domain_configs()
+                if not merge_success:
+                    click.echo("警告: 合并领域配置失败")
+                
+                # 创建缓存目录结构
+                cmd_mappings_dir = self.cache_dir / "cmd_mappings"
+                cmd_mappings_dir.mkdir(parents=True, exist_ok=True)
+                
+                # 为每个领域生成映射数据
                 domains = self.config_utils.list_domains()
                 for domain in domains:
-                    self.mapping_creator.create_mappings_for_domain(domain)
+                    domain_dir = cmd_mappings_dir / domain
+                    domain_dir.mkdir(exist_ok=True)
+                    
+                    # 构建领域目录路径
+                    domain_config_dir = self.config_dir / f"{domain}.domain"
+                    parser_configs_dir = self.config_dir / "program_parser_configs"
+                    
+                    if domain_config_dir.exists() and parser_configs_dir.exists():
+                        # 为每个领域创建新的 CmdMappingCreator 实例
+                        domain_creator = CmdMappingCreator(
+                            domain_dir=str(domain_config_dir),
+                            parser_configs_dir=str(parser_configs_dir)
+                        )
+                        
+                        # 生成映射数据
+                        mapping_data = domain_creator.create_mappings()
+                        
+                        # 写入映射文件
+                        mapping_file = domain_dir / "cmd_mappings.toml"
+                        domain_creator.write_to(str(mapping_file))
+                        
+                        click.echo(f"✅ 已生成 {domain} 领域的命令映射")
+                    else:
+                        click.echo(f"⚠️  跳过 {domain} 领域：配置目录不存在")
+                
                 return True
             return False
         except Exception as e:
             click.echo(f"错误: 刷新命令映射失败: {e}", err=True)
             return False
-    
+        
     def map_command(self, domain: Optional[str], src_group: Optional[str], 
                    dest_group: Optional[str], command_args: List[str]) -> bool:
         """映射完整命令 - 调用 core 中的实现"""
@@ -279,7 +325,7 @@ default_operation_group = "pacman"
             return False
     
     def map_operation(self, domain: Optional[str], dest_group: Optional[str], 
-                     operation_args: List[str]) -> bool:
+                    operation_args: List[str]) -> bool:
         """映射操作和参数 - 调用 core 中的实现"""
         try:
             # 将参数列表合并为操作字符串
@@ -292,11 +338,28 @@ default_operation_group = "pacman"
             domain = domain or self._get_default_domain()
             dest_group = dest_group or self._get_default_group()
             
-            # 调用 core 中的 map_operation 实现
-            result = self.command_mapper.map_operation(
-                domain=domain,
-                dest_group=dest_group,
-                operation_str=operation_str
+            # 调试信息
+            click.echo(f"🔧 调试: 映射操作 domain={domain}, dest_group={dest_group}, operation='{operation_str}'")
+            
+            # 解析操作字符串，提取操作名和参数
+            parts = operation_str.split()
+            if not parts:
+                click.echo("错误: 操作字符串为空", err=True)
+                return False
+            
+            operation_name = parts[0]
+            params = {}
+            
+            # 简单参数解析：假设后续参数都是包名
+            if len(parts) > 1:
+                params = {"pkgs": " ".join(parts[1:])}
+            
+            # 调用 OperationMapping 生成命令
+            result = self.operation_mapper.generate_command(
+                operation_name=operation_name,
+                params=params,
+                dst_operation_domain_name=domain,
+                dst_operation_group_name=dest_group
             )
             
             if result:
@@ -305,9 +368,11 @@ default_operation_group = "pacman"
             else:
                 click.echo(f"错误: 无法映射操作 '{operation_str}'", err=True)
                 return False
-            
+                
         except Exception as e:
             click.echo(f"错误: 操作映射失败: {e}", err=True)
+            import traceback
+            traceback.print_exc()  # 打印完整堆栈跟踪
             return False
 
 
@@ -318,8 +383,8 @@ class CustomCommand(click.Command):
         """解析参数，处理 -- 分隔符"""
         if '--' in args:
             idx = args.index('--')
-            # 将 -- 后面的参数保存到上下文中
-            ctx.protected_args = args[idx+1:]
+            # 使用 ctx.meta 来存储保护参数
+            ctx.meta['protected_args'] = args[idx+1:]
             args = args[:idx]
         
         return super().parse_args(ctx, args)
@@ -327,9 +392,14 @@ class CustomCommand(click.Command):
 
 # Click 命令行接口
 @click.group()
+@click.option('--debug', is_flag=True, help='启用调试模式')
 @click.pass_context
-def cli(ctx):
+def cli(ctx, debug):
     """cmdbridge: 输出映射后的命令"""
+    # 设置日志级别
+    if debug:
+        set_level(LogLevel.DEBUG)
+        click.echo("🔧 调试模式已启用")
     ctx.obj = CmdBridgeCLI()
 
 
@@ -378,8 +448,8 @@ def map(ctx, domain, source_group, dest_group):
     """
     cli_obj = ctx.obj
     
-    # 获取 -- 后面的参数
-    command_args = getattr(ctx, 'protected_args', [])
+    # 获取 -- 后面的参数（从 ctx.meta 中获取）
+    command_args = ctx.meta.get('protected_args', [])
     if not command_args:
         click.echo("错误: 必须提供要映射的命令，使用 -- 分隔", err=True)
         sys.exit(1)
@@ -400,8 +470,8 @@ def op(ctx, domain, dest_group):
     """
     cli_obj = ctx.obj
     
-    # 获取 -- 后面的参数
-    operation_args = getattr(ctx, 'protected_args', [])
+    # 获取 -- 后面的参数（从 ctx.meta 中获取）
+    operation_args = ctx.meta.get('protected_args', [])
     if not operation_args:
         click.echo("错误: 必须提供要映射的操作，使用 -- 分隔", err=True)
         sys.exit(1)
