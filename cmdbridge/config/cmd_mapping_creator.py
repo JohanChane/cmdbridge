@@ -6,7 +6,7 @@ import tomli_w
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from parsers.types import CommandNode, CommandArg, ArgType, ParserConfig, ParserType
+from parsers.types import CommandNode, CommandArg, ArgType, ParserConfig, ParserType, ArgumentConfig
 from parsers.argparse_parser import ArgparseParser
 from parsers.getopt_parser import GetoptParser
 from parsers.config_loader import load_parser_config_from_file
