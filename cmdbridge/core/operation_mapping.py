@@ -93,19 +93,23 @@ class OperationMapping:
         """
         debug(f"开始生成命令: 操作={operation_name}, 目标程序={dst_operation_group_name}, 参数={params}")
         
-        # 1. 检查操作是否支持目标程序
+        # 1. 检查领域是否存在
+        if not self.path_manager.domain_exists(dst_operation_domain_name):
+            raise ValueError(f"领域 '{dst_operation_domain_name}' 不存在")
+        
+        # 2. 检查操作是否支持目标程序
         supported_programs = self.operation_to_program.get(operation_name, [])
         if dst_operation_group_name not in supported_programs:
             raise ValueError(f"操作 {operation_name} 不支持程序 {dst_operation_group_name}，支持的程序: {supported_programs}")
         
-        # 2. 从目标程序的命令格式文件中获取命令格式
+        # 3. 从目标程序的命令格式文件中获取命令格式
         program_formats = self.command_formats.get(dst_operation_group_name, {})
         cmd_format = program_formats.get(operation_name)
         
         if not cmd_format:
             raise ValueError(f"未找到命令格式: {operation_name} for {dst_operation_group_name}")
         
-        # 3. 替换参数
+        # 4. 替换参数
         debug(f"使用命令格式: {cmd_format}")
         cmdline = self._replace_parameters(cmd_format, params)
         

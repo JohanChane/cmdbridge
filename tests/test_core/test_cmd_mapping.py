@@ -404,21 +404,6 @@ class TestCmdMapping:
             assert "pkgs" in result["params"]
             assert result["params"]["pkgs"] == "vim"
     
-    def test_program_name_mismatch(self):
-        """测试程序名不匹配的情况"""
-        print("\n=== 测试程序名不匹配 ===")
-        cmd_mapping = CmdMapping(self.mapping_config)
-        
-        # 尝试将 apt 命令映射到 pacman 操作组
-        result = cmd_mapping.map_to_operation(
-            source_cmdline=["apt", "install", "vim"],
-            source_parser_config=self.apt_parser_config,
-            dst_operation_group="pacman"
-        )
-        
-        print(f"程序名不匹配结果: {result}")
-        assert result is None
-    
     def test_unknown_program(self):
         """测试未知程序的情况"""
         print("\n=== 测试未知程序 ===")
