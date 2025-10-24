@@ -3,11 +3,9 @@
 import sys
 from typing import Optional, List, Dict, Any
 import click
-from pathlib import Path
 
 from log import set_level, LogLevel, error, info, debug
-from ..cmdbridge import CmdBridge  # 更新导入路径
-from .completion import DOMAIN_TYPE, PROGRAM_GROUP_TYPE, SOURCE_GROUP_TYPE
+from ..cmdbridge import CmdBridge
 from ..config.path_manager import PathManager
 
 class CmdBridgeCLIHelper:
@@ -96,7 +94,7 @@ class CmdBridgeCLIHelper:
 
     def handle_version(self) -> None:
         """处理版本信息显示"""
-        from .. import __version__  # 更新导入路径
+        from .. import __version__
         click.echo(f"cmdbridge 版本: {__version__}")
 
     def handle_list_op_cmds(self, domain: Optional[str], dest_group: Optional[str]) -> None:

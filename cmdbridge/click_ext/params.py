@@ -1,8 +1,10 @@
+# cmdbridge/click_ext/params.py
+
 """自定义 Click 参数"""
 
 import click
 from typing import List, Optional, Any, Callable
-from . import completer
+from .completor import completer, COMMAND_COMPLETION_TYPE  # 更新导入路径
 
 
 def domain_option(**kwargs):
@@ -31,5 +33,15 @@ def source_group_option(**kwargs):
         '-s', '--source-group', 
         type=completer.get_source_group_type(),
         help='源程序组（基于 -d 选项的值进行补全）',
+        **kwargs
+    )
+
+
+def command_argument(**kwargs):
+    """命令参数，支持动态补全"""
+    return click.argument(
+        'command_parts',
+        nargs=-1,
+        type=COMMAND_COMPLETION_TYPE,
         **kwargs
     )

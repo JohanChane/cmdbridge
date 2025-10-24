@@ -3,9 +3,8 @@
 import click
 import sys
 
-from .cli_helper import CmdBridgeCLIHelper, CustomCommand, create_cli_helper  # 更新导入路径
-from ..click_ext.params import domain_option, dest_group_option, source_group_option
-from .completion import DOMAIN_TYPE, PROGRAM_GROUP_TYPE, SOURCE_GROUP_TYPE
+from .cli_helper import CmdBridgeCLIHelper, CustomCommand, create_cli_helper
+from ..click_ext.params import domain_option, dest_group_option, source_group_option, command_argument
 
 
 # Click 命令行接口
@@ -90,8 +89,9 @@ def cmd_mappings(cli_helper, domain, source_group, dest_group):
 @domain_option()
 @source_group_option() 
 @dest_group_option()
+@command_argument()
 @click.pass_context
-def map(ctx, domain, source_group, dest_group):
+def map(ctx, domain, source_group, dest_group, command_parts):
     """映射完整命令
     
     使用 -- 分隔符将命令参数与 cmdbridge 选项分开：
@@ -99,10 +99,8 @@ def map(ctx, domain, source_group, dest_group):
     """
     cli_helper = ctx.obj
     
-    # 获取 -- 后面的参数（从 ctx.meta 中获取）
-    command_args = ctx.meta.get('protected_args', [])
-    
-    success = cli_helper.handle_map_command(domain, source_group, dest_group, command_args)
+    # command_parts 已经通过补全参数获取
+    success = cli_helper.handle_map_command(domain, source_group, dest_group, list(command_parts))
     sys.exit(0 if success else 1)
 
 
