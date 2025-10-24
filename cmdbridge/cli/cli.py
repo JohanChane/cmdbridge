@@ -4,6 +4,8 @@ import click
 import sys
 
 from .cli_helper import CmdBridgeCLIHelper, CustomCommand, create_cli_helper  # 更新导入路径
+from ..click_ext.params import domain_option, dest_group_option, source_group_option
+from .completion import DOMAIN_TYPE, PROGRAM_GROUP_TYPE, SOURCE_GROUP_TYPE
 
 
 # Click 命令行接口
@@ -56,8 +58,8 @@ def refresh(cli_helper):
 
 
 @list.command()
-@click.option('-d', '--domain', help='领域名称')
-@click.option('-t', '--dest-group', help='目标程序组')
+@domain_option()
+@dest_group_option()
 @click.pass_obj
 def op_cmds(cli_helper, domain, dest_group):
     """输出动作映射
@@ -70,9 +72,9 @@ def op_cmds(cli_helper, domain, dest_group):
 
 
 @list.command()
-@click.option('-d', '--domain', help='领域名称')
-@click.option('-s', '--source-group', help='源程序组')
-@click.option('-t', '--dest-group', help='目标程序组')
+@domain_option()
+@source_group_option()
+@dest_group_option()
 @click.pass_obj
 def cmd_mappings(cli_helper, domain, source_group, dest_group):
     """输出命令之间的映射
@@ -85,9 +87,9 @@ def cmd_mappings(cli_helper, domain, source_group, dest_group):
 
 
 @cli.command(cls=CustomCommand)
-@click.option('-d', '--domain', help='领域名称')
-@click.option('-s', '--source-group', help='源程序组（只有无法识别才需要使用）')
-@click.option('-t', '--dest-group', help='目标程序组')
+@domain_option()
+@source_group_option() 
+@dest_group_option()
 @click.pass_context
 def map(ctx, domain, source_group, dest_group):
     """映射完整命令
@@ -105,8 +107,8 @@ def map(ctx, domain, source_group, dest_group):
 
 
 @cli.command(cls=CustomCommand)
-@click.option('-d', '--domain', help='领域名称')
-@click.option('-t', '--dest-group', help='目标程序组')
+@domain_option()
+@dest_group_option()
 @click.pass_context
 def op(ctx, domain, dest_group):
     """映射操作和参数

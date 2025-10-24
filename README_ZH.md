@@ -30,7 +30,7 @@ if command -v cmdbridge &>/dev/null; then
 fi
 
 if command -v cmdbridge-edit &>/dev/null; then
-  eval "$(_CMDBRIDGE_EXECUTE_COMPLETE=zsh_source cmdbridge-edit)"
+  eval "$(_CMDBRIDGE_EDIT_COMPLETE=zsh_source cmdbridge-edit)"
 fi
 
 alias am="cmdbridge"

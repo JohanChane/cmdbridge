@@ -7,7 +7,8 @@ from pathlib import Path
 
 from log import set_level, LogLevel, error, info, debug
 from ..cmdbridge import CmdBridge  # 更新导入路径
-
+from .completion import DOMAIN_TYPE, PROGRAM_GROUP_TYPE, SOURCE_GROUP_TYPE
+from ..config.path_manager import PathManager
 
 class CmdBridgeCLIHelper:
     """cmdbridge 命令行辅助类 - 处理 CLI 业务逻辑"""
@@ -15,6 +16,18 @@ class CmdBridgeCLIHelper:
     def __init__(self):
         # 初始化 CmdBridge 核心功能
         self.cmdbridge = CmdBridge()
+        self.path_manager = PathManager.get_instance()
+
+    def get_available_domains(self) -> List[str]:
+        """获取可用的领域名称列表"""
+        return self.path_manager.list_domains()
+    
+    def get_available_groups(self, domain: Optional[str] = None) -> List[str]:
+        """获取可用的程序组列表"""
+        if domain:
+            return self.path_manager.list_operation_groups(domain)
+        else:
+            return self.path_manager.list_all_operation_groups()
 
     def _get_default_domain(self) -> str:
         """获取默认领域"""
