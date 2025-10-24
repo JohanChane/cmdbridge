@@ -1,6 +1,7 @@
 # log/__init__.py
 from .core import Logger
 from .levels import LogLevel
+from typing import Any, Optional, TextIO
 
 # 全局日志实例
 _global_logger = Logger()
@@ -63,6 +64,12 @@ def create_logger(level: LogLevel = LogLevel.INFO,
     """创建新的日志器实例"""
     return Logger(level, show_timestamp, use_icons)
 
+def set_out(out: Optional[TextIO] = None):
+    return _global_logger.set_out(out)
+
+def get_out(out: Optional[TextIO] = None) -> Optional[TextIO]:
+    return _global_logger.get_out()
+
 # 导出公共接口
 __all__ = [
     'Logger',
@@ -82,4 +89,6 @@ __all__ = [
     'is_debug',
     'get_logger',
     'create_logger',
+    'set_out',
+    'get_out',
 ]
