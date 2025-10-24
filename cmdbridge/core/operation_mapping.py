@@ -21,7 +21,13 @@ class OperationMapping:
         self.path_manager = PathManager.get_instance()
         self.operation_to_program = {}
         self.command_formats = {}
-        self._load_operation_mapping()
+        self._loaded = False  # 添加加载状态标记
+
+    def _ensure_loaded(self) -> None:
+        """确保操作映射已加载（延时加载）"""
+        if not self._loaded:
+            self._load_operation_mapping()
+            self._loaded = True
 
     def _load_operation_mapping(self) -> None:
         """从缓存目录加载分离的操作映射文件"""
@@ -95,6 +101,9 @@ class OperationMapping:
         Raises:
             ValueError: 如果操作不支持或找不到命令格式
         """
+        # 确保操作映射已加载
+        self._ensure_loaded()
+        
         debug(f"开始生成命令: 操作={operation_name}, 目标程序={dst_operation_group_name}, 参数={params}")
         
         # 1. 检查领域是否存在
@@ -119,6 +128,7 @@ class OperationMapping:
         
         info(f"生成命令成功: {cmdline}")
         return cmdline
+
     def _replace_parameters(self, cmd_format: str, params: Dict[str, str]) -> str:
         """
         替换命令格式中的参数占位符
@@ -158,6 +168,9 @@ class OperationMapping:
         Returns:
             List[str]: 支持的操作名称列表
         """
+        # 确保操作映射已加载
+        self._ensure_loaded()
+        
         supported_ops = []
         for op_name, programs in self.operation_to_program.items():
             if program_name in programs:
@@ -176,6 +189,9 @@ class OperationMapping:
         Returns:
             List[str]: 支持的程序名称列表
         """
+        # 确保操作映射已加载
+        self._ensure_loaded()
+        
         programs = self.operation_to_program.get(operation_name, [])
         debug(f"操作 {operation_name} 支持 {len(programs)} 个程序: {programs}")
         return sorted(programs)
@@ -187,6 +203,9 @@ class OperationMapping:
         Returns:
             List[str]: 所有操作名称列表
         """
+        # 确保操作映射已加载
+        self._ensure_loaded()
+        
         operations = list(self.operation_to_program.keys())
         debug(f"共有 {len(operations)} 个可用操作: {operations}")
         return sorted(operations)
@@ -198,6 +217,9 @@ class OperationMapping:
         Returns:
             List[str]: 所有程序名称列表
         """
+        # 确保操作映射已加载
+        self._ensure_loaded()
+        
         programs = list(self.command_formats.keys())
         debug(f"共有 {len(programs)} 个可用程序: {programs}")
         return sorted(programs)
@@ -213,6 +235,9 @@ class OperationMapping:
         Returns:
             bool: 是否支持
         """
+        # 确保操作映射已加载
+        self._ensure_loaded()
+        
         supported = program_name in self.operation_to_program.get(operation_name, [])
         debug(f"操作 {operation_name} 支持程序 {program_name}: {supported}")
         return supported
@@ -228,6 +253,9 @@ class OperationMapping:
         Returns:
             Optional[str]: 命令格式字符串，如果不存在则返回 None
         """
+        # 确保操作映射已加载
+        self._ensure_loaded()
+        
         program_formats = self.command_formats.get(program_name, {})
         cmd_format = program_formats.get(operation_name)
         debug(f"获取命令格式: {operation_name}.{program_name} -> {cmd_format}")
@@ -242,7 +270,8 @@ class OperationMapping:
         debug("重新加载操作映射...")
         self.operation_to_program.clear()
         self.command_formats.clear()
-        self._load_operation_mapping()
+        self._loaded = False  # 重置加载状态
+        self._ensure_loaded()  # 重新加载
         info("操作映射重新加载完成")
 
 
