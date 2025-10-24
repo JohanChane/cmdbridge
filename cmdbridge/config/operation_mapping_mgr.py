@@ -101,6 +101,12 @@ class OperationMappingMgr:
                             
                             if "cmd_format" in operation_config:
                                 command_formats_by_program[program_name][operation_name] = operation_config["cmd_format"]
+                            
+                            # 新增：收集 final_cmd_format
+                            if "final_cmd_format" in operation_config:
+                                final_key = f"{operation_name}_final"  # 使用后缀区分
+                                command_formats_by_program[program_name][final_key] = operation_config["final_cmd_format"]
+                                debug(f"加载 final_cmd_format: {operation_name}.{program_name} -> {operation_config['final_cmd_format']}")
                                 
                 except Exception as e:
                     warning(f"解析程序文件 {config_file} 失败: {e}")

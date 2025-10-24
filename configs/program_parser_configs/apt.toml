@@ -33,6 +33,11 @@ name = "installed"
 opt = ["", "--installed"]
 nargs = "0"
 
+[[apt.sub_commands.arguments]]
+name = "my"
+opt = ["", "--my"]
+nargs = "0"
+
 [[apt.sub_commands]]
 name = "update"
 

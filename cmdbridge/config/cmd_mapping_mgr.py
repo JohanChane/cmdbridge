@@ -93,15 +93,15 @@ class CmdMappingMgr:
             return
         
         cmd_format = operation_config["cmd_format"]
-        debug(f"分析命令格式: {cmd_format}")
+        final_cmd_format = operation_config.get("final_cmd_format")  # 新增
+        
+        debug(f"分析命令格式: {cmd_format}, final_cmd_format: {final_cmd_format}")
         
         # 从 operation_key 提取 operation_name
         operation_parts = operation_key.split('.')
         if len(operation_parts) > 1 and operation_parts[-1] == self.group_name:
-            # 如果 operation_key 包含程序名，如 "install_remote.apt"
             operation_name = '.'.join(operation_parts[:-1])
         else:
-            # 如果 operation_key 不包含程序名，如 "install_remote"
             operation_name = operation_key
         
         debug(f"提取操作名: {operation_name} (原始键: {operation_key}, 程序组: {self.group_name})")
@@ -112,13 +112,18 @@ class CmdMappingMgr:
             error(f"无法解析命令: {cmd_format}")
             return
         
-        # 创建映射条目，包含 operation 字段
+        # 创建映射条目，包含 operation 和 final_cmd_format 字段
         mapping_entry = {
             "operation": operation_name,
             "cmd_format": cmd_format,
             "params": param_mapping,
             "cmd_node": self._serialize_command_node(cmd_node)
         }
+        
+        # 添加 final_cmd_format（如果存在）
+        if final_cmd_format:
+            mapping_entry["final_cmd_format"] = final_cmd_format
+            debug(f"添加 final_cmd_format: {final_cmd_format}")
         
         self.mapping_data[self.group_name]["command_mappings"].append(mapping_entry)
         debug(f"为 {self.group_name} 创建映射: {operation_name}, {len(param_mapping)} 个参数")

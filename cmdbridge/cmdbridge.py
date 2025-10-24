@@ -140,7 +140,7 @@ class CmdBridge:
                 operation_name=operation_result["operation_name"],
                 params=operation_result["params"],
                 dst_operation_domain_name=domain,
-                dst_operation_group_name=dest_group
+                dst_operation_group_name=dest_group,
             )
             
             return result_cmd
@@ -348,18 +348,18 @@ class CmdBridge:
                         f.write(default_config)
                     info("  已创建默认: config.toml")
             
-            # 刷新缓存
-            info("刷新命令映射缓存...")
-            refresh_success = self.refresh_cmd_mappings()
+            # 刷新缓存 (防止上面部分出错而没有缓存, 将其注释, 让用户自己刷新缓存)
+            # info("刷新命令映射缓存...")
+            # refresh_success = self.refresh_cmd_mappings()
             
-            if refresh_success:
-                info("✅ 配置初始化完成！")
-                info(f"   配置目录: {self.path_manager.config_dir}")
-                info(f"   缓存目录: {self.path_manager.cache_dir}")
-                return True
-            else:
-                error("❌ 配置初始化完成，但刷新缓存失败")
-                return False
+            # if refresh_success:
+            #     info("✅ 配置初始化完成！")
+            #     info(f"   配置目录: {self.path_manager.config_dir}")
+            #     info(f"   缓存目录: {self.path_manager.cache_dir}")
+            #     return True
+            # else:
+            #     error("❌ 配置初始化完成，但刷新缓存失败")
+            #     return False
                 
         except Exception as e:
             error(f"初始化配置失败: {e}")

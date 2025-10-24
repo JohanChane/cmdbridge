@@ -25,3 +25,7 @@ cmd_format = "pacman -S {pkgs} --config {config_path}"
 
 [operations.help]
 cmd_format = "pacman -h"
+
+[operations.my_list_installed]
+cmd_format = "pacman -Q --my"
+final_cmd_format = "my-list-installed-pacman"

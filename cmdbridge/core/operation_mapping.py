@@ -85,7 +85,7 @@ class OperationMapping:
 
     def generate_command(self, operation_name: str, params: Dict[str, str],
                         dst_operation_domain_name: str, 
-                        dst_operation_group_name: str) -> str:
+                        dst_operation_group_name: str, use_final_format: bool = False) -> str:
         """
         生成目标命令
         
@@ -104,8 +104,6 @@ class OperationMapping:
         # 确保操作映射已加载
         self._ensure_loaded()
         
-        debug(f"开始生成命令: 操作={operation_name}, 目标程序={dst_operation_group_name}, 参数={params}")
-        
         # 1. 检查领域是否存在
         if not self.path_manager.domain_exists(dst_operation_domain_name):
             raise ValueError(f"领域 '{dst_operation_domain_name}' 不存在")
@@ -115,19 +113,45 @@ class OperationMapping:
         if dst_operation_group_name not in supported_programs:
             raise ValueError(f"操作 {operation_name} 不支持程序 {dst_operation_group_name}，支持的程序: {supported_programs}")
         
-        # 3. 从目标程序的命令格式文件中获取命令格式
-        program_formats = self.command_formats.get(dst_operation_group_name, {})
-        cmd_format = program_formats.get(operation_name)
+        # 3. 获取命令格式 - 优先使用 final_cmd_format
+        cmd_format = self.get_final_command_format(operation_name, dst_operation_group_name)
+        format_type = "final_cmd_format"
+        
+        # 如果没有 final_cmd_format，回退到普通 cmd_format
+        if not cmd_format:
+            cmd_format = self.get_command_format(operation_name, dst_operation_group_name)
+            format_type = "cmd_format"
         
         if not cmd_format:
             raise ValueError(f"未找到命令格式: {operation_name} for {dst_operation_group_name}")
         
         # 4. 替换参数
-        debug(f"使用命令格式: {cmd_format}")
+        debug(f"使用命令格式: {cmd_format} (类型: {format_type})")
         cmdline = self._replace_parameters(cmd_format, params)
         
-        info(f"生成命令成功: {cmdline}")
+        info(f"生成命令成功: {cmdline} (类型: {format_type})")
         return cmdline
+
+    def get_final_command_format(self, operation_name: str, program_name: str) -> Optional[str]:
+        """
+        获取最终命令格式（final_cmd_format）
+        
+        Args:
+            operation_name: 操作名称
+            program_name: 程序名称
+            
+        Returns:
+            Optional[str]: final_cmd_format 字符串，如果不存在则返回 None
+        """
+        # 确保操作映射已加载
+        self._ensure_loaded()
+        
+        # 从缓存中获取 final_cmd_format
+        program_formats = self.command_formats.get(program_name, {})
+        final_format = program_formats.get(f"{operation_name}_final")  # 使用后缀区分
+        
+        debug(f"获取最终命令格式: {operation_name}.{program_name} -> {final_format}")
+        return final_format
 
     def _replace_parameters(self, cmd_format: str, params: Dict[str, str]) -> str:
         """

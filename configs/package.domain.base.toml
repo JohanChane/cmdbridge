@@ -35,3 +35,7 @@ args = ["pkgs"]
 [operations.help]
 description = "Display help information"
 args = []
+
+[operations.my_list_installed]
+description = "List installed packages by my script"
+args = []

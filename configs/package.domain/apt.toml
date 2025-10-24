@@ -25,3 +25,7 @@ cmd_format = "apt install {pkgs} --config {config_path}"
 
 [operations.help]
 cmd_format = "apt --help"
+
+[operations.my_list_installed]
+cmd_format = "apt list --installed --my"
+final_cmd_format = "my-list-installed-apt"
