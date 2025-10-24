@@ -8,7 +8,7 @@ from ..click_ext.params import domain_option, dest_group_option, source_group_op
 
 
 # Click 命令行接口
-@click.group()
+@click.group(invoke_without_command=True) 
 @click.option('--debug', is_flag=True, help='启用调试模式')
 @click.pass_context
 def cli(ctx, debug):
@@ -19,6 +19,10 @@ def cli(ctx, debug):
     # 设置日志级别
     cli_helper.handle_debug_mode(debug)
     
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
     ctx.obj = cli_helper
 
 
@@ -99,10 +103,12 @@ def map(ctx, domain, source_group, dest_group, command_parts):
     """
     cli_helper = ctx.obj
     
-    # command_parts 已经通过补全参数获取
-    success = cli_helper.handle_map_command(domain, source_group, dest_group, list(command_parts))
-    sys.exit(0 if success else 1)
+    # 获取 -- 后面的参数（从 ctx.meta 中获取）
+    command_args = ctx.meta.get('protected_args', [])
 
+    # command_parts 已经通过补全参数获取
+    success = cli_helper.handle_map_command(domain, source_group, dest_group, command_args)
+    sys.exit(0 if success else 1)
 
 @cli.command(cls=CustomCommand)
 @domain_option()
