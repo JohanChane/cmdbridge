@@ -229,9 +229,12 @@ class CmdBridgeCLIHelper:
             debug(f"生成目标命令格式失败: {e}")
             return ""
 
-
 class CustomCommand(click.Command):
-    """自定义命令类，支持 -- 分隔符"""
+    """自定义命令类，支持 -- 分隔符和补全"""
+    
+    def __init__(self, *args, completion_callback=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.completion_callback = completion_callback
     
     def parse_args(self, ctx, args):
         """解析参数，处理 -- 分隔符"""
@@ -242,6 +245,12 @@ class CustomCommand(click.Command):
             args = args[:idx]
         
         return super().parse_args(ctx, args)
+    
+    def get_usage(self, ctx):
+        """重写 usage 生成，支持补全"""
+        # 调用父类方法获取基本 usage
+        usage = super().get_usage(ctx)
+        return usage
 
 
 # 便捷函数

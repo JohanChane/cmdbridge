@@ -4,7 +4,12 @@
 
 from .cli import cli, main
 from .cli_helper import CmdBridgeCLIHelper, create_cli_helper, CustomCommand
-from .completion import DOMAIN_TYPE, PROGRAM_GROUP_TYPE, SOURCE_GROUP_TYPE, DynamicCompleter
+from ..click_ext.completor import DynamicCompleter
+from ..click_ext.params import (
+    domain_option, 
+    dest_group_option, 
+    source_group_option
+)
 
 __all__ = [
     'cli',
@@ -12,8 +17,8 @@ __all__ = [
     'CmdBridgeCLIHelper',
     'create_cli_helper',
     'CustomCommand',
-    'DOMAIN_TYPE',
-    'PROGRAM_GROUP_TYPE', 
-    'SOURCE_GROUP_TYPE',
-    'DynamicCompleter'
+    'DynamicCompleter',
+    'domain_option',
+    'dest_group_option', 
+    'source_group_option'
 ]

@@ -4,7 +4,7 @@
 
 import click
 from typing import List, Optional, Any, Callable
-from .completor import completer, COMMAND_COMPLETION_TYPE  # 更新导入路径
+from .completor import completer, COMMAND_COMPLETION_TYPE, OPERATION_COMPLETION_TYPE
 
 
 def domain_option(**kwargs):
@@ -43,5 +43,14 @@ def command_argument(**kwargs):
         'command_parts',
         nargs=-1,
         type=COMMAND_COMPLETION_TYPE,
+        **kwargs
+    )
+
+
+def operation_argument(**kwargs):
+    return click.argument(
+        'operation_parts',  # 这个必须与函数参数名一致
+        nargs=-1,
+        type=OPERATION_COMPLETION_TYPE,
         **kwargs
     )

@@ -4,7 +4,8 @@ import click
 import sys
 
 from .cli_helper import CmdBridgeCLIHelper, CustomCommand, create_cli_helper
-from ..click_ext.params import domain_option, dest_group_option, source_group_option, command_argument
+from ..click_ext.params import domain_option, dest_group_option, operation_argument, source_group_option, command_argument
+from ..click_ext.completor import DynamicCompleter
 
 
 # Click 命令行接口
@@ -86,21 +87,27 @@ def cmd_mappings(cli_helper, domain, source_group, dest_group):
         cmdbridge list cmd-mappings
         cmdbridge list -d package -s pacman -t apt cmd-mappings
     """
-    cli_helper.handle_list_cmd_mappings(domain, source_group, dest_group)
+    cli_helper.handle_list_cmd_mappings(domain, source_group, dest_group)   
 
+def get_map_completions(ctx, args, incomplete):
+    """map 命令的补全回调"""
+    # 这里实现 map 命令的补全逻辑
+    return DynamicCompleter.get_command_completions(ctx, None, incomplete)
 
+def get_op_completions(ctx, args, incomplete):
+    """op 命令的补全回调"""
+    # 这里实现 op 命令的补全逻辑
+    return DynamicCompleter.get_operation_completions(ctx, None, incomplete)
+
+# 暂时恢复 map 命令到工作状态
 @cli.command(cls=CustomCommand)
 @domain_option()
 @source_group_option() 
 @dest_group_option()
-@command_argument()
+@command_argument()  # 恢复这个
 @click.pass_context
-def map(ctx, domain, source_group, dest_group, command_parts):
-    """映射完整命令
-    
-    使用 -- 分隔符将命令参数与 cmdbridge 选项分开：
-    cmdbridge map -t apt -- pacman -S vim
-    """
+def map(ctx, domain, source_group, dest_group, command_parts):  # 恢复这个参数
+    """映射完整命令"""
     cli_helper = ctx.obj
     
     # 获取 -- 后面的参数（从 ctx.meta 中获取）
@@ -113,17 +120,19 @@ def map(ctx, domain, source_group, dest_group, command_parts):
 @cli.command(cls=CustomCommand)
 @domain_option()
 @dest_group_option()
+@operation_argument()
 @click.pass_context
-def op(ctx, domain, dest_group):
-    """映射操作和参数
+def op(ctx, domain, dest_group, operation_parts):
+    import sys
+    print(f"op 命令被调用: operation_parts={operation_parts}", file=sys.stderr)
     
-    使用 -- 分隔符将操作参数与 cmdbridge 选项分开：
-    cmdbridge op -t apt -- install vim
-    """
     cli_helper = ctx.obj
-    
-    # 获取 -- 后面的参数（从 ctx.meta 中获取）
     operation_args = ctx.meta.get('protected_args', [])
+    
+    if operation_parts:
+        operation_args = list(operation_parts) + operation_args
+    
+    print(f"最终操作参数: {operation_args}", file=sys.stderr)
     
     success = cli_helper.handle_map_operation(domain, dest_group, operation_args)
     sys.exit(0 if success else 1)

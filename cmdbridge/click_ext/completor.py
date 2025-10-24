@@ -2,10 +2,12 @@
 
 """Click 扩展模块，提供动态补全支持"""
 
+import sys
 import click
 from typing import List, Optional, Any, Callable
 from pathlib import Path
 import tomli
+from log import set_out, get_out, debug
 
 # 正确的导入方式
 try:
@@ -198,6 +200,112 @@ class DynamicCompleter:
         """创建命令补全类型"""
         return CommandCompletionType()
 
+    @staticmethod
+    def get_operation_completions(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+        """获取操作补全"""
+        try:
+
+            path_manager = PathManager.get_instance()
+            
+            # 获取上下文参数
+            domain = ctx.params.get('domain')
+            dest_group = ctx.params.get('dest_group')
+
+            # 如果没有指定领域，使用默认领域
+            if not domain:
+                # 尝试从全局配置获取默认领域
+                global_config_file = path_manager.get_global_config_path()
+                if global_config_file.exists():
+                    try:
+                        with open(global_config_file, 'rb') as f:
+                            global_config = tomli.load(f)
+                        domain = global_config.get('global_settings', {}).get('default_operation_domain', 'package')
+                    except Exception:
+                        domain = 'package'
+                else:
+                    domain = 'package'
+            
+            # 如果没有指定目标组，使用默认组
+            if not dest_group:
+                # 尝试从全局配置获取默认组
+                if 'global_config' in locals():
+                    dest_group = global_config.get('global_settings', {}).get('default_operation_group', 'pacman')
+                else:
+                    dest_group = 'pacman'
+            
+            # 获取操作映射器实例
+            from ..core.operation_mapping import OperationMapping
+            operation_mapper = OperationMapping()
+            
+            # 获取所有可用的操作
+            all_operations = operation_mapper.get_all_operations()
+            
+            # 如果指定了目标组，过滤该组支持的操作
+            if dest_group:
+                supported_operations = []
+                for operation in all_operations:
+                    if operation_mapper.is_operation_supported(operation, dest_group):
+                        supported_operations.append(operation)
+                completions = supported_operations
+            else:
+                completions = all_operations
+            # 过滤匹配 incomplete 的补全
+            return [op for op in completions if op.startswith(incomplete)]
+            
+        except Exception as e:
+            # 如果出错，返回空列表
+            debug(f"{e}")
+            return []
+
+    @staticmethod
+    def get_enhanced_operation_completions(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+        """增强的操作补全，支持带参数的补全建议"""
+        # 直接返回测试数据
+        return ["install_remote", "search_remote", "list_installed", "update", "remove"]
+        
+    @staticmethod
+    def get_domains(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+        """获取领域名称列表用于补全"""
+        try:
+            path_manager = PathManager.get_instance()
+            domains = path_manager.list_domains()
+            return [domain for domain in domains if domain.startswith(incomplete)]
+        except Exception:
+            return []
+
+    @staticmethod
+    def get_program_groups(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+        """获取程序组列表用于补全"""
+        try:
+            path_manager = PathManager.get_instance()
+            
+            # 从上下文中获取领域名称
+            domain = None
+            if ctx.params and 'domain' in ctx.params and ctx.params['domain']:
+                domain = ctx.params['domain']
+            
+            if domain:
+                # 获取指定领域的程序组
+                groups = path_manager.list_operation_groups(domain)
+            else:
+                # 获取所有程序组
+                groups = path_manager.list_all_operation_groups()
+            
+            return [group for group in groups if group.startswith(incomplete)]
+        except Exception:
+            return []
+
+    @staticmethod
+    def get_source_groups(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+        """获取源程序组列表用于补全"""
+        # 源程序组的补全逻辑与目标程序组相同
+        return DynamicCompleter.get_program_groups(ctx, param, incomplete)
+
+    @staticmethod
+    def get_operation_completion_type():
+        """创建操作补全类型"""
+        return OperationCompletionType()
+
 
 class Completer:
     """补全工具类"""
@@ -248,6 +356,11 @@ class Completer:
     def get_command_type():
         """创建命令补全类型"""
         return DynamicCompleter.get_command_completion_type()
+    
+    @staticmethod
+    def get_operation_type():
+        """创建操作补全类型"""
+        return DynamicCompleter.get_operation_completion_type()
 
 
 class CommandCompletionType(click.ParamType):
@@ -255,11 +368,32 @@ class CommandCompletionType(click.ParamType):
     name = "command"
     
     def shell_complete(self, ctx: click.Context, param: click.Parameter, incomplete: str):
-        completions = DynamicCompleter.get_command_completions(ctx, param, incomplete)
-        # 使用 "plain" 类型避免自动转义
-        return [CompletionItem(cmd, type="plain") for cmd in completions]
+        original_out = get_out()
+        if bool(ctx and ctx.resilient_parsing):
+            set_out(sys.stderr)
+        try:
+            completions = DynamicCompleter.get_command_completions(ctx, param, incomplete)
+            # 使用 "plain" 类型避免自动转义
+            return [CompletionItem(cmd, type="plain") for cmd in completions]
+        finally:
+            set_out(original_out)
+
+class OperationCompletionType(click.ParamType):
+    """操作补全类型"""
+    name = "operation"
+    
+    def shell_complete(self, ctx: click.Context, param: click.Parameter, incomplete: str):
+        original_out = get_out()
+        if bool(ctx and ctx.resilient_parsing):
+            set_out(sys.stderr)
+        try:
+            completions = DynamicCompleter.get_operation_completions(ctx, param, incomplete)
+            return [CompletionItem(cmd, type="plain") for cmd in completions]
+        finally:
+            set_out(original_out)
 
 
 # 创建全局实例
 completer = Completer()
 COMMAND_COMPLETION_TYPE = CommandCompletionType()
+OPERATION_COMPLETION_TYPE = OperationCompletionType()

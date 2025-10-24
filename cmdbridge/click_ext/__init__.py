@@ -7,14 +7,17 @@ from .completor import (
     DynamicCompleter,
     Completer,
     CommandCompletionType,
+    OperationCompletionType,
     completer,
-    COMMAND_COMPLETION_TYPE
+    COMMAND_COMPLETION_TYPE,
+    OPERATION_COMPLETION_TYPE
 )
 from .params import (
     domain_option,
     dest_group_option,
     source_group_option,
-    command_argument
+    command_argument,
+    operation_argument
 )
 
 __all__ = [
@@ -22,10 +25,13 @@ __all__ = [
     'DynamicCompleter', 
     'Completer',
     'CommandCompletionType',
+    'OperationCompletionType',
     'completer',
     'COMMAND_COMPLETION_TYPE',
+    'OPERATION_COMPLETION_TYPE',
     'domain_option',
     'dest_group_option',
     'source_group_option',
-    'command_argument'
+    'command_argument',
+    'operation_argument'
 ]

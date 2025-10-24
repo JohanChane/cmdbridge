@@ -81,7 +81,7 @@ class OperationMapping:
                 except Exception as e:
                     warning(f"加载命令格式文件失败 {command_file}: {e}")
         
-        info(f"操作映射加载完成: {len(self.operation_to_program)} 个操作, {len(self.command_formats)} 个程序")
+        debug(f"操作映射加载完成: {len(self.operation_to_program)} 个操作, {len(self.command_formats)} 个程序")
 
     def generate_command(self, operation_name: str, params: Dict[str, str],
                         dst_operation_domain_name: str, 
