@@ -5,14 +5,14 @@
 __version__ = "1.0.0"
 __author__ = "CmdBridge Developer"
 
-from .cli import main, cli
-from .cli_helper import CmdBridgeEditCLIHelper, create_edit_cli_helper  # 新增
+from .cli.cli import main, cli  # 更新导入路径
+from .cli.cli_helper import CmdBridgeEditCLIHelper, create_edit_cli_helper  # 更新导入路径
 
 __all__ = [
     'main',
     'cli',
-    'CmdBridgeEditCLIHelper',  # 新增
-    'create_edit_cli_helper',  # 新增
+    'CmdBridgeEditCLIHelper',
+    'create_edit_cli_helper',
     '__version__',
     '__author__',
 ]

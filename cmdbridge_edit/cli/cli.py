@@ -1,9 +1,9 @@
-# cmdbridge_edit/cli.py
+# cmdbridge_edit/cli/cli.py
 
 import click
 import sys
 
-from .cli_helper import CmdBridgeEditCLIHelper, CustomCommand, create_edit_cli_helper
+from .cli_helper import CmdBridgeEditCLIHelper, CustomCommand, create_edit_cli_helper  # 更新导入路径
 
 
 # Click 命令行接口

@@ -19,14 +19,14 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'cmdbridge=cmdbridge.cli:cli',
-            'cmdbridge-edit=cmdbridge_edit.cli:cli',
+            'cmdbridge=cmdbridge.cli.cli:cli',
+            'cmdbridge-edit=cmdbridge_edit.cli.cli:cli',  # 更新入口点路径
         ],
     },
     python_requires=">=3.7",
     include_package_data=True,
     package_data={
-        'cmdbridge': ['configs/*', 'configs/*/*', 'configs/*/*/*'],
-        'cmdbridge_edit': ['*.py'],  # 确保包含所有 Python 文件
+        'cmdbridge': ['configs/*', 'configs/*/*', 'configs/*/*/*', 'cli/*.py'],
+        'cmdbridge_edit': ['cli/*.py'],  # 确保包含 CLI 文件
     },
 )

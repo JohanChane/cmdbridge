@@ -1,9 +1,9 @@
-# cmdbridge/cli.py
+# cmdbridge/cli/cli.py
 
 import click
 import sys
 
-from .cli_helper import CmdBridgeCLIHelper, CustomCommand, create_cli_helper
+from .cli_helper import CmdBridgeCLIHelper, CustomCommand, create_cli_helper  # 更新导入路径
 
 
 # Click 命令行接口
@@ -33,6 +33,12 @@ def cache():
     pass
 
 
+@cli.group()
+def list():
+    """列出映射信息命令"""
+    pass
+
+
 @config.command()
 @click.pass_obj
 def init(cli_helper):
@@ -47,6 +53,35 @@ def refresh(cli_helper):
     """刷新命令映射缓存"""
     success = cli_helper.handle_refresh_cache()
     sys.exit(0 if success else 1)
+
+
+@list.command()
+@click.option('-d', '--domain', help='领域名称')
+@click.option('-t', '--dest-group', help='目标程序组')
+@click.pass_obj
+def op_cmds(cli_helper, domain, dest_group):
+    """输出动作映射
+    
+    示例:
+        cmdbridge list op-cmds
+        cmdbridge list -d package -t apt op-cmds
+    """
+    cli_helper.handle_list_op_cmds(domain, dest_group)
+
+
+@list.command()
+@click.option('-d', '--domain', help='领域名称')
+@click.option('-s', '--source-group', help='源程序组')
+@click.option('-t', '--dest-group', help='目标程序组')
+@click.pass_obj
+def cmd_mappings(cli_helper, domain, source_group, dest_group):
+    """输出命令之间的映射
+    
+    示例:
+        cmdbridge list cmd-mappings
+        cmdbridge list -d package -s pacman -t apt cmd-mappings
+    """
+    cli_helper.handle_list_cmd_mappings(domain, source_group, dest_group)
 
 
 @cli.command(cls=CustomCommand)
@@ -93,26 +128,6 @@ def op(ctx, domain, dest_group):
 def version(cli_helper):
     """显示版本信息"""
     cli_helper.handle_version()
-
-
-@cli.command()
-@click.pass_obj
-def list_cmdbridges(cli_helper):
-    """列出所有可用的包管理器"""
-    cli_helper.handle_list_cmdbridges()
-
-
-@cli.command()
-@click.argument('source_group')
-@click.argument('dest_group')
-@click.pass_obj
-def output_cmdbridge(cli_helper, source_group, dest_group):
-    """输出两个包管理器之间的映射关系
-    
-    SOURCE_GROUP: 源包管理器名称
-    DEST_GROUP: 目标包管理器名称
-    """
-    cli_helper.handle_output_cmdbridge(source_group, dest_group)
 
 
 def main():

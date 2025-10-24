@@ -1,11 +1,11 @@
-# cmdbridge_edit/cli_helper.py
+# cmdbridge_edit/cli/cli_helper.py
 
 import sys
 from typing import Optional, List
 import click
 
 from log import set_level, LogLevel, error
-from cmdbridge.cmdbridge import CmdBridge
+from cmdbridge.cmdbridge import CmdBridge  # 保持原有导入路径
 
 
 class CmdBridgeEditCLIHelper:
@@ -73,7 +73,7 @@ class CmdBridgeEditCLIHelper:
 
     def handle_version(self) -> None:
         """处理版本信息显示"""
-        from cmdbridge_edit import __version__
+        from .. import __version__  # 更新导入路径
         click.echo(f"cmdbridge-edit 版本: {__version__}")
 
     def exit_with_success_code(self, success: bool) -> None:
