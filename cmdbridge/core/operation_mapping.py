@@ -298,6 +298,31 @@ class OperationMapping:
         self._ensure_loaded()  # 重新加载
         info("操作映射重新加载完成")
 
+    def get_operation_parameters(self, operation_name: str, program_name: str) -> List[str]:
+        """
+        获取操作的参数列表
+        
+        Args:
+            operation_name: 操作名称
+            program_name: 程序名称
+            
+        Returns:
+            List[str]: 参数名称列表
+        """
+        # 确保操作映射已加载
+        self._ensure_loaded()
+        
+        program_formats = self.command_formats.get(program_name, {})
+        cmd_format = program_formats.get(operation_name)
+        
+        if not cmd_format:
+            return []
+        
+        # 从命令格式中提取参数
+        import re
+        params = re.findall(r'\{(\w+)\}', cmd_format)
+        return params
+
 
 # 便捷函数
 def create_operation_mapping() -> OperationMapping:

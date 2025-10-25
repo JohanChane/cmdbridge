@@ -201,38 +201,14 @@ class DynamicCompleter:
         return CommandCompletionType()
 
     @staticmethod
-    def get_operation_completions(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
-        """获取操作补全"""
+    def get_operation_completions_with_params(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+        """获取带参数信息的操作补全"""
         try:
-
             path_manager = PathManager.get_instance()
             
-            # 获取上下文参数
-            domain = ctx.params.get('domain')
-            dest_group = ctx.params.get('dest_group')
+            domain = ctx.params.get('domain', 'package')
+            dest_group = ctx.params.get('dest_group', 'pacman')  # 提供默认值
 
-            # 如果没有指定领域，使用默认领域
-            if not domain:
-                # 尝试从全局配置获取默认领域
-                global_config_file = path_manager.get_global_config_path()
-                if global_config_file.exists():
-                    try:
-                        with open(global_config_file, 'rb') as f:
-                            global_config = tomli.load(f)
-                        domain = global_config.get('global_settings', {}).get('default_operation_domain', 'package')
-                    except Exception:
-                        domain = 'package'
-                else:
-                    domain = 'package'
-            
-            # 如果没有指定目标组，使用默认组
-            if not dest_group:
-                # 尝试从全局配置获取默认组
-                if 'global_config' in locals():
-                    dest_group = global_config.get('global_settings', {}).get('default_operation_group', 'pacman')
-                else:
-                    dest_group = 'pacman'
-            
             # 获取操作映射器实例
             from ..core.operation_mapping import OperationMapping
             operation_mapper = OperationMapping()
@@ -240,28 +216,41 @@ class DynamicCompleter:
             # 获取所有可用的操作
             all_operations = operation_mapper.get_all_operations()
             
-            # 如果指定了目标组，过滤该组支持的操作
-            if dest_group:
-                supported_operations = []
-                for operation in all_operations:
-                    if operation_mapper.is_operation_supported(operation, dest_group):
-                        supported_operations.append(operation)
-                completions = supported_operations
-            else:
-                completions = all_operations
-            # 过滤匹配 incomplete 的补全
-            return [op for op in completions if op.startswith(incomplete)]
+            # 过滤支持的操作
+            supported_operations = []
+            for operation in all_operations:
+                if not dest_group or operation_mapper.is_operation_supported(operation, dest_group):
+                    supported_operations.append(operation)
+            
+            # 为每个操作添加参数信息
+            enhanced_completions = []
+            for operation in supported_operations:
+                if operation.startswith(incomplete):
+                    # 获取操作的参数
+                    params = operation_mapper.get_operation_parameters(operation, dest_group)
+                    if params:
+                        # 格式化显示：操作名 {参数1} {参数2} ...
+                        params_display = " ".join([f"{{{param}}}" for param in params])
+                        operation_with_params = f"{operation} {params_display}"
+                        enhanced_completions.append(operation_with_params)
+                    else:
+                        # 没有参数的操作
+                        enhanced_completions.append(operation)
+            
+            return enhanced_completions
             
         except Exception as e:
-            # 如果出错，返回空列表
-            debug(f"{e}")
-            return []
-
+            debug(f"获取带参数的操作补全失败: {e}")
+            # 出错时回退到基本补全
+            return [op for op in operation_mapper.get_all_operations() 
+                    if op.startswith(incomplete) and 
+                    (not dest_group or operation_mapper.is_operation_supported(op, dest_group))]
+        
+    # 更新原有的 get_operation_completions 方法
     @staticmethod
-    def get_enhanced_operation_completions(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
-        """增强的操作补全，支持带参数的补全建议"""
-        # 直接返回测试数据
-        return ["install_remote", "search_remote", "list_installed", "update", "remove"]
+    def get_operation_completions(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
+        """获取操作补全 - 使用带参数的版本"""
+        return DynamicCompleter.get_operation_completions_with_params(ctx, param, incomplete)
         
     @staticmethod
     def get_domains(ctx: click.Context, param: click.Parameter, incomplete: str) -> List[str]:
@@ -387,7 +376,7 @@ class OperationCompletionType(click.ParamType):
         if bool(ctx and ctx.resilient_parsing):
             set_out(sys.stderr)
         try:
-            completions = DynamicCompleter.get_operation_completions(ctx, param, incomplete)
+            completions = DynamicCompleter.get_operation_completions_with_params(ctx, param, incomplete)
             return [CompletionItem(cmd, type="plain") for cmd in completions]
         finally:
             set_out(original_out)
