@@ -29,8 +29,7 @@ class CmdBridgeEditCLIHelper:
             set_level(LogLevel.DEBUG)
             click.echo("🔧 调试模式已启用")
         else:
-            # 非调试模式下使用 WARNING 级别，减少输出
-            set_level(LogLevel.WARNING)
+            set_level(LogLevel.INFO)
 
     def handle_map_command(self, domain: Optional[str], src_group: Optional[str], 
                           dest_group: Optional[str], command_args: List[str]) -> bool:

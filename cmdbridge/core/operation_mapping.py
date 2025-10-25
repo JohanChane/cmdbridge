@@ -129,7 +129,7 @@ class OperationMapping:
         debug(f"使用命令格式: {cmd_format} (类型: {format_type})")
         cmdline = self._replace_parameters(cmd_format, params)
         
-        info(f"生成命令成功: {cmdline} (类型: {format_type})")
+        debug(f"生成命令成功: {cmdline} (类型: {format_type})")
         return cmdline
 
     def get_final_command_format(self, operation_name: str, program_name: str) -> Optional[str]:
@@ -296,7 +296,7 @@ class OperationMapping:
         self.command_formats.clear()
         self._loaded = False  # 重置加载状态
         self._ensure_loaded()  # 重新加载
-        info("操作映射重新加载完成")
+        debug("操作映射重新加载完成")
 
     def get_operation_parameters(self, operation_name: str, program_name: str) -> List[str]:
         """

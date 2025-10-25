@@ -124,16 +124,13 @@ def map(ctx, domain, source_group, dest_group, command_parts):  # 恢复这个�
 @click.pass_context
 def op(ctx, domain, dest_group, operation_parts):
     import sys
-    print(f"op 命令被调用: operation_parts={operation_parts}", file=sys.stderr)
     
     cli_helper = ctx.obj
     operation_args = ctx.meta.get('protected_args', [])
     
     if operation_parts:
         operation_args = list(operation_parts) + operation_args
-    
-    print(f"最终操作参数: {operation_args}", file=sys.stderr)
-    
+        
     success = cli_helper.handle_map_operation(domain, dest_group, operation_args)
     sys.exit(0 if success else 1)
 

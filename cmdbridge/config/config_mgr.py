@@ -136,7 +136,7 @@ class ConfigMgr:
                 else:
                     warning(f"领域配置目录不存在: {domain_config_dir}")
             
-            info(f"合并了 {success_count}/{len(domains)} 个领域配置")
+            debug(f"合并了 {success_count}/{len(domains)} 个领域配置")
             return success_count > 0
             
         except Exception as e:

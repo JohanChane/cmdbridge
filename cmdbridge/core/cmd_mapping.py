@@ -133,7 +133,7 @@ class CmdMapping:
             "params": param_values
         }
         
-        info(f"命令映射成功: {' '.join(source_cmdline)} -> {result}")
+        debug(f"命令映射成功: {' '.join(source_cmdline)} -> {result}")
         return result
 
     def _normalize_option_name(self, option_name: Optional[str]) -> str:

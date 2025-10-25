@@ -325,7 +325,7 @@ class CmdMappingMgr:
         try:
             with open(output_path, 'wb') as f:
                 tomli_w.dump(self.mapping_data, f)
-            info(f"命令映射已写入: {output_path}")
+            debug(f"命令映射已写入: {output_path}")
         except Exception as e:
             error(f"写入文件失败: {e}")
             raise

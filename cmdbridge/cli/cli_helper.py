@@ -41,8 +41,7 @@ class CmdBridgeCLIHelper:
             set_level(LogLevel.DEBUG)
             click.echo("🔧 调试模式已启用")
         else:
-            # 非调试模式下使用 WARNING 级别，减少输出
-            set_level(LogLevel.WARNING)
+            set_level(LogLevel.INFO)
             
     def handle_init_config(self) -> bool:
         """处理初始化配置命令"""
