@@ -108,9 +108,8 @@ class PathManager:
         
         # 查找所有 .toml 配置文件（排除 base.toml）
         for config_file in domain_dir.glob("*.toml"):
-            if config_file.stem != "base":  # 排除基础配置文件
-                group_name = config_file.stem
-                groups.append(group_name)
+            group_name = config_file.stem
+            groups.append(group_name)
         
         return sorted(groups)
     

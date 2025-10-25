@@ -85,8 +85,7 @@ class CmdMapping:
         mappings = {}
         for cache_file in cache_dir.glob("*.toml"):
             group_name = cache_file.stem
-            if group_name != "base":  # 跳过基础配置文件
-                mappings[group_name] = cls.load_from_cache(domain_name, group_name)
+            mappings[group_name] = cls.load_from_cache(domain_name, group_name)
         
         debug(f"加载 {domain_name} 领域的 {len(mappings)} 个程序组映射")
         return mappings

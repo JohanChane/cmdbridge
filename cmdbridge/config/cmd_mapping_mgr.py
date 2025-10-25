@@ -60,10 +60,6 @@ class CmdMappingMgr:
         
     def _process_group_file(self, operation_group_file: Path):
         """处理单个操作组文件"""
-        # 检查是否是基础配置文件
-        if self.group_name == "base":
-            debug(f"跳过基础操作文件: {operation_group_file}")
-            return
         
         # 加载操作文件内容
         try:
