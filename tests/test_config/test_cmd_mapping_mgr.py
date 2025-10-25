@@ -50,7 +50,7 @@ class TestOperationMapping:
     def _create_test_configs(self):
         """创建测试配置"""
         # 创建 package.domain 目录
-        package_domain_dir = self.path_manager.get_config_operation_group_path("package")
+        package_domain_dir = self.path_manager.get_operation_domain_dir_of_config("package")
         package_domain_dir.mkdir(parents=True, exist_ok=True)
         
         # 创建 apt.toml 配置文件
@@ -95,7 +95,7 @@ class TestOperationMapping:
             tomli_w.dump(pacman_config, f)
         
         # 创建 process.domain 目录和配置文件
-        process_domain_dir = self.path_manager.get_config_operation_group_path("process")
+        process_domain_dir = self.path_manager.get_operation_domain_dir_of_config("process")
         process_domain_dir.mkdir(parents=True, exist_ok=True)
         
         process_config = {
@@ -116,7 +116,7 @@ class TestOperationMapping:
     def _create_operation_mappings_cache(self):
         """创建操作映射缓存文件"""
         # 创建 package 领域的操作映射缓存
-        package_cache_dir = self.path_manager.get_operation_mappings_cache_path("package")
+        package_cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache("package")
         package_cache_dir.mkdir(parents=True, exist_ok=True)
         
         # 创建 operation_to_program.toml
@@ -162,7 +162,7 @@ class TestOperationMapping:
             tomli_w.dump(pacman_commands, f)
         
         # 创建 process 领域的操作映射缓存
-        process_cache_dir = self.path_manager.get_operation_mappings_cache_path("process")
+        process_cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache("process")
         process_cache_dir.mkdir(parents=True, exist_ok=True)
         
         process_op_to_program = {

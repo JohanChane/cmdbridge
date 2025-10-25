@@ -86,9 +86,9 @@ class DynamicCompleter:
             if source_group:
                 source_group_candidates = [source_group]
             elif domain:
-                source_group_candidates = path_manager.list_operation_groups(domain)
+                source_group_candidates = path_manager.get_operation_groups_from_config(domain)
             else:
-                source_group_candidates = path_manager.list_all_operation_groups()
+                source_group_candidates = path_manager.get_all_operation_groups_from_config()
             
             # 收集所有可能的命令补全
             completions = []
@@ -111,12 +111,12 @@ class DynamicCompleter:
         try:
             # 从操作组配置获取操作定义
             if domain:
-                group_config_file = PathManager.get_instance().get_operation_group_config_path(domain, group_name)
+                group_config_file = PathManager.get_instance().get_operation_group_path_of_config(domain, group_name)
             else:
                 # 如果没有指定领域，尝试在所有领域中查找
-                domains = PathManager.get_instance().list_domains()
+                domains = PathManager.get_instance().get_domains_from_config()
                 for dom in domains:
-                    group_config_file = PathManager.get_instance().get_operation_group_config_path(dom, group_name)
+                    group_config_file = PathManager.get_instance().get_operation_group_path_of_config(dom, group_name)
                     if group_config_file and group_config_file.exists():
                         domain = dom
                         break
@@ -134,7 +134,7 @@ class DynamicCompleter:
                 
                 # 如果没有找到配置，尝试从缓存加载
                 if not command_formats and domain:
-                    cache_file = PathManager.get_instance().get_cmd_mappings_cache_path(domain, group_name)
+                    cache_file = PathManager.get_instance().get_cmd_mappings_group_path_of_cache(domain, group_name)
                     if cache_file and cache_file.exists():
                         with open(cache_file, 'rb') as f:
                             mapping_data = tomli.load(f)
@@ -158,12 +158,12 @@ class DynamicCompleter:
             # 从命令映射缓存中获取命令格式
             cache_file = None
             if domain:
-                cache_file = PathManager.get_instance().get_cmd_mappings_cache_path(domain, group_name)
+                cache_file = PathManager.get_instance().get_cmd_mappings_group_path_of_cache(domain, group_name)
             else:
                 # 如果没有指定领域，尝试在所有领域中查找
-                domains = PathManager.get_instance().list_domains()
+                domains = PathManager.get_instance().get_domains_from_config()
                 for dom in domains:
-                    cache_file = PathManager.get_instance().get_cmd_mappings_cache_path(dom, group_name)
+                    cache_file = PathManager.get_instance().get_cmd_mappings_group_path_of_cache(dom, group_name)
                     if cache_file and cache_file.exists():
                         break
             
@@ -179,7 +179,7 @@ class DynamicCompleter:
             
             # 如果没有找到缓存，从操作组配置中获取
             if not commands and domain:
-                group_config_file = PathManager.get_instance().get_operation_group_config_path(domain, group_name)
+                group_config_file = PathManager.get_instance().get_operation_group_path_of_config(domain, group_name)
                 if group_config_file.exists():
                     with open(group_config_file, 'rb') as f:
                         config_data = tomli.load(f)
@@ -257,7 +257,7 @@ class DynamicCompleter:
         """获取领域名称列表用于补全"""
         try:
             path_manager = PathManager.get_instance()
-            domains = path_manager.list_domains()
+            domains = path_manager.get_domains_from_config()
             return [domain for domain in domains if domain.startswith(incomplete)]
         except Exception:
             return []
@@ -275,10 +275,10 @@ class DynamicCompleter:
             
             if domain:
                 # 获取指定领域的程序组
-                groups = path_manager.list_operation_groups(domain)
+                groups = path_manager.get_operation_groups_from_config(domain)
             else:
                 # 获取所有程序组
-                groups = path_manager.list_all_operation_groups()
+                groups = path_manager.get_all_operation_groups_from_config()
             
             return [group for group in groups if group.startswith(incomplete)]
         except Exception:
@@ -304,7 +304,7 @@ class Completer:
         """获取领域名称列表"""
         try:
             path_manager = PathManager.get_instance()
-            domains = path_manager.list_domains()
+            domains = path_manager.get_domains_from_config()
             # 如果指定了 domain，只返回匹配的（用于过滤）
             if domain:
                 return [d for d in domains if d == domain]
@@ -319,10 +319,10 @@ class Completer:
             path_manager = PathManager.get_instance()
             if domain:
                 # 获取指定领域的程序组
-                return path_manager.list_operation_groups(domain)
+                return path_manager.get_operation_groups_from_config(domain)
             else:
                 # 获取所有程序组
-                return path_manager.list_all_operation_groups()
+                return path_manager.get_all_operation_groups_from_config()
         except Exception:
             return []
     

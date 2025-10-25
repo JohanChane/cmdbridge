@@ -66,7 +66,7 @@ class CmdBridge:
         first_word = command.strip().split()[0]
         
         # 列出该领域的所有组
-        groups = self.path_manager.list_operation_groups(domain)
+        groups = self.path_manager.get_operation_groups_from_config(domain)
         
         # 检查是否有组名与命令前缀匹配
         for group in groups:
@@ -80,7 +80,7 @@ class CmdBridge:
         cache_key = f"{domain}.{group_name}"
         if cache_key not in self._mapping_config_cache:
             # 从缓存文件加载该程序组的映射配置
-            cache_file = self.path_manager.get_cmd_mappings_domain_dir(domain) / f"{group_name}.toml"
+            cache_file = self.path_manager.get_cmd_mappings_domain_dir_of_cache(domain) / f"{group_name}.toml"
             if cache_file.exists():
                 try:
                     with open(cache_file, 'rb') as f:
@@ -203,19 +203,19 @@ class CmdBridge:
                     warning("合并领域配置失败")
                 
                 # 为每个领域生成映射数据
-                domains = self.path_manager.list_domains()
+                domains = self.path_manager.get_domains_from_config()
                 for domain in domains:
                     # 确保缓存目录存在
-                    self.path_manager.get_cmd_mappings_cache_path(domain).mkdir(parents=True, exist_ok=True)
-                    self.path_manager.get_operation_mappings_cache_path(domain).mkdir(parents=True, exist_ok=True)
+                    self.path_manager.get_cmd_mappings_domain_of_cache(domain).mkdir(parents=True, exist_ok=True)
+                    self.path_manager.get_operation_mappings_domain_dir_of_cache(domain).mkdir(parents=True, exist_ok=True)
                     
                     # 获取领域配置目录
-                    domain_config_dir = self.path_manager.get_config_operation_group_path(domain)
+                    domain_config_dir = self.path_manager.get_operation_domain_dir_of_config(domain)
                     parser_configs_dir = self.path_manager.program_parser_config_dir
                     
                     if domain_config_dir.exists() and parser_configs_dir.exists():
                         # 获取该领域的所有程序组
-                        groups = self.path_manager.list_operation_groups(domain)
+                        groups = self.path_manager.get_operation_groups_from_config(domain)
                         
                         for group_name in groups:
                             try:

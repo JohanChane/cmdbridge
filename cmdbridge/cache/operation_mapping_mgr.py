@@ -41,13 +41,13 @@ class OperationMappingMgr:
         """
         try:
             # 获取领域配置目录
-            domain_config_dir = self.path_manager.get_config_operation_group_path(self.domain_name)
+            domain_config_dir = self.path_manager.get_operation_domain_dir_of_config(self.domain_name)
             if not domain_config_dir.exists():
                 warning(f"领域配置目录不存在: {domain_config_dir}")
                 return {}
             
             # 获取操作映射缓存目录
-            cache_dir = self.path_manager.get_operation_mappings_cache_path(self.domain_name)
+            cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache(self.domain_name)
             cache_dir.mkdir(parents=True, exist_ok=True)
             
             # 收集所有操作组文件
@@ -168,7 +168,7 @@ def create_operation_mappings_for_all_domains() -> bool:
         bool: 所有领域创建是否成功
     """
     path_manager = PathManager.get_instance()
-    domains = path_manager.list_domains()
+    domains = path_manager.get_domains_from_config()
     
     all_success = True
     for domain in domains:

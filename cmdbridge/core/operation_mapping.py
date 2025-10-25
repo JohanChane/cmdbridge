@@ -33,14 +33,14 @@ class OperationMapping:
         """从缓存目录加载分离的操作映射文件"""
         debug("开始从缓存加载操作映射...")
         
-        domains = self.path_manager.list_domains()
+        domains = self.path_manager.get_domains_from_config()
         if not domains:
             warning("未找到任何领域配置")
             return
         
         for domain in domains:
             # 获取操作映射缓存目录
-            cache_dir = self.path_manager.get_operation_mappings_cache_path(domain)
+            cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache(domain)
             
             # 1. 加载操作到程序映射文件
             operation_to_program_file = cache_dir / "operation_to_program.toml"

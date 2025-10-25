@@ -50,7 +50,7 @@ class CmdMapping:
             CmdMapping: 命令映射器实例
         """
         path_manager = PathManager.get_instance()
-        cache_file = path_manager.get_cmd_mappings_domain_dir(domain_name) / f"{group_name}.toml"
+        cache_file = path_manager.get_cmd_mappings_domain_dir_of_cache(domain_name) / f"{group_name}.toml"
         
         if not cache_file.exists():
             debug(f"缓存文件不存在: {cache_file}")
@@ -77,7 +77,7 @@ class CmdMapping:
             Dict[str, CmdMapping]: 程序组名到命令映射器的字典
         """
         path_manager = PathManager.get_instance()
-        cache_dir = path_manager.get_cmd_mappings_domain_dir(domain_name)
+        cache_dir = path_manager.get_cmd_mappings_domain_dir_of_cache(domain_name)
         
         if not cache_dir.exists():
             return {}

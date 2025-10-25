@@ -42,7 +42,7 @@ class CmdMappingMgr:
         debug(f"开始创建 {self.domain_name}.{self.group_name} 的命令映射")
         
         # 获取操作组配置文件路径
-        group_file = self.path_manager.get_operation_group_config_path(self.domain_name, self.group_name)
+        group_file = self.path_manager.get_operation_group_path_of_config(self.domain_name, self.group_name)
         if not group_file.exists():
             error(f"操作组配置文件不存在: {group_file}")
             raise FileNotFoundError(f"操作组配置文件不存在: {group_file}")
@@ -315,7 +315,7 @@ class CmdMappingMgr:
             return
         
         # 使用 PathManager 获取缓存文件路径 - 统一目录结构
-        output_path = self.path_manager.get_cmd_mappings_cache_path(self.domain_name, self.group_name)
+        output_path = self.path_manager.get_cmd_mappings_group_path_of_cache(self.domain_name, self.group_name)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         try:
@@ -355,7 +355,7 @@ def create_cmd_mappings_for_domain(domain_name: str) -> Dict[str, Dict[str, Any]
         Dict[str, Dict[str, Any]]: 所有程序组的映射数据
     """
     path_manager = PathManager.get_instance()
-    groups = path_manager.list_operation_groups(domain_name)
+    groups = path_manager.get_operation_groups_from_config(domain_name)
     
     all_mappings = {}
     for group_name in groups:
@@ -373,7 +373,7 @@ def create_cmd_mappings_for_all_domains() -> None:
     便捷函数：为所有领域的所有程序组创建命令映射
     """
     path_manager = PathManager.get_instance()
-    domains = path_manager.list_domains()
+    domains = path_manager.get_domains_from_config()
     
     for domain in domains:
         create_cmd_mappings_for_domain(domain)

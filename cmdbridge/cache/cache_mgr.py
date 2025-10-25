@@ -52,7 +52,7 @@ class CacheMgr:
         Returns:
             List[str]: 领域名称列表
         """
-        return self.path_manager.list_domains()
+        return self.path_manager.get_domains_from_config()
     
     def get_operation_groups(self, domain: str) -> List[str]:
         """
@@ -64,7 +64,7 @@ class CacheMgr:
         Returns:
             List[str]: 操作组名称列表
         """
-        return self.path_manager.list_operation_groups(domain)
+        return self.path_manager.get_operation_groups_from_config(domain)
     
     def get_all_operation_groups(self, domain: Optional[str] = None) -> List[str]:
         """
@@ -79,7 +79,7 @@ class CacheMgr:
         if domain:
             return self.get_operation_groups(domain)
         else:
-            return self.path_manager.list_all_operation_groups()
+            return self.path_manager.get_all_operation_groups_from_config()
     
     def get_cmd_mappings(self, domain: str, group_name: str) -> Dict[str, Any]:
         """
@@ -95,7 +95,7 @@ class CacheMgr:
         cache_key = f"{domain}.{group_name}"
         
         if cache_key not in self._cache_data:
-            cache_file = self.path_manager.get_cmd_mappings_cache_path(domain, group_name)
+            cache_file = self.path_manager.get_cmd_mappings_group_path_of_cache(domain, group_name)
             if cache_file.exists():
                 try:
                     with open(cache_file, 'rb') as f:
@@ -123,7 +123,7 @@ class CacheMgr:
         
         if cache_key not in self._cache_data:
             # 加载操作到程序映射
-            op_to_program_file = self.path_manager.get_operation_mappings_cache_path(domain) / "operation_to_program.toml"
+            op_to_program_file = self.path_manager.get_operation_mappings_domain_dir_of_cache(domain) / "operation_to_program.toml"
             operation_to_program = {}
             
             if op_to_program_file.exists():
@@ -137,7 +137,7 @@ class CacheMgr:
             
             # 加载所有程序的命令格式
             command_formats = {}
-            cache_dir = self.path_manager.get_operation_mappings_cache_path(domain)
+            cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache(domain)
             
             for command_file in cache_dir.glob("*_commands.toml"):
                 program_name = command_file.stem.replace("_commands", "")
@@ -352,11 +352,11 @@ class CacheMgr:
         """
         if cache_type == "cmd_mappings":
             # 检查是否有任何命令映射缓存文件
-            cache_dir = self.path_manager.get_cmd_mappings_cache_path(domain)
+            cache_dir = self.path_manager.get_cmd_mappings_domain_of_cache(domain)
             return cache_dir.exists() and any(cache_dir.glob("*.toml"))
         elif cache_type == "operation_mappings":
             # 检查操作映射缓存文件
-            cache_dir = self.path_manager.get_operation_mappings_cache_path(domain)
+            cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache(domain)
             op_to_program_file = cache_dir / "operation_to_program.toml"
             return op_to_program_file.exists()
         else:
@@ -414,7 +414,7 @@ class CacheMgr:
                 # 重新创建目录结构
                 if domain_name is None:
                     # 为所有领域重新创建目录
-                    domains = self.path_manager.list_domains()
+                    domains = self.path_manager.get_domains_from_config()
                     for domain in domains:
                         self.path_manager.ensure_cmd_mappings_domain_dir(domain)
                 else:
@@ -438,11 +438,11 @@ class CacheMgr:
             bool: 合并是否成功
         """
         try:
-            domains = self.path_manager.list_domains()
+            domains = self.path_manager.get_domains_from_config()
             success_count = 0
             
             for domain in domains:
-                domain_config_dir = self.path_manager.get_config_operation_group_path(domain)
+                domain_config_dir = self.path_manager.get_operation_domain_dir_of_config(domain)
                 if domain_config_dir.exists():
                     # 这里调用 CmdBridge 中的生成方法
                     # 在实际实现中，可能需要将生成逻辑移到 ConfigUtils 中

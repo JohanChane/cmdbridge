@@ -83,7 +83,7 @@ class ConfigMgr:
                 for domain_dir in domain_dirs:
                     # 检查是否是目录（排除 .domain.base.toml 文件）
                     if domain_dir.is_dir():
-                        dest_domain_dir = self.path_manager.get_config_operation_group_path(domain_dir.stem)
+                        dest_domain_dir = self.path_manager.get_operation_domain_dir_of_config(domain_dir.stem)
                         if dest_domain_dir.exists():
                             info(f"  跳过已存在的: {domain_dir.name}")
                         else:

@@ -51,7 +51,7 @@ class TestOperationMappingMgr:
     def _create_test_configs(self):
         """创建测试配置"""
         # 创建 package.domain 目录
-        package_domain_dir = self.path_manager.get_config_operation_group_path("package")
+        package_domain_dir = self.path_manager.get_operation_domain_dir_of_config("package")
         package_domain_dir.mkdir(parents=True, exist_ok=True)
         
         # 创建领域基础文件
@@ -189,7 +189,7 @@ class TestOperationMappingMgr:
         mapping_data = creator.create_mappings()
         
         # 验证缓存文件是否生成
-        cache_dir = self.path_manager.get_operation_mappings_cache_path("package")
+        cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache("package")
         
         # 检查 operation_to_program.toml 文件
         op_to_prog_file = cache_dir / "operation_to_program.toml"
@@ -230,7 +230,7 @@ class TestOperationMappingMgr:
         """测试空领域目录"""
         print("\n=== 测试空领域目录 ===")
         # 创建空领域目录
-        empty_domain_dir = self.path_manager.get_config_operation_group_path("empty")
+        empty_domain_dir = self.path_manager.get_operation_domain_dir_of_config("empty")
         empty_domain_dir.mkdir(parents=True, exist_ok=True)
         
         creator = OperationMappingMgr("empty")
@@ -247,7 +247,7 @@ class TestOperationMappingMgr:
         print("\n=== 测试只有基础文件的领域 ===")
         # 创建只有基础文件的领域
         base_only_domain = "base_only"
-        base_only_dir = self.path_manager.get_config_operation_group_path(base_only_domain)
+        base_only_dir = self.path_manager.get_operation_domain_dir_of_config(base_only_domain)
         base_only_dir.mkdir(parents=True, exist_ok=True)
         
         # 只创建基础文件，不创建程序文件
@@ -282,7 +282,7 @@ class TestOperationMappingMgr:
         assert success is True
         
         # 验证缓存文件生成
-        cache_dir = self.path_manager.get_operation_mappings_cache_path("package")
+        cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache("package")
         op_to_prog_file = cache_dir / "operation_to_program.toml"
         assert op_to_prog_file.exists()
     
@@ -299,7 +299,7 @@ class TestOperationMappingMgr:
         print("\n=== 测试为所有领域创建映射 ===")
         
         # 创建第二个测试领域
-        process_domain_dir = self.path_manager.get_config_operation_group_path("process")
+        process_domain_dir = self.path_manager.get_operation_domain_dir_of_config("process")
         process_domain_dir.mkdir(parents=True, exist_ok=True)
         
         process_config = {
@@ -321,10 +321,10 @@ class TestOperationMappingMgr:
         assert success is True
         
         # 验证两个领域的缓存文件都生成
-        package_cache_dir = self.path_manager.get_operation_mappings_cache_path("package")
+        package_cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache("package")
         assert (package_cache_dir / "operation_to_program.toml").exists()
         
-        process_cache_dir = self.path_manager.get_operation_mappings_cache_path("process")
+        process_cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache("process")
         assert (process_cache_dir / "operation_to_program.toml").exists()
     
     def test_operation_without_cmd_format(self):
@@ -343,7 +343,7 @@ class TestOperationMappingMgr:
             }
         }
         
-        invalid_file = self.path_manager.get_config_operation_group_path("package") / "invalid.toml"
+        invalid_file = self.path_manager.get_operation_domain_dir_of_config("package") / "invalid.toml"
         with open(invalid_file, 'wb') as f:
             tomli_w.dump(invalid_config, f)
         
@@ -361,7 +361,7 @@ class TestOperationMappingMgr:
         print("\n=== 测试文件解析错误 ===")
         
         # 创建无效的 TOML 文件
-        invalid_file = self.path_manager.get_config_operation_group_path("package") / "invalid.toml"
+        invalid_file = self.path_manager.get_operation_domain_dir_of_config("package") / "invalid.toml"
         with open(invalid_file, 'w') as f:
             f.write("invalid toml content [\n")
         
