@@ -16,129 +16,134 @@ from log import debug, info, warning, error
 class ConfigMgr:
     """配置工具类 - 管理配置和缓存目录，包含所有功能实现"""
     
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ConfigMgr, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self):
         """
         初始化配置工具
         """
+        if self._initialized:
+            return
+            
         # 直接使用 PathManager 单例
         self.path_manager = PathManager.get_instance()
-        debug("初始化 ConfigUtils")
+        debug("初始化 ConfigMgr")
+        self._initialized = True
     
-    def remove_cmd_mapping(self, domain_name: str = None) -> bool:
-        """
-        刷新命令映射缓存
-        
-        删除指定领域的缓存文件，然后重新生成
-        
-        Args:
-            domain_name: 领域名称，如果为 None 则刷新所有领域
-            
-        Returns:
-            bool: 操作是否成功
-        """
+    @classmethod
+    def get_instance(cls) -> 'ConfigMgr':
+        """获取单例实例"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+    
+    @classmethod
+    def reset_instance(cls):
+        """重置单例实例（主要用于测试）"""
+        cls._instance = None
+    
+    def init_config(self) -> bool:
+        """初始化用户配置"""
         try:
-            # 使用 PathManager 的删除方法
-            success = self.path_manager.rm_cmd_mappings_dir(domain_name)
+            # 获取包内默认配置路径
+            default_configs_dir = self.path_manager.get_default_configs_dir()
             
-            if success:
-                # 重新创建目录结构
-                if domain_name is None:
-                    # 为所有领域重新创建目录
-                    domains = self.path_manager.list_domains()
-                    for domain in domains:
-                        self.path_manager.ensure_cmd_mappings_domain_dir(domain)
-                else:
-                    # 为指定领域重新创建目录
-                    self.path_manager.ensure_cmd_mappings_domain_dir(domain_name)
-                
-                return True
-            else:
+            # 检查默认配置是否存在
+            if not default_configs_dir.exists():
+                error(f"默认配置目录不存在: {default_configs_dir}")
                 return False
-                
-        except Exception as e:
-            error(f"刷新命令映射失败: {e}")
-            return False
-    
-    def list_domains(self) -> List[str]:
-        """列出所有可用的领域名称"""
-        return self.path_manager.list_domains()
-    
-    def list_groups_in_domain(self, domain_name: str) -> List[str]:
-        """列出指定领域中的所有程序组名称"""
-        return self.path_manager.list_operation_groups(domain_name)
-    
-    def list_commands_in_domain_group(self, domain_name: str, group_name: str = None) -> List[str]:
-        """列出指定领域和程序组中的所有命令名称"""
-        commands = []
-        
-        # 优先从缓存获取
-        commands = self._get_commands_from_cache(domain_name, group_name)
-        
-        # 去重并排序
-        return sorted(list(set(commands)))
-    
-    def _get_commands_from_cache(self, domain: str, group: str = None) -> List[str]:
-        """从缓存获取命令"""
-        cmds = []
-        try:
-            if group is None:
-                # 获取所有组的命令
-                groups = self.path_manager.list_operation_groups(domain)
-                for grp in groups:
-                    cache_file = self.path_manager.get_operation_group_cache_path(domain, grp)
-                    if cache_file.exists():
-                        with open(cache_file, 'rb') as f:
-                            cached_data = tomli.load(f)
-                        operations = cached_data.get("operations", {})
-                        for operation_key in operations.keys():
-                            if '.' in operation_key:
-                                cmd_name, cmd_group = operation_key.split('.')
-                                cmds.append(cmd_name)
-                            else:
-                                cmds.append(operation_key)
+            
+            info(f"初始化配置目录: {self.path_manager.config_dir}")
+            info(f"初始化缓存目录: {self.path_manager.cache_dir}")
+            
+            # 复制领域基础文件
+            base_files = list(default_configs_dir.glob("*.domain.base.toml"))
+            if base_files:
+                info("复制领域基础文件...")
+                for base_file in base_files:
+                    dest_file = self.path_manager.config_dir / base_file.name
+                    if dest_file.exists():
+                        info(f"  跳过已存在的: {base_file.name}")
+                    else:
+                        shutil.copy2(base_file, dest_file)
+                        info(f"  已复制: {base_file.name}")
             else:
-                # 获取指定组的命令
-                cache_file = self.path_manager.get_operation_group_cache_path(domain, group)
-                if cache_file.exists():
-                    with open(cache_file, 'rb') as f:
-                        cached_data = tomli.load(f)
-                    operations = cached_data.get("operations", {})
-                    for operation_key in operations.keys():
-                        if '.' in operation_key:
-                            cmd_name, cmd_group = operation_key.split('.')
-                            if cmd_group == group:
-                                cmds.append(cmd_name)
+                warning("未找到任何领域基础文件")
+            
+            # 复制领域配置目录
+            domain_dirs = list(default_configs_dir.glob("*.domain"))
+            if domain_dirs:
+                info("复制领域配置目录...")
+                for domain_dir in domain_dirs:
+                    # 检查是否是目录（排除 .domain.base.toml 文件）
+                    if domain_dir.is_dir():
+                        dest_domain_dir = self.path_manager.get_config_operation_group_path(domain_dir.stem)
+                        if dest_domain_dir.exists():
+                            info(f"  跳过已存在的: {domain_dir.name}")
                         else:
-                            cmds.append(operation_key)
-        except Exception as e:
-            debug(f"从缓存获取命令失败: {e}")
-        return cmds
-    
-    def merge_all_domain_configs(self) -> bool:
-        """合并所有领域配置
-        
-        为每个领域生成 operation_mapping.toml 文件
-        
-        Returns:
-            bool: 合并是否成功
-        """
-        try:
-            domains = self.path_manager.list_domains()
-            success_count = 0
+                            shutil.copytree(domain_dir, dest_domain_dir)
+                            info(f"  已复制: {domain_dir.name}")
+            else:
+                warning("未找到任何领域配置目录")
             
-            for domain in domains:
-                domain_config_dir = self.path_manager.get_config_operation_group_path(domain)
-                if domain_config_dir.exists():
-                    # 这里调用 CmdBridge 中的生成方法
-                    # 在实际实现中，可能需要将生成逻辑移到 ConfigUtils 中
-                    debug(f"处理领域配置: {domain}")
-                    success_count += 1
+            # 复制 program_parser_configs
+            parser_configs_dir = default_configs_dir / "program_parser_configs"
+            if parser_configs_dir.exists():
+                dest_parser_dir = self.path_manager.program_parser_config_dir
+                
+                # 确保目标目录存在
+                dest_parser_dir.mkdir(parents=True, exist_ok=True)
+                
+                info(f"复制解析器配置从 {parser_configs_dir} 到 {dest_parser_dir}")
+                
+                # 复制所有 .toml 文件
+                config_files = list(parser_configs_dir.glob("*.toml"))
+                if config_files:
+                    copied_count = 0
+                    for config_file in config_files:
+                        dest_file = dest_parser_dir / config_file.name
+                        if not dest_file.exists():
+                            shutil.copy2(config_file, dest_file)
+                            info(f"  已复制: {config_file.name}")
+                            copied_count += 1
+                        else:
+                            info(f"  跳过已存在的: {config_file.name}")
+                    
+                    info(f"解析器配置复制完成: {copied_count} 个文件")
                 else:
-                    warning(f"领域配置目录不存在: {domain_config_dir}")
+                    warning(f"源目录中没有找到任何 .toml 文件: {parser_configs_dir}")
+            else:
+                error(f"源解析器配置目录不存在: {parser_configs_dir}")
+                return False
             
-            debug(f"合并了 {success_count}/{len(domains)} 个领域配置")
-            return success_count > 0
+            # 复制 config.toml
+            default_config_file = default_configs_dir / "config.toml"
+            if default_config_file.exists():
+                dest_config_file = self.path_manager.get_global_config_path()
+                if not dest_config_file.exists():
+                    shutil.copy2(default_config_file, dest_config_file)
+                    info("  已复制: config.toml")
+                else:
+                    info("  跳过已存在的: config.toml")
+            else:
+                # 创建默认的 config.toml
+                default_config = """[global_settings]
+    default_operation_domain = "package"
+    default_operation_group = "pacman"
+    """
+                dest_config_file = self.path_manager.get_global_config_path()
+                if not dest_config_file.exists():
+                    with open(dest_config_file, 'w') as f:
+                        f.write(default_config)
+                    info("  已创建默认: config.toml")
             
+            return True
         except Exception as e:
-            error(f"合并领域配置失败: {e}")
+            error(f"初始化配置失败: {e}")
             return False

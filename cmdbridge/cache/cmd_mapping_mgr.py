@@ -12,7 +12,7 @@ from parsers.getopt_parser import GetoptParser
 from parsers.config_loader import load_parser_config_from_file
 
 from log import debug, info, warning, error
-from .path_manager import PathManager
+from ..config.path_manager import PathManager
 
 
 class CmdMappingMgr:

@@ -6,6 +6,112 @@ from typing import List, Optional, Dict, Any
 from log import debug, info, warning, error
 
 
+class ConfigPathMgr:
+    """配置路径管理器 - 专门管理配置相关的路径（单例模式）"""
+    
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ConfigPathMgr, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
+    def __init__(self):
+        """初始化配置路径管理器"""
+        if self._initialized:
+            return
+            
+        self._initialized = True
+    
+    @classmethod
+    def get_instance(cls) -> 'ConfigPathMgr':
+        """获取单例实例"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+    
+    def get_config_operation_group_path(self, domain_name: str, base_config_dir: Path) -> Path:
+        """获取配置目录中的操作组文件路径"""
+        return base_config_dir / f"{domain_name}.domain"
+    
+    def get_program_parser_config_path(self, program_name: str, program_parser_config_dir: Path) -> Path:
+        """获取程序解析器配置文件路径"""
+        return program_parser_config_dir / f"{program_name}.toml"
+    
+    def get_operation_group_config_path(self, domain_name: str, group_name: str, base_config_dir: Path) -> Path:
+        """获取特定操作组的配置文件路径"""
+        return self.get_config_operation_group_path(domain_name, base_config_dir) / f"{group_name}.toml"
+    
+    def get_base_operation_config_path(self, domain_name: str, base_config_dir: Path) -> Path:
+        """获取基础操作配置文件路径"""
+        return self.get_config_operation_group_path(domain_name, base_config_dir) / "base.toml"
+    
+    def get_domain_base_config_path(self, domain_name: str, base_config_dir: Path) -> Path:
+        """获取领域基础配置文件路径"""
+        return base_config_dir / f"{domain_name}.domain.base.toml"
+
+
+class CachePathMgr:
+    """缓存路径管理器 - 专门管理缓存相关的路径（单例模式）"""
+    
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(CachePathMgr, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
+    def __init__(self):
+        """初始化缓存路径管理器"""
+        if self._initialized:
+            return
+            
+        self._initialized = True
+    
+    @classmethod
+    def get_instance(cls) -> 'CachePathMgr':
+        """获取单例实例"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+    
+    def get_cache_domain_path(self, domain_name: str, base_cache_dir: Path) -> Path:
+        """获取缓存目录中的操作组文件路径"""
+        return base_cache_dir / "domains" / f"{domain_name}.domain"
+    
+    def get_cmd_mappings_cache_path(self, domain_name: str, base_cache_dir: Path, group_name: Optional[str] = None) -> Path:
+        """获取命令映射缓存文件路径"""
+        if group_name:
+            return base_cache_dir / "cmd_mappings" / f"{domain_name}.domain" / f"{group_name}.toml"
+        else:
+            return base_cache_dir / "cmd_mappings" / f"{domain_name}.domain"
+        
+    def get_operation_mappings_cache_path(self, domain_name: str, base_cache_dir: Path, group_name: Optional[str] = None) -> Path:
+        """获取操作映射缓存文件路径"""
+        if group_name:
+            return base_cache_dir / "operation_mappings" / f"{domain_name}.domain" / f"{group_name}.toml"
+        else:
+            return base_cache_dir / "operation_mappings" / f"{domain_name}.domain"
+    
+    def get_operation_group_cache_path(self, domain_name: str, group_name: str, base_cache_dir: Path) -> Path:
+        """获取特定操作组的缓存文件路径"""
+        return self.get_cache_domain_path(domain_name, base_cache_dir) / f"{group_name}.toml"
+    
+    def get_cmd_mappings_domain_dir(self, domain_name: str, base_cache_dir: Path) -> Path:
+        """获取命令映射领域目录路径"""
+        return self.get_cmd_mappings_cache_path(domain_name, base_cache_dir)
+    
+    def get_operation_mappings_domain_dir(self, domain_name: str, base_cache_dir: Path) -> Path:
+        """获取操作映射领域目录路径"""
+        return self.get_operation_mappings_cache_path(domain_name, base_cache_dir)
+    
+    def get_group_mapping_cache_path(self, domain_name: str, group_name: str, base_cache_dir: Path) -> Path:
+        """获取程序组映射缓存文件路径"""
+        return self.get_cmd_mappings_domain_dir(domain_name, base_cache_dir) / f"{group_name}.toml"
+
+
 class PathManager:
     """路径管理器 - 统一管理配置和缓存目录路径（单例模式）"""
     
@@ -48,6 +154,10 @@ class PathManager:
         else:
             self._program_parser_config_dir = self._config_dir / "program_parser_configs"
         
+        # 初始化内部路径管理器
+        self._config_path_mgr = ConfigPathMgr.get_instance()
+        self._cache_path_mgr = CachePathMgr.get_instance()
+        
         # 确保目录存在
         self._ensure_directories()
         self._initialized = True
@@ -69,7 +179,7 @@ class PathManager:
     def reset_instance(cls):
         """重置单例实例（主要用于测试）"""
         cls._instance = None
-    
+
     def list_domains(self) -> List[str]:
         """
         列出所有可用的领域名称
@@ -149,138 +259,70 @@ class PathManager:
         return sorted(programs)
     
     def get_config_operation_group_path(self, domain_name: str) -> Path:
-        """
-        获取配置目录中的操作组文件路径
-        
-        Args:
-            domain_name: 领域名称
-            
-        Returns:
-            Path: 操作组配置文件路径
-        """
-        return self._config_dir / f"{domain_name}.domain"
-    
-    def get_cache_domain_path(self, domain_name: str) -> Path:
-        """
-        获取缓存目录中的操作组文件路径
-        
-        Args:
-            domain_name: 领域名称
-            
-        Returns:
-            Path: 操作组缓存文件路径
-        """
-        return self._cache_dir / "domains" / f"{domain_name}.domain"
+        """获取配置目录中的操作组文件路径"""
+        return self._config_path_mgr.get_config_operation_group_path(domain_name, self._config_dir)
     
     def get_program_parser_config_path(self, program_name: str) -> Path:
-        """
-        获取程序解析器配置文件路径
-        
-        Args:
-            program_name: 程序名称
-            
-        Returns:
-            Path: 解析器配置文件路径
-        """
-        return self._program_parser_config_dir / f"{program_name}.toml"
+        """获取程序解析器配置文件路径"""
+        return self._config_path_mgr.get_program_parser_config_path(program_name, self._program_parser_config_dir)
     
-    def get_cmd_mappings_cache_path(self, domain_name: str, group_name: Optional[str] = None) -> Path:
-        """
-        获取命令映射缓存文件路径
-        
-        Args:
-            domain_name: 领域名称
-            group_name: 程序组名称，如果为 None 则返回目录路径
-            
-        Returns:
-            Path: 命令映射缓存文件路径或目录路径
-        """
-        if group_name:
-            return self._cache_dir / "cmd_mappings" / f"{domain_name}.domain" / f"{group_name}.toml"
-        else:
-            return self._cache_dir / "cmd_mappings" / f"{domain_name}.domain"
-        
-    def get_operation_mappings_cache_path(self, domain_name: str, group_name: Optional[str] = None) -> Path:
-        """
-        获取操作映射缓存文件路径
-        
-        Args:
-            domain_name: 领域名称
-            group_name: 程序组名称，如果为 None 则返回目录路径
-            
-        Returns:
-            Path: 操作映射缓存文件路径或目录路径
-        """
-        if group_name:
-            return self._cache_dir / "operation_mappings" / f"{domain_name}.domain" / f"{group_name}.toml"
-        else:
-            return self._cache_dir / "operation_mappings" / f"{domain_name}.domain"
-
     def get_operation_group_config_path(self, domain_name: str, group_name: str) -> Path:
-        """ 
-        获取特定操作组的配置文件路径
-        
-        Args:
-            domain_name: 领域名称
-            group_name: 操作组名称
-            
-        Returns:
-            Path: 操作组配置文件路径
-        """
-        return self.get_config_operation_group_path(domain_name) / f"{group_name}.toml"
-    
-    def get_operation_group_cache_path(self, domain_name: str, group_name: str) -> Path:
-        """
-        获取特定操作组的缓存文件路径
-        
-        Args:
-            domain_name: 领域名称
-            group_name: 操作组名称
-            
-        Returns:
-            Path: 操作组缓存文件路径
-        """
-        return self.get_cache_domain_path(domain_name) / f"{group_name}.toml"
+        """获取特定操作组的配置文件路径"""
+        return self._config_path_mgr.get_operation_group_config_path(domain_name, group_name, self._config_dir)
     
     def get_base_operation_config_path(self, domain_name: str) -> Path:
-        """
-        获取基础操作配置文件路径
+        """获取基础操作配置文件路径"""
+        return self._config_path_mgr.get_base_operation_config_path(domain_name, self._config_dir)
+    
+    def get_domain_base_config_path(self, domain_name: str) -> Path:
+        """获取领域基础配置文件路径"""
+        return self._config_path_mgr.get_domain_base_config_path(domain_name, self._config_dir)
+    
+    def get_cache_domain_path(self, domain_name: str) -> Path:
+        """获取缓存目录中的操作组文件路径"""
+        return self._cache_path_mgr.get_cache_domain_path(domain_name, self._cache_dir)
+    
+    def get_cmd_mappings_cache_path(self, domain_name: str, group_name: Optional[str] = None) -> Path:
+        """获取命令映射缓存文件路径"""
+        return self._cache_path_mgr.get_cmd_mappings_cache_path(domain_name, self._cache_dir, group_name)
         
-        Args:
-            domain_name: 领域名称
-            
-        Returns:
-            Path: 基础操作配置文件路径
-        """
-        return self.get_config_operation_group_path(domain_name) / "base.toml"
+    def get_operation_mappings_cache_path(self, domain_name: str, group_name: Optional[str] = None) -> Path:
+        """获取操作映射缓存文件路径"""
+        return self._cache_path_mgr.get_operation_mappings_cache_path(domain_name, self._cache_dir, group_name)
+    
+    def get_operation_group_cache_path(self, domain_name: str, group_name: str) -> Path:
+        """获取特定操作组的缓存文件路径"""
+        return self._cache_path_mgr.get_operation_group_cache_path(domain_name, group_name, self._cache_dir)
     
     def get_cmd_mappings_domain_dir(self, domain_name: str) -> Path:
         """获取命令映射领域目录路径"""
-        return self.get_cmd_mappings_cache_path(domain_name)
+        return self._cache_path_mgr.get_cmd_mappings_domain_dir(domain_name, self._cache_dir)
+    
     def get_operation_mappings_domain_dir(self, domain_name: str) -> Path:
         """获取操作映射领域目录路径"""
-        return self.get_operation_mappings_cache_path(domain_name)
-
+        return self._cache_path_mgr.get_operation_mappings_domain_dir(domain_name, self._cache_dir)
+    
+    def get_group_mapping_cache_path(self, domain_name: str, group_name: str) -> Path:
+        """获取程序组映射缓存文件路径"""
+        return self._cache_path_mgr.get_group_mapping_cache_path(domain_name, group_name, self._cache_dir)
+    
     def ensure_cmd_mappings_domain_dir(self, domain_name: str) -> None:
-        """
-        确保命令映射领域目录存在
-        
-        Args:
-            domain_name: 领域名称
-        """
+        """确保命令映射领域目录存在"""
         cmd_mappings_dir = self.get_cmd_mappings_domain_dir(domain_name)
         cmd_mappings_dir.mkdir(parents=True, exist_ok=True)
     
-    def rm_cmd_mappings_dir(self, domain_name: Optional[str] = None) -> bool:
-        """
-        删除命令映射目录
+    def ensure_cache_directories(self, domain_name: str) -> None:
+        """确保缓存目录结构存在"""
+        # 确保命令映射目录存在
+        cmd_mappings_dir = self._cache_dir / "cmd_mappings" / domain_name
+        cmd_mappings_dir.mkdir(parents=True, exist_ok=True)
         
-        Args:
-            domain_name: 领域名称，如果为 None 则删除所有命令映射目录
-            
-        Returns:
-            bool: 删除是否成功
-        """
+        # 确保领域缓存目录存在
+        domain_cache_dir = self._cache_dir / "domains" / f"{domain_name}.domain"
+        domain_cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    def rm_cmd_mappings_dir(self, domain_name: Optional[str] = None) -> bool:
+        """删除命令映射目录"""
         try:
             if domain_name is None:
                 # 删除所有命令映射目录
@@ -301,15 +343,7 @@ class PathManager:
             return False
 
     def rm_domain_cache_dir(self, domain_name: Optional[str] = None) -> bool:
-        """
-        删除领域缓存目录
-        
-        Args:
-            domain_name: 领域名称，如果为 None 则删除所有领域缓存目录
-            
-        Returns:
-            bool: 删除是否成功
-        """
+        """删除领域缓存目录"""
         try:
             if domain_name is None:
                 # 删除所有领域缓存目录
@@ -330,12 +364,7 @@ class PathManager:
             return False
 
     def rm_all_cache_dirs(self) -> bool:
-        """
-        删除所有缓存目录
-        
-        Returns:
-            bool: 删除是否成功
-        """
+        """删除所有缓存目录"""
         try:
             if self._cache_dir.exists():
                 shutil.rmtree(self._cache_dir)
@@ -363,98 +392,43 @@ class PathManager:
         """获取程序解析器配置目录路径"""
         return self._program_parser_config_dir
     
+    def get_package_dir(self) -> Path:
+        """
+        获取包目录路径
+        
+        Returns:
+            Path: 包目录路径
+        """
+        return Path(__file__).parent.parent.parent
+    
     def get_global_config_path(self) -> Path:
         """获取全局配置文件路径"""
         return self._config_dir / "config.toml"
     
-    def ensure_cache_directories(self, domain_name: str) -> None:
+    def get_default_configs_dir(self) -> Path:
         """
-        确保缓存目录结构存在
+        获取包内默认配置目录路径
         
-        Args:
-            domain_name: 领域名称
+        Returns:
+            Path: 默认配置目录路径
         """
-        # 确保命令映射目录存在
-        cmd_mappings_dir = self._cache_dir / "cmd_mappings" / domain_name
-        cmd_mappings_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 确保领域缓存目录存在
-        domain_cache_dir = self._cache_dir / "domains" / f"{domain_name}.domain"
-        domain_cache_dir.mkdir(parents=True, exist_ok=True)
+        return self.get_package_dir() / "configs"
     
     def domain_exists(self, domain_name: str) -> bool:
-        """
-        检查领域是否存在
-        
-        Args:
-            domain_name: 领域名称
-            
-        Returns:
-            bool: 领域是否存在
-        """
+        """检查领域是否存在"""
         domain_path = self.get_config_operation_group_path(domain_name)
         return domain_path.exists() and domain_path.is_dir()
     
     def operation_group_exists(self, domain_name: str, group_name: str) -> bool:
-        """
-        检查操作组是否存在
-        
-        Args:
-            domain_name: 领域名称
-            group_name: 操作组名称
-            
-        Returns:
-            bool: 操作组是否存在
-        """
+        """检查操作组是否存在"""
         config_path = self.get_operation_group_config_path(domain_name, group_name)
         return config_path.exists()
     
     def program_parser_config_exists(self, program_name: str) -> bool:
-        """
-        检查程序解析器配置是否存在
-        
-        Args:
-            program_name: 程序名称
-            
-        Returns:
-            bool: 配置是否存在
-        """
+        """检查程序解析器配置是否存在"""
         config_path = self.get_program_parser_config_path(program_name)
         return config_path.exists()
     
-    def get_group_mapping_cache_path(self, domain_name: str, group_name: str) -> Path:
-        """
-        获取程序组映射缓存文件路径
-        
-        Args:
-            domain_name: 领域名称
-            group_name: 程序组名称
-            
-        Returns:
-            Path: 程序组映射缓存文件路径
-        """
-        return self.get_cmd_mappings_domain_dir(domain_name) / f"{group_name}.toml"
-    
-    def get_domain_base_config_path(self, domain_name: str) -> Path:
-        """
-        获取领域基础配置文件路径
-        
-        Args:
-            domain_name: 领域名称
-            
-        Returns:
-            Path: 领域基础配置文件路径
-        """
-        return self._config_dir / f"{domain_name}.domain.base.toml"
-
     def domain_base_config_exists(self, domain_name: str) -> bool:
-        """
-        检查领域基础配置文件是否存在
-        
-        Args:
-            domain_name: 领域名称
-            
-        Returns:
-            bool: 基础配置文件是否存在
-        """
+        """检查领域基础配置文件是否存在"""
         return self.get_domain_base_config_path(domain_name).exists()

@@ -15,7 +15,7 @@ import sys
 project_root = os.path.join(os.path.dirname(__file__), '../..')
 sys.path.insert(0, project_root)
 
-from cmdbridge.config.operation_mapping_mgr import OperationMappingMgr, create_operation_mappings_for_domain, create_operation_mappings_for_all_domains
+from cmdbridge.cache.operation_mapping_mgr import OperationMappingMgr, create_operation_mappings_for_domain, create_operation_mappings_for_all_domains
 from cmdbridge.config.path_manager import PathManager
 from log import set_level, LogLevel
 

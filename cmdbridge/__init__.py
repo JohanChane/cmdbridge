@@ -9,7 +9,7 @@ __author__ = "CmdBridge Developer"
 from .cli.cli import main, cli  # 更新导入路径
 from .cli.cli_helper import CmdBridgeCLIHelper, create_cli_helper  # 更新导入路径
 from .core.cmd_mapping import CmdMapping
-from .config.cmd_mapping_mgr import CmdMappingMgr
+from .cache.cmd_mapping_mgr import CmdMappingMgr
 from .cmdbridge import CmdBridge
 
 # 定义公开的API

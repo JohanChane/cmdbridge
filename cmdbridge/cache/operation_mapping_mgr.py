@@ -11,7 +11,7 @@ else:
     import tomli
 
 from log import debug, info, warning, error
-from .path_manager import PathManager
+from ..config.path_manager import PathManager
 
 
 class OperationMappingMgr:

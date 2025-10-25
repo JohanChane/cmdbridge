@@ -7,8 +7,9 @@ from typing import Optional, List, Dict, Any
 import tomli
 
 from .config.path_manager import PathManager
+from cmdbridge.cache.cache_mgr import CacheMgr
 from cmdbridge.config.config_mgr import ConfigMgr
-from .config.cmd_mapping_mgr import CmdMappingMgr
+from .cache.cmd_mapping_mgr import CmdMappingMgr
 from .core.cmd_mapping import CmdMapping
 from .core.operation_mapping import OperationMapping
 from log import debug, info, warning, error
@@ -22,6 +23,7 @@ class CmdBridge:
         self.path_manager = PathManager()
         
         # 初始化配置工具
+        self.cache_mgr = CacheMgr.get_instance()
         self.config_mgr = ConfigMgr()
 
         # 初始化命令映射器
@@ -192,11 +194,11 @@ class CmdBridge:
     def refresh_cmd_mappings(self) -> bool:
         """刷新所有命令映射缓存"""
         try:
-            success = self.config_mgr.remove_cmd_mapping()
+            success = self.cache_mgr.remove_cmd_mapping()
             if success:
                 # 先合并所有领域配置到缓存目录
                 info("合并领域配置到缓存...")
-                merge_success = self.config_mgr.merge_all_domain_configs()
+                merge_success = self.cache_mgr.merge_all_domain_configs()
                 if not merge_success:
                     warning("合并领域配置失败")
                 
@@ -235,7 +237,7 @@ class CmdBridge:
                                 continue
                         
                         # 使用 OperationMappingCreator 生成操作映射文件
-                        from .config.operation_mapping_mgr import create_operation_mappings_for_domain
+                        from .cache.operation_mapping_mgr import create_operation_mappings_for_domain
                         op_mapping_success = create_operation_mappings_for_domain(domain)
                         if op_mapping_success:
                             info(f"✅ 已完成 {domain} 领域的操作映射生成")
@@ -254,101 +256,4 @@ class CmdBridge:
 
     def init_config(self) -> bool:
         """初始化用户配置"""
-        try:
-            # 获取包内默认配置路径
-            package_dir = Path(__file__).parent.parent
-            default_configs_dir = package_dir / "configs"
-            
-            # 检查默认配置是否存在
-            if not default_configs_dir.exists():
-                error(f"默认配置目录不存在: {default_configs_dir}")
-                return False
-            
-            info(f"初始化配置目录: {self.path_manager.config_dir}")
-            info(f"初始化缓存目录: {self.path_manager.cache_dir}")
-            
-            # 复制领域基础文件
-            base_files = list(default_configs_dir.glob("*.domain.base.toml"))
-            if base_files:
-                info("复制领域基础文件...")
-                for base_file in base_files:
-                    dest_file = self.path_manager.config_dir / base_file.name
-                    if dest_file.exists():
-                        info(f"  跳过已存在的: {base_file.name}")
-                    else:
-                        shutil.copy2(base_file, dest_file)
-                        info(f"  已复制: {base_file.name}")
-            else:
-                warning("未找到任何领域基础文件")
-            
-            # 复制领域配置目录
-            domain_dirs = list(default_configs_dir.glob("*.domain"))
-            if domain_dirs:
-                info("复制领域配置目录...")
-                for domain_dir in domain_dirs:
-                    # 检查是否是目录（排除 .domain.base.toml 文件）
-                    if domain_dir.is_dir():
-                        dest_domain_dir = self.path_manager.get_config_operation_group_path(domain_dir.stem)
-                        if dest_domain_dir.exists():
-                            info(f"  跳过已存在的: {domain_dir.name}")
-                        else:
-                            shutil.copytree(domain_dir, dest_domain_dir)
-                            info(f"  已复制: {domain_dir.name}")
-            else:
-                warning("未找到任何领域配置目录")
-            
-            # 复制 program_parser_configs
-            parser_configs_dir = default_configs_dir / "program_parser_configs"
-            if parser_configs_dir.exists():
-                dest_parser_dir = self.path_manager.program_parser_config_dir
-                
-                # 确保目标目录存在
-                dest_parser_dir.mkdir(parents=True, exist_ok=True)
-                
-                info(f"复制解析器配置从 {parser_configs_dir} 到 {dest_parser_dir}")
-                
-                # 复制所有 .toml 文件
-                config_files = list(parser_configs_dir.glob("*.toml"))
-                if config_files:
-                    copied_count = 0
-                    for config_file in config_files:
-                        dest_file = dest_parser_dir / config_file.name
-                        if not dest_file.exists():
-                            shutil.copy2(config_file, dest_file)
-                            info(f"  已复制: {config_file.name}")
-                            copied_count += 1
-                        else:
-                            info(f"  跳过已存在的: {config_file.name}")
-                    
-                    info(f"解析器配置复制完成: {copied_count} 个文件")
-                else:
-                    warning(f"源目录中没有找到任何 .toml 文件: {parser_configs_dir}")
-            else:
-                error(f"源解析器配置目录不存在: {parser_configs_dir}")
-                return False
-            
-            # 复制 config.toml
-            default_config_file = default_configs_dir / "config.toml"
-            if default_config_file.exists():
-                dest_config_file = self.path_manager.get_global_config_path()
-                if not dest_config_file.exists():
-                    shutil.copy2(default_config_file, dest_config_file)
-                    info("  已复制: config.toml")
-                else:
-                    info("  跳过已存在的: config.toml")
-            else:
-                # 创建默认的 config.toml
-                default_config = """[global_settings]
-    default_operation_domain = "package"
-    default_operation_group = "pacman"
-    """
-                dest_config_file = self.path_manager.get_global_config_path()
-                if not dest_config_file.exists():
-                    with open(dest_config_file, 'w') as f:
-                        f.write(default_config)
-                    info("  已创建默认: config.toml")
-            
-            return True
-        except Exception as e:
-            error(f"初始化配置失败: {e}")
-            return False  
+        return self.config_mgr.init_config()
