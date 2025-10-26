@@ -10,7 +10,7 @@ else:
 from cmdbridge.config.path_manager import PathManager
 from cmdbridge.cache.cache_mgr import CacheMgr
 from log import debug, warning, error
-from cmdbridge.cli_common import CommonCompletorHelper
+from ..cli_common import CommonCompletorHelper
 
 
 class CompletorHelper:

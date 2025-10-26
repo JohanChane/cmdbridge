@@ -3,8 +3,8 @@
 import click
 import sys
 
-from .cli_helper import CmdBridgeCLIHelper, create_cli_helper
-from .completor import DomainType, SourceGroupType, DestGroupType, CommandType, OperationType
+from .cli_helper import CmdBridgeCLIHelper
+from ..cli_common.completor import DomainType, SourceGroupType, DestGroupType, CommandType, OperationType
 
 
 # Click 命令行接口
@@ -21,7 +21,7 @@ def cli(ctx, debug):
         cmdbridge op -- install vim git
     """
     # 创建 CLI 辅助类实例
-    cli_helper = create_cli_helper()
+    cli_helper = CmdBridgeCLIHelper()
     
     # 设置日志级别
     cli_helper.handle_debug_mode(debug)

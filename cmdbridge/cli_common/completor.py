@@ -1,7 +1,6 @@
 import sys
-from typing import List, Optional, Any, Callable
 import click
-from .cmpletor_helper import CompletorHelper
+from .completor_helper import CommonCompletorHelper
 from log import get_out, set_out
 
 
@@ -23,7 +22,7 @@ class DomainType(click.ParamType):
 
     @completion_handler
     def shell_complete(self, ctx: click.Context, param: click.Parameter, incomplete: str):
-        domains = CompletorHelper.get_domains()
+        domains = CommonCompletorHelper.get_domains()
         return [
             click.shell_completion.CompletionItem(d)
             for d in domains
@@ -40,9 +39,9 @@ class SourceGroupType(click.ParamType):
 
         domain = ctx.params.get("domain")
         if domain:
-            groups = CompletorHelper.get_operation_groups(domain)
+            groups = CommonCompletorHelper.get_operation_groups(domain)
         else:
-            groups = CompletorHelper.get_all_operation_groups()
+            groups = CommonCompletorHelper.get_all_operation_groups()
 
         return [
             click.shell_completion.CompletionItem(g)
@@ -60,9 +59,9 @@ class DestGroupType(click.ParamType):
 
         domain = ctx.params.get("domain")
         if domain:
-            groups = CompletorHelper.get_operation_groups(domain)
+            groups = CommonCompletorHelper.get_operation_groups(domain)
         else:
-            groups = CompletorHelper.get_all_operation_groups()
+            groups = CommonCompletorHelper.get_all_operation_groups()
             
         return [
             click.shell_completion.CompletionItem(g)
@@ -80,9 +79,9 @@ class CommandType(click.ParamType):
         domain = ctx.params.get("domain")
         source_group = ctx.params.get("source_group")
         if source_group:
-            commands = CompletorHelper.get_commands(domain, source_group)
+            commands = CommonCompletorHelper.get_commands(domain, source_group)
         else:
-            commands = CompletorHelper.get_all_commands(domain)
+            commands = CommonCompletorHelper.get_all_commands(domain)
 
         return [
             click.shell_completion.CompletionItem(g)
@@ -101,9 +100,9 @@ class OperationType(click.ParamType):
         dest_group = ctx.params.get("dest_group")
         
         if dest_group:
-            operations = CompletorHelper.get_operation_names(domain, dest_group)
+            operations = CommonCompletorHelper.get_operation_names(domain, dest_group)
         else:
-            operations = CompletorHelper.get_all_operation_names(domain)
+            operations = CommonCompletorHelper.get_all_operation_names(domain)
 
         return [
             click.shell_completion.CompletionItem(g)

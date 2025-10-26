@@ -12,7 +12,7 @@ from cmdbridge.cache.cache_mgr import CacheMgr
 from log import debug, warning, error
 
 
-class CompletorHelper:
+class CommonCompletorHelper:
     """提供动态补全数据，从缓存中获取实时配置"""
 
     @staticmethod
@@ -59,9 +59,9 @@ class CompletorHelper:
             
             # 如果没有指定领域，尝试自动检测
             if not domain:
-                domains = CompletorHelper.get_domains()
+                domains = CommonCompletorHelper.get_domains()
                 for dom in domains:
-                    if source_group in CompletorHelper.get_operation_groups(dom):
+                    if source_group in CommonCompletorHelper.get_operation_groups(dom):
                         domain = dom
                         break
             
@@ -95,19 +95,19 @@ class CompletorHelper:
             if not domain:
                 # 如果没有指定领域，获取所有领域的命令
                 all_commands = []
-                domains = CompletorHelper.get_domains()
+                domains = CommonCompletorHelper.get_domains()
                 for dom in domains:
-                    groups = CompletorHelper.get_operation_groups(dom)
+                    groups = CommonCompletorHelper.get_operation_groups(dom)
                     for group in groups:
-                        commands = CompletorHelper.get_commands(dom, group)
+                        commands = CommonCompletorHelper.get_commands(dom, group)
                         all_commands.extend(commands)
                 return list(set(all_commands))
             else:
                 # 获取指定领域的所有命令
                 all_commands = []
-                groups = CompletorHelper.get_operation_groups(domain)
+                groups = CommonCompletorHelper.get_operation_groups(domain)
                 for group in groups:
-                    commands = CompletorHelper.get_commands(domain, group)
+                    commands = CommonCompletorHelper.get_commands(domain, group)
                     all_commands.extend(commands)
                 return list(set(all_commands))
                 
@@ -134,7 +134,7 @@ class CompletorHelper:
             else:
                 # 获取所有操作
                 all_ops = []
-                domains = CompletorHelper.get_domains()
+                domains = CommonCompletorHelper.get_domains()
                 for dom in domains:
                     ops = cache_mgr.get_all_operations(dom)
                     all_ops.extend(ops)
@@ -147,7 +147,7 @@ class CompletorHelper:
     @staticmethod
     def get_all_operation_names(domain: Optional[str] = None) -> List[str]:
         """获取所有操作名称（兼容性方法）"""
-        return CompletorHelper.get_operation_names(domain, None)
+        return CommonCompletorHelper.get_operation_names(domain, None)
 
     @staticmethod
     def get_operation_with_params(domain: str, operation_name: str, dest_group: str) -> str:
