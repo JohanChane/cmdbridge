@@ -45,3 +45,8 @@ nargs = "0"
 name = "my"
 opt = ["", "--my"]
 nargs = "0"
+
+[[pacman.arguments]]
+name = "config"
+opt = ["", "--config"]
+nargs = "1"
