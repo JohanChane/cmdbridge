@@ -38,9 +38,9 @@ def cli(ctx, debug):
 @click.option('-d', '--domain', type= DomainType(), help='领域名称')
 @click.option('-s', '--source-group', type=SourceGroupType(), help='源程序组（只有无法识别才需要使用）')
 @click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
-@click.argument('command', nargs=1, type=CommandType())
+@click.argument('command', nargs=-1, type=CommandType())
 @click.pass_context
-def map(ctx, domain, source_group, dest_group):
+def map(ctx, domain, source_group, dest_group, command):
     """映射完整命令到 line editor
     
     使用 -- 分隔符将命令参数与 cmdbridge-edit 选项分开：
@@ -49,18 +49,18 @@ def map(ctx, domain, source_group, dest_group):
     cli_helper = ctx.obj
     
     # 获取 -- 后面的参数（从 ctx.meta 中获取）
-    command_args = ctx.meta.get('protected_args', [])
+    # command_args = ctx.meta.get('protected_args', [])
     
-    success = cli_helper.handle_map_command(domain, source_group, dest_group, command_args)
+    success = cli_helper.handle_map_command(domain, source_group, dest_group, command)
     cli_helper.exit_with_success_code(success)
 
 
 @cli.command()
 @click.option('-d', '--domain', help='领域名称')
 @click.option('-t', '--dest-group', help='目标程序组')
-@click.argument('operation', nargs=1, type=OperationType())
+@click.argument('operation', nargs=-1, type=OperationType())
 @click.pass_context
-def op(ctx, domain, dest_group):
+def op(ctx, domain, dest_group, operation):
     """映射操作和参数到 line editor
     
     使用 -- 分隔符将操作参数与 cmdbridge-edit 选项分开：
@@ -69,9 +69,9 @@ def op(ctx, domain, dest_group):
     cli_helper = ctx.obj
     
     # 获取 -- 后面的参数（从 ctx.meta 中获取）
-    operation_args = ctx.meta.get('protected_args', [])
+    # operation_args = ctx.meta.get('protected_args', [])
     
-    success = cli_helper.handle_map_operation(domain, dest_group, operation_args)
+    success = cli_helper.handle_map_operation(domain, dest_group, operation)
     cli_helper.exit_with_success_code(success)
 
 

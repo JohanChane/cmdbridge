@@ -3,27 +3,34 @@
 import click
 import sys
 
-from .cli_helper import CmdBridgeCLIHelper, CustomCommand, create_cli_helper
-from ..click_ext.params import domain_option, dest_group_option, operation_argument, source_group_option, command_argument
-from ..click_ext.completor import DynamicCompleter
+from .cli_helper import CmdBridgeCLIHelper, create_cli_helper
+from .completor import DomainType, SourceGroupType, DestGroupType, CommandType, OperationType
 
 
 # Click 命令行接口
-@click.group(invoke_without_command=True) 
+@click.group(invoke_without_command=True)
 @click.option('--debug', is_flag=True, help='启用调试模式')
 @click.pass_context
 def cli(ctx, debug):
-    """cmdbridge: 输出映射后的命令"""
+    """cmdbridge: 输出映射后的命令
+    
+    使用 -- 分隔符将命令参数与 cmdbridge 选项分开。
+    
+    示例:
+        cmdbridge map -- pacman -S vim
+        cmdbridge op -- install vim git
+    """
     # 创建 CLI 辅助类实例
     cli_helper = create_cli_helper()
     
     # 设置日志级别
     cli_helper.handle_debug_mode(debug)
     
+    # 如果没有子命令，显示帮助信息
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
         ctx.exit(0)
-
+    
     ctx.obj = cli_helper
 
 
@@ -62,8 +69,8 @@ def refresh(cli_helper):
 
 
 @list.command()
-@domain_option()
-@dest_group_option()
+@click.option('-d', '--domain', type=DomainType(), help='领域名称')
+@click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
 @click.pass_obj
 def op_cmds(cli_helper, domain, dest_group):
     """输出动作映射
@@ -76,9 +83,9 @@ def op_cmds(cli_helper, domain, dest_group):
 
 
 @list.command()
-@domain_option()
-@source_group_option()
-@dest_group_option()
+@click.option('-d', '--domain', type=DomainType(), help='领域名称')
+@click.option('-s', '--source-group', type=SourceGroupType(), help='源程序组')
+@click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
 @click.pass_obj
 def cmd_mappings(cli_helper, domain, source_group, dest_group):
     """输出命令之间的映射
@@ -87,51 +94,48 @@ def cmd_mappings(cli_helper, domain, source_group, dest_group):
         cmdbridge list cmd-mappings
         cmdbridge list -d package -s pacman -t apt cmd-mappings
     """
-    cli_helper.handle_list_cmd_mappings(domain, source_group, dest_group)   
+    cli_helper.handle_list_cmd_mappings(domain, source_group, dest_group)
 
-def get_map_completions(ctx, args, incomplete):
-    """map 命令的补全回调"""
-    # 这里实现 map 命令的补全逻辑
-    return DynamicCompleter.get_command_completions(ctx, None, incomplete)
 
-def get_op_completions(ctx, args, incomplete):
-    """op 命令的补全回调"""
-    # 这里实现 op 命令的补全逻辑
-    return DynamicCompleter.get_operation_completions(ctx, None, incomplete)
-
-# 暂时恢复 map 命令到工作状态
-@cli.command(cls=CustomCommand)
-@domain_option()
-@source_group_option() 
-@dest_group_option()
-@command_argument()  # 恢复这个
+@cli.command()
+@click.option('-d', '--domain', type=DomainType(), help='领域名称')
+@click.option('-s', '--source-group', type=SourceGroupType(), help='源程序组（只有无法识别才需要使用）')
+@click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
+@click.argument('command', nargs=-1, type=CommandType())
 @click.pass_context
-def map(ctx, domain, source_group, dest_group, command_parts):  # 恢复这个参数
-    """映射完整命令"""
+def map(ctx, domain, source_group, dest_group, command):
+    """映射完整命令
+    
+    使用 -- 分隔符将命令参数与 cmdbridge 选项分开：
+    cmdbridge map -t apt -- pacman -S vim
+    """
+
     cli_helper = ctx.obj
     
     # 获取 -- 后面的参数（从 ctx.meta 中获取）
-    command_args = ctx.meta.get('protected_args', [])
-
-    # command_parts 已经通过补全参数获取
-    success = cli_helper.handle_map_command(domain, source_group, dest_group, command_args)
+    # command_args = ctx.meta.get('protected_args', [])
+    
+    success = cli_helper.handle_map_command(domain, source_group, dest_group, command)
     sys.exit(0 if success else 1)
 
-@cli.command(cls=CustomCommand)
-@domain_option()
-@dest_group_option()
-@operation_argument()
+
+@cli.command()
+@click.option('-d', '--domain', type=DomainType(), help='领域名称')
+@click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
+@click.argument('operation', nargs=-1, type=OperationType())
 @click.pass_context
-def op(ctx, domain, dest_group, operation_parts):
-    import sys
+def op(ctx, domain, dest_group, operation):
+    """映射操作和参数
     
+    使用 -- 分隔符将操作参数与 cmdbridge 选项分开：
+    cmdbridge op -t apt -- install vim git
+    """
     cli_helper = ctx.obj
-    operation_args = ctx.meta.get('protected_args', [])
     
-    if operation_parts:
-        operation_args = list(operation_parts) + operation_args
-        
-    success = cli_helper.handle_map_operation(domain, dest_group, operation_args)
+    # 获取 -- 后面的参数（从 ctx.meta 中获取）
+    # operation_args = ctx.meta.get('protected_args', [])
+    
+    success = cli_helper.handle_map_operation(domain, dest_group, operation)
     sys.exit(0 if success else 1)
 
 
