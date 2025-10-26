@@ -7,7 +7,7 @@ from .types import CommandToken, TokenType, CommandNode, CommandArg, ArgType, Pa
 from .base import BaseParser
 
 from log import debug, info, warning, error
-
+from .utils import Utils
 
 class ArgparseParser(BaseParser):
     """argparse 风格命令行解析器"""
@@ -256,7 +256,7 @@ class ArgparseParser(BaseParser):
         debug(f"命令树构建完成")
         # 添加命令树打印
         debug("\n🌳 命令树结构:")
-        self._print_command_tree(root_node)
+        Utils.print_command_tree(root_node)
         debug("")
 
         return root_node
@@ -579,42 +579,3 @@ class ArgparseParser(BaseParser):
                 validation_passed = False
         
         return validation_passed
-    
-    def _print_command_tree(self, node: CommandNode, level: int = 0):
-        """打印命令树结构（用于调试）"""
-        indent = "  " * level
-        debug(f"{indent}└── {node.name}")
-        
-        # 打印当前节点的参数
-        for arg in node.arguments:
-            arg_info = self._format_command_arg(arg)
-            debug(f"{indent}    ├── {arg_info}")
-        
-        # 递归打印子命令
-        if node.subcommand:
-            self._print_command_tree(node.subcommand, level + 1)
-
-    def _format_command_arg(self, arg: CommandArg) -> str:
-        """格式化 CommandArg 为可读字符串"""
-        parts = []
-        
-        # 参数类型
-        parts.append(f"type={arg.node_type.value}")
-        
-        # 选项名（如果有）
-        if arg.option_name:
-            parts.append(f"option='{arg.option_name}'")
-        
-        # 值（如果有）
-        if arg.values:
-            parts.append(f"values={arg.values}")
-        
-        # 重复次数（如果是标志）
-        if arg.repeat and arg.repeat > 1:
-            parts.append(f"repeat={arg.repeat}")
-        
-        # 占位符标记（如果有）
-        if hasattr(arg, 'is_placeholder') and arg.is_placeholder:
-            parts.append("placeholder=True")
-        
-        return f"CommandArg({', '.join(parts)})"

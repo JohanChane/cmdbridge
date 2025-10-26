@@ -7,6 +7,7 @@ from .types import CommandToken, TokenType, CommandNode, CommandArg, ArgType, Pa
 from .base import BaseParser
 
 from log import debug, info, warning, error
+from .utils import Utils
 
 class GetoptParser(BaseParser):
     """getopt 风格命令行解析器"""
@@ -302,6 +303,12 @@ class GetoptParser(BaseParser):
                 ))
         
         debug(f"命令树构建完成，共有 {len(root_node.arguments)} 个参数")
+
+        # 添加命令树打印
+        debug("\n🌳 命令树结构:")
+        Utils.print_command_tree(root_node)
+        debug("")
+
         return root_node
 
     def validate(self, command_node: CommandNode) -> bool:
