@@ -3,22 +3,17 @@ parser_type = "getopt"
 program_name = "pacman"
 
 [[pacman.arguments]]
+name = "targets"
+nargs = "+"
+
+[[pacman.arguments]]
 name = "help"
 opt = ["-h", "--help"]
 nargs = "0"
 
 [[pacman.arguments]]
-name = "targets"
-nargs = "+"
-
-[[pacman.arguments]]
 name = "S"
 opt = ["-S", ""]
-nargs = "0"
-
-[[pacman.arguments]]
-name = "s"
-opt = ["-s", ""]
 nargs = "0"
 
 [[pacman.arguments]]
@@ -29,6 +24,11 @@ nargs = "0"
 [[pacman.arguments]]
 name = "F"
 opt = ["-F", ""]
+nargs = "0"
+
+[[pacman.arguments]]
+name = "s"
+opt = ["-s", ""]
 nargs = "0"
 
 [[pacman.arguments]]

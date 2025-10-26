@@ -2,6 +2,7 @@
 parser_type = "argparse"
 program_name = "apt-file"
 
+# ## subcommand search
 [[apt-file.sub_commands]]
 name = "search"
 
@@ -12,4 +13,4 @@ nargs = "+"
 [[apt-file.sub_commands.arguments]]
 name = "regexp"
 opt = ["", "--regexp"]
-nargs = "0"
+nargs = "1"

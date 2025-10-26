@@ -18,7 +18,7 @@ args = []
 
 [operations.find_file_owner_remote_with_regexp]
 description = "Find which package owns the file from repository using regex"
-args = ["files"]
+args = ["regexp"]
 
 [operations.force_refresh_repo_db]
 description = "Force refresh repository database"

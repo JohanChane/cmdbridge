@@ -2,31 +2,24 @@
 parser_type = "argparse"
 program_name = "apt"
 
+# ## global args
 [[apt.arguments]]
 name = "help"
 opt = ["-h", "--help"]
 nargs = "0"
 
+[[apt.arguments]] 
+name = "config"
+opt = ["", "--config"]
+nargs = "1"
+
+# ## subcommand install
 [[apt.sub_commands]]
 name = "install"
 
 [[apt.sub_commands.arguments]]
 name = "packages"
 nargs = "+"
-
-[[apt.sub_commands]]
-name = "search"
-
-[[apt.sub_commands.arguments]]
-name = "packages"
-nargs = "+"
-
-[[apt.sub_commands]]
-name = "list"
-
-[[apt.sub_commands.arguments]]
-name = "packages"
-nargs = "*"
 
 [[apt.sub_commands.arguments]]
 name = "installed"
@@ -38,6 +31,23 @@ name = "my"
 opt = ["", "--my"]
 nargs = "0"
 
+# ## subcommand search
+[[apt.sub_commands]]
+name = "search"
+
+[[apt.sub_commands.arguments]]
+name = "packages"
+nargs = "+"
+
+# ## subcommand list
+[[apt.sub_commands]]
+name = "list"
+
+[[apt.sub_commands.arguments]]
+name = "packages"
+nargs = "*"
+
+# ## subcommand update
 [[apt.sub_commands]]
 name = "update"
 
@@ -49,8 +59,3 @@ nargs = "*"
 name = "force_refresh_all"
 opt = ["", "--force-refresh-all"]
 nargs = "0"
-
-[[apt.sub_commands.arguments]] 
-name = "config"
-opt = ["", "--config"]
-nargs = "1"

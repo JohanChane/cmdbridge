@@ -12,7 +12,7 @@ cmd_format = "apt list --installed {pkgs}"
 cmd_format = "apt list --installed"
 
 [operations.find_file_owner_remote_with_regexp]
-cmd_format = "apt-file search --regexp {files}"
+cmd_format = "apt-file search --regexp {regexp}"
 
 [operations.force_refresh_repo_db]
 cmd_format = "apt update --force-refresh-all"
@@ -21,7 +21,7 @@ cmd_format = "apt update --force-refresh-all"
 cmd_format = "apt source {pkgs}"
 
 [operations.install_with_config]
-cmd_format = "apt install {pkgs} --config {config_path}"
+cmd_format = "apt --config {config_path} install {pkgs}"
 
 [operations.help]
 cmd_format = "apt --help"
