@@ -236,14 +236,23 @@ class CmdMapping:
         if len(node1.arguments) != len(node2.arguments):
             return False
         
-        # 创建参数特征集合用于比较（忽略占位符值和 is_placeholder 标记）
+        # 创建参数特征集合用于比较
         def get_arg_features(arg: CommandArg) -> tuple:
             """获取 CommandArg 的特征元组（可哈希）"""
-            return (
-                arg.node_type.value,      # 参数类型
-                arg.option_name or "",    # 选项名（保持原样）
-                arg.repeat or 1,          # 重复次数
-            )
+            # 对于位置参数，忽略 option_name 的比较
+            if arg.node_type == ArgType.POSITIONAL:
+                return (
+                    arg.node_type.value,      # 参数类型
+                    "",                       # 位置参数忽略选项名
+                    arg.repeat or 1,          # 重复次数
+                )
+            else:
+                # 对于选项和标志，需要比较选项名
+                return (
+                    arg.node_type.value,      # 参数类型
+                    arg.option_name or "",    # 选项名
+                    arg.repeat or 1,          # 重复次数
+                )
         
         # 使用集合比较参数特征
         node1_features = {get_arg_features(arg) for arg in node1.arguments}
@@ -310,59 +319,56 @@ class CmdMapping:
         return source_args_count > mapping_args_count
     
     def _extract_parameter_values(self, source_node: CommandNode, params_mapping: Dict[str, Any]) -> Dict[str, str]:
-        """
-        从源命令节点中提取参数值 (保持顺序)
-        
-        Args:
-            source_node: 源命令节点
-            params_mapping: 参数映射配置
-            
-        Returns:
-            Dict[str, str]: 参数名到参数值的映射 (多个值合并为单个字符串)
-        """
+        """从源命令节点中提取参数值"""
         param_values = {}
         
+        debug(f"开始提取参数，共有 {len(params_mapping)} 个参数需要提取")
+        
         for param_name, param_info in params_mapping.items():
-            # 从源命令节点中提取参数值 (保持顺序)
             values = self._find_parameter_values(source_node, param_info)
+            
             if values:
-                # 合并多个值为单个字符串
                 param_values[param_name] = " ".join(values)
-                debug(f"提取参数 {param_name} = '{param_values[param_name]}'")
+                debug(f"成功提取参数 {param_name} = '{param_values[param_name]}'")
             else:
                 warning(f"无法提取参数 {param_name} 的值")
         
+        debug(f"参数提取完成: {param_values}")
         return param_values
-    
+
     def _find_parameter_values(self, source_node: CommandNode, param_info: Dict[str, Any]) -> List[str]:
-        """在命令节点中查找参数值 (保持顺序)"""
         cmd_arg_info = param_info.get("cmd_arg", {})
         target_node_type = ArgType(cmd_arg_info["node_type"])
-        target_option_name = cmd_arg_info.get("option_name")  # 直接使用，不需要去除占位符标记
+        target_option_name = cmd_arg_info.get("option_name")
         
         values = []
         
         def search_in_node(node: CommandNode):
             for arg in node.arguments:
-                # 检查参数类型和选项名是否匹配（直接比较，不处理占位符标记）
+                # 基于类型和选项名匹配
                 if (arg.node_type == target_node_type and 
                     arg.option_name == target_option_name):
                     
-                    # 收集该参数的所有值
-                    values.extend(arg.values)
-                    debug(f"找到参数值: {arg.values} (类型: {arg.node_type.value}, 选项名: {arg.option_name})")
-                
-            # 在子命令中继续搜索
+                    # 对于位置参数，提取所有值
+                    if target_node_type == ArgType.POSITIONAL:
+                        values.extend(arg.values)
+                    # 对于选项参数，提取所有值
+                    elif target_node_type == ArgType.OPTION:
+                        values.extend(arg.values)
+                    # 对于标志参数，不需要值
+            
             if node.subcommand:
                 search_in_node(node.subcommand)
         
         search_in_node(source_node)
-        
+
         if not values:
             debug(f"未找到参数值 (目标类型: {target_node_type.value}, 目标选项名: {target_option_name})")
+        else:
+            debug(f"成功找到参数值: {values}")
         
         return values
-    
+
     def _deserialize_command_node(self, serialized_node: Dict[str, Any]) -> CommandNode:
         """反序列化 CommandNode"""
         return CommandNode.from_dict(serialized_node)

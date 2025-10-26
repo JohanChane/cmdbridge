@@ -2,7 +2,7 @@
 argparse 风格命令行解析器
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from .types import CommandToken, TokenType, CommandNode, CommandArg, ArgType, ParserConfig, ArgumentConfig, SubCommandConfig
 from .base import BaseParser
 
@@ -64,6 +64,7 @@ class ArgparseParser(BaseParser):
         current_option = None  # 当前正在解析的选项
         current_option_config = None  # 当前选项的配置
         found_subcommand = False  # 是否找到了子命令
+        current_subcommand = None  # 当前子命令名称
         
         while i < n:
             arg = args[i]
@@ -81,8 +82,25 @@ class ArgparseParser(BaseParser):
                 continue
             
             if in_options and arg.startswith("-"):
-                # 查找选项配置（全局选项在任何位置都有效）
-                option_config = self._find_option_config(arg)
+                # 查找选项配置 - 根据是否找到子命令决定查找范围
+                option_config = None
+                
+                if found_subcommand and current_subcommand:
+                    # 在子命令中查找选项配置
+                    sub_cmd_config = self.parser_config.find_subcommand(current_subcommand)
+                    if sub_cmd_config:
+                        for arg_config in sub_cmd_config.arguments:
+                            if arg in arg_config.opt:
+                                option_config = arg_config
+                                debug(f"在子命令 '{current_subcommand}' 中找到选项 '{arg}' 的配置: {arg_config.name}")
+                                break
+                
+                # 如果没在子命令中找到，再在全局中查找
+                if not option_config:
+                    option_config = self._find_option_config(arg)
+                    if option_config:
+                        debug(f"在全局参数中找到选项 '{arg}' 的配置: {option_config.name}")
+                
                 debug(f"选项 '{arg}' 的配置: {option_config.name if option_config else '未找到'}")
                 
                 if current_option:
@@ -143,10 +161,11 @@ class ArgparseParser(BaseParser):
                             values=[arg]
                         ))
                         found_subcommand = True
+                        current_subcommand = arg
                     else:
                         # 位置参数
                         token_type = (TokenType.EXTRA_ARG if not in_options 
-                                     else TokenType.POSITIONAL_ARG)
+                                    else TokenType.POSITIONAL_ARG)
                         debug(f"参数 '{arg}' 作为 {token_type.value}")
                         tokens.append(CommandToken(
                             token_type=token_type,
@@ -199,231 +218,268 @@ class ArgparseParser(BaseParser):
         debug(f"未找到选项 '{option_name}' 的配置")
         return None
     
-    def _is_global_option(self, option_name: str) -> bool:
-        """检查选项是否是全局选项"""
-        # 检查是否是根节点的配置参数
-        for arg_config in self.parser_config.arguments:
-            if option_name in arg_config.opt:
-                debug(f"选项 '{option_name}' 是全局选项")
-                return True
-        
-        debug(f"选项 '{option_name}' 不是全局选项")
-        return False
-    
     def _build_command_tree(self, tokens: List[CommandToken]) -> CommandNode:
-        """从 token 列表构建命令树"""
         if not tokens:
             error("没有命令行参数")
             raise ValueError("没有命令行参数")
         
-        program_token = tokens[0]
-        if not program_token.is_program():
-            error(f"第一个 token 不是程序名: {program_token}")
-            raise ValueError("第一个 token 必须是程序名")
+        # 1. 分割 tokens
+        main_tokens, subcommand_name, subcommand_tokens = self._split_tokens_by_subcommand(tokens)
         
-        root_node = CommandNode(name=program_token.get_first_value() or "")
-        debug(f"创建命令树根节点: {root_node.name}")
+        # 打印分割结果
+        debug(f"🎯 tokens 分割结果:")
+        debug(f"  主命令 tokens ({len(main_tokens)} 个):")
+        for i, token in enumerate(main_tokens):
+            debug(f"    [{i}] {token}")
         
-        i = 1  # 跳过程序名
+        debug(f"  子命令名称: {subcommand_name}")
+        debug(f"  子命令 tokens ({len(subcommand_tokens)} 个):")
+        for i, token in enumerate(subcommand_tokens):
+            debug(f"    [{i}] {token}")
+
+        # 2. 构建根节点（使用全局参数配置）
+        root_node = self._build_command_node(main_tokens, self.parser_config.arguments)
+        
+        # 3. 如果有子命令，构建子命令节点
+        if subcommand_name and subcommand_tokens:
+            # 查找子命令配置
+            sub_cmd_config = self.parser_config.find_subcommand(subcommand_name)
+            if sub_cmd_config:
+                subcommand_node = self._build_command_node(
+                    subcommand_tokens, 
+                    sub_cmd_config.arguments
+                )
+                root_node.subcommand = subcommand_node
+            else:
+                warning(f"未找到子命令 '{subcommand_name}' 的配置")
+        
+        debug(f"命令树构建完成")
+        # 添加命令树打印
+        debug("\n🌳 命令树结构:")
+        self._print_command_tree(root_node)
+        debug("")
+
+        return root_node
+    
+    def _split_tokens_by_subcommand(self, tokens: List[CommandToken]) -> Tuple[List[CommandToken], Optional[str], List[CommandToken]]:
+        """
+        根据子命令分割 tokens
+        
+        Returns:
+            Tuple: (主命令tokens, 子命令名称, 子命令tokens)
+        """
+        main_tokens = []
+        subcommand_name = None
+        subcommand_tokens = []
+        
+        found_subcommand = False
+        
+        for token in tokens:
+            if not found_subcommand:
+                if token.token_type == TokenType.SUBCOMMAND:
+                    # 找到子命令
+                    subcommand_name = token.get_first_value()
+                    found_subcommand = True
+                    subcommand_tokens.append(token)
+                else:
+                    # 子命令之前的所有 token 都属于主命令
+                    main_tokens.append(token)
+            else:
+                # 子命令之后的所有 token 都属于子命令
+                subcommand_tokens.append(token)
+        
+        return main_tokens, subcommand_name, subcommand_tokens
+    
+    def _build_command_node(self, tokens: List[CommandToken], config_arguments: List[ArgumentConfig]) -> CommandNode:
+        """
+        构建命令节点（统一处理主命令和子命令）
+        
+        Args:
+            tokens: 该节点的 tokens
+            config_arguments: 该节点对应的参数配置
+        """
+        if not tokens:
+            raise ValueError("没有 tokens")
+        
+        # 节点名称从第一个 token 获取
+        node_name = tokens[0].get_first_value() or ""
+        node = CommandNode(name=node_name)
+        debug(f"创建命令节点: {node_name}")
+        
+        # 处理参数 tokens（跳过第一个程序名/子命令名）
+        i = 1
         n = len(tokens)
         
-        current_node = root_node
-        
-        # 用于跟踪重复的标志（按配置名称分组，而不是按选项名称）
         flag_counts = {}
-        
-        # 用于收集位置参数
         positional_args = []
         
         while i < n:
             token = tokens[i]
-            debug(f"构建命令树，处理 token [{i}]: {token}")
+            debug(f"处理 token [{i}]: {token}")
             
-            if token.token_type == TokenType.SUBCOMMAND:
-                # 先处理之前收集的位置参数
-                if positional_args:
-                    debug(f"添加收集的位置参数: {positional_args}")
-                    current_node.arguments.append(CommandArg(
-                        node_type=ArgType.POSITIONAL,
-                        values=positional_args.copy()
-                    ))
-                    positional_args.clear()
-                
-                # 创建子命令节点
-                subcommand_name = token.get_first_value() or ""
-                debug(f"创建子命令节点: {subcommand_name}")
-                current_node.subcommand = CommandNode(name=subcommand_name)
-                current_node = current_node.subcommand
-            
-            elif token.token_type == TokenType.SEPARATOR:
-                # 遇到分隔符，先处理之前收集的位置参数
-                if positional_args:
-                    debug(f"添加收集的位置参数: {positional_args}")
-                    current_node.arguments.append(CommandArg(
-                        node_type=ArgType.POSITIONAL,
-                        values=positional_args.copy()
-                    ))
-                    positional_args.clear()
-                debug("遇到分隔符，开始额外参数模式")
-            
-            elif token.is_flag():
-                # 检查是否是全局选项
-                option_name = token.get_first_value() or ""
-                is_global_option = self._is_global_option(option_name)
-                
-                if is_global_option:
-                    # 全局选项应该添加到根节点
-                    debug(f"全局选项 '{option_name}' 添加到根节点")
-                    target_node = root_node
-                    # 查找配置名称
-                    config_name = self._find_config_name_for_option(option_name, is_global=True)
-                else:
-                    # 子命令选项添加到当前节点
-                    debug(f"子命令选项 '{option_name}' 添加到当前节点")
-                    target_node = current_node
-                    # 查找配置名称
-                    config_name = self._find_config_name_for_option(option_name, is_global=False)
-                
-                # 先处理之前收集的位置参数
-                if positional_args:
-                    debug(f"添加收集的位置参数: {positional_args}")
-                    current_node.arguments.append(CommandArg(
-                        node_type=ArgType.POSITIONAL,
-                        values=positional_args.copy()
-                    ))
-                    positional_args.clear()
-                
-                # 处理标志
-                debug(f"添加标志: {option_name} (配置: {config_name})")
-                
-                # 统计重复次数（按配置名称分组）
-                node_key = id(target_node)
-                if node_key not in flag_counts:
-                    flag_counts[node_key] = {}
-                
-                if config_name in flag_counts[node_key]:
-                    flag_counts[node_key][config_name] += 1
-                    debug(f"标志 '{config_name}' 重复次数: {flag_counts[node_key][config_name]}")
-                else:
-                    flag_counts[node_key][config_name] = 1
-                    # 第一次遇到这个配置的标志，添加到参数列表
-                    target_node.arguments.append(CommandArg(
-                        node_type=ArgType.FLAG,
-                        option_name=option_name,  # 使用第一个遇到的选项名称
-                        values=[],
-                        repeat=1
-                    ))
-                    debug(f"标志 '{config_name}' 重复次数: {flag_counts[node_key][config_name]}")
-            
+            if token.is_flag():
+                i = self._process_flag_token(token, node, flag_counts, config_arguments, tokens, i)
             elif token.token_type == TokenType.OPTION_NAME:
-                # 检查是否是全局选项
-                option_name = token.get_first_value()
-                is_global_option = self._is_global_option(option_name)
-                
-                if is_global_option:
-                    # 全局选项应该添加到根节点
-                    debug(f"全局选项 '{option_name}' 添加到根节点")
-                    target_node = root_node
-                else:
-                    # 子命令选项添加到当前节点
-                    debug(f"子命令选项 '{option_name}' 添加到当前节点")
-                    target_node = current_node
-                
-                # 先处理之前收集的位置参数
-                if positional_args:
-                    debug(f"添加收集的位置参数: {positional_args}")
-                    current_node.arguments.append(CommandArg(
-                        node_type=ArgType.POSITIONAL,
-                        values=positional_args.copy()
-                    ))
-                    positional_args.clear()
-                
-                # 处理选项
-                option_values = []
-                
-                # 收集选项值
-                j = i + 1
-                debug(f"开始收集选项 '{option_name}' 的值")
-                while j < n and tokens[j].token_type == TokenType.OPTION_VALUE:
-                    value = tokens[j].get_first_value() or ""
-                    option_values.append(value)
-                    debug(f"  选项值: {value}")
-                    j += 1
-                
-                i = j - 1  # 跳过已处理的值
-                debug(f"选项 '{option_name}' 共有 {len(option_values)} 个值: {option_values}")
-                
-                target_node.arguments.append(CommandArg(
-                    node_type=ArgType.OPTION,
-                    option_name=option_name,
-                    values=option_values
-                ))
-            
+                i = self._process_option_token(token, node, config_arguments, tokens, i)
             elif token.token_type == TokenType.POSITIONAL_ARG:
-                # 收集位置参数，稍后统一处理
                 positional_args.extend(token.values)
                 debug(f"收集位置参数: {token.values}, 当前总数: {len(positional_args)}")
-            
             elif token.token_type == TokenType.EXTRA_ARG:
-                # 先处理之前收集的位置参数
+                self._process_extra_token(token, node)
+            elif token.token_type == TokenType.SEPARATOR:
+                # 分隔符后的都是额外参数
+                debug("遇到分隔符，后续参数作为额外参数")
                 if positional_args:
-                    debug(f"添加收集的位置参数: {positional_args}")
-                    current_node.arguments.append(CommandArg(
-                        node_type=ArgType.POSITIONAL,
-                        values=positional_args.copy()
-                    ))
+                    self._add_positional_args(node, positional_args, config_arguments)
                     positional_args.clear()
                 
-                # 处理额外参数
-                debug(f"添加额外参数: {token.values}")
-                current_node.arguments.append(CommandArg(
-                    node_type=ArgType.EXTRA,
-                    values=token.values
-                ))
+                # 剩余 tokens 都作为额外参数
+                extra_values = []
+                j = i + 1
+                while j < n:
+                    extra_values.extend(tokens[j].values)
+                    j += 1
+                
+                if extra_values:
+                    node.arguments.append(CommandArg(
+                        node_type=ArgType.EXTRA,
+                        values=extra_values
+                    ))
+                    debug(f"添加额外参数: {extra_values}")
+                break
             
             i += 1
         
         # 处理最后收集的位置参数
         if positional_args:
-            debug(f"添加最后收集的位置参数: {positional_args}")
-            current_node.arguments.append(CommandArg(
+            self._add_positional_args(node, positional_args, config_arguments)
+        
+        # 更新标志重复次数
+        self._update_flag_repeats(node, flag_counts)
+        
+        return node
+    
+    def _process_flag_token(self, token: CommandToken, node: CommandNode, 
+                        flag_counts: Dict, config_arguments: List[ArgumentConfig],
+                        tokens: List[CommandToken], i: int) -> int:
+        """处理标志 token"""
+        option_name = token.get_first_value() or ""
+        config_name = self._find_config_name_for_option(option_name, config_arguments)
+        
+        if not config_name:
+            debug(f"警告：未找到选项 '{option_name}' 的配置")
+            return i
+        
+        debug(f"添加标志: {option_name} (配置: {config_name})")
+        
+        # 统计重复次数 - 使用配置名作为键
+        node_key = id(node)
+        if node_key not in flag_counts:
+            flag_counts[node_key] = {}
+        
+        if config_name in flag_counts[node_key]:
+            flag_counts[node_key][config_name] += 1
+            debug(f"标志 '{config_name}' 重复次数: {flag_counts[node_key][config_name]}")
+        else:
+            flag_counts[node_key][config_name] = 1
+            node.arguments.append(CommandArg(
+                node_type=ArgType.FLAG,
+                option_name=option_name,  # 仍然保存原始选项名
+                values=[],
+                repeat=1
+            ))
+        
+        return i
+
+    def _process_option_token(self, token: CommandToken, node: CommandNode,
+                            config_arguments: List[ArgumentConfig], tokens: List[CommandToken], i: int) -> int:
+        """处理选项 token"""
+        option_name = token.get_first_value()
+        
+        # 收集选项值
+        option_values = []
+        j = i + 1
+        debug(f"开始收集选项 '{option_name}' 的值")
+        while j < len(tokens) and tokens[j].token_type == TokenType.OPTION_VALUE:
+            value = tokens[j].get_first_value() or ""
+            option_values.append(value)
+            debug(f"  选项值: {value}")
+            j += 1
+        
+        new_i = j - 1  # 跳过已处理的值
+        debug(f"选项 '{option_name}' 共有 {len(option_values)} 个值: {option_values}")
+        
+        node.arguments.append(CommandArg(
+            node_type=ArgType.OPTION,
+            option_name=option_name,
+            values=option_values
+        ))
+        
+        return new_i
+
+    def _add_positional_args(self, node: CommandNode, positional_args: List[str], 
+                            config_arguments: List[ArgumentConfig]):
+        """添加位置参数到节点"""
+        debug(f"添加位置参数: {positional_args}")
+        
+        # 查找位置参数配置
+        positional_configs = [c for c in config_arguments if c.is_positional()]
+        
+        if positional_configs:
+            # 使用配置中的位置参数名称
+            config = positional_configs[0]
+            node.arguments.append(CommandArg(
+                node_type=ArgType.POSITIONAL,
+                option_name=config.name,
+                values=positional_args.copy()
+            ))
+        else:
+            # 没有配置，使用无名位置参数
+            node.arguments.append(CommandArg(
                 node_type=ArgType.POSITIONAL,
                 values=positional_args.copy()
             ))
-        
-        # 更新标志的重复次数
-        def update_flag_counts(node: CommandNode):
-            node_key = id(node)
-            if node_key in flag_counts:
-                for arg in node.arguments:
-                    if arg.node_type == ArgType.FLAG:
-                        # 查找这个选项对应的配置名称
-                        config_name = self._find_config_name_for_option(arg.option_name, node == root_node)
-                        if config_name in flag_counts[node_key]:
-                            arg.repeat = flag_counts[node_key][config_name]
-                            debug(f"设置标志 '{arg.option_name}' (配置: {config_name}) 的重复次数为: {arg.repeat}")
-            if node.subcommand:
-                update_flag_counts(node.subcommand)
-        
-        update_flag_counts(root_node)
-        
-        debug(f"命令树构建完成")
-        return root_node
 
-    def _find_config_name_for_option(self, option_name: str, is_global: bool = False) -> Optional[str]:
-        """根据选项名称查找对应的配置名称"""
-        if is_global:
-            # 在全局参数中查找
-            for arg_config in self.parser_config.arguments:
-                if option_name in arg_config.opt:
-                    return arg_config.name
-        else:
-            # 在所有子命令参数中查找
-            for sub_cmd in self.parser_config.sub_commands:
-                for arg_config in sub_cmd.arguments:
-                    if option_name in arg_config.opt:
-                        return arg_config.name
+    def _find_config_name_for_option(self, option_name: str, config_arguments: List[ArgumentConfig]) -> Optional[str]:
+        """在给定的配置中查找选项对应的配置名称"""
+        for arg_config in config_arguments:
+            if option_name in arg_config.opt:
+                return arg_config.name
         return None
+    
+    def _update_flag_repeats(self, node: CommandNode, flag_counts: Dict):
+        """更新标志的重复次数"""
+        node_key = id(node)
+        if node_key in flag_counts:
+            # 确定当前节点对应的配置参数
+            config_arguments = self._get_config_arguments_for_node(node)
+            
+            for arg in node.arguments:
+                if arg.node_type == ArgType.FLAG and arg.option_name:
+                    # 使用正确的配置参数查找配置名
+                    config_name = self._find_config_name_for_option(arg.option_name, config_arguments)
+                    if config_name and config_name in flag_counts[node_key]:
+                        arg.repeat = flag_counts[node_key][config_name]
+                        debug(f"设置标志 '{arg.option_name}' (配置: {config_name}) 的重复次数为: {arg.repeat}")
+        
+        # 递归更新子命令
+        if node.subcommand:
+            self._update_flag_repeats(node.subcommand, flag_counts)
+
+    def _get_config_arguments_for_node(self, node: CommandNode) -> List[ArgumentConfig]:
+        """简化版本：获取节点对应的配置参数"""
+        # 如果是程序名，使用全局参数
+        if node.name == self.parser_config.program_name:
+            return self.parser_config.arguments
+        
+        # 否则查找子命令配置
+        sub_cmd_config = self.parser_config.find_subcommand(node.name)
+        if sub_cmd_config:
+            return sub_cmd_config.arguments
+        
+        # 如果都没找到，返回空列表
+        return []
+
     def validate(self, command_node: CommandNode) -> bool:
         """
         验证解析结果是否符合配置
@@ -441,59 +497,24 @@ class ArgparseParser(BaseParser):
         current_node = command_node
         config = self.parser_config
         
-        # 检查是否有子命令（如果有子命令配置，则必须提供子命令）
-        if config.sub_commands and not command_node.subcommand:
-            debug("❌ 验证失败: 配置中有子命令但命令行未提供子命令")
-            validation_passed = False
-        
         while current_node:
             debug(f"验证节点: {current_node.name}")
             
-            # 如果是子命令，获取对应的配置
-            if current_node != command_node:  # 不是根节点
+            # 检查节点配置是否存在
+            if current_node != command_node:  # 子命令
                 sub_cmd_config = config.find_subcommand(current_node.name)
-                if sub_cmd_config:
-                    config_to_validate = sub_cmd_config
-                else:
+                if not sub_cmd_config:
                     debug(f"❌ 未找到子命令配置: {current_node.name}")
                     validation_passed = False
                     break
-            else:
+                config_to_validate = sub_cmd_config
+            else:  # 根节点
                 config_to_validate = config
             
-            # 验证参数
-            for arg_config in config_to_validate.arguments:
-                debug(f"验证参数: {arg_config.name}, nargs: {arg_config.nargs}, required: {arg_config.required}")
-                
-                # 查找对应的命令参数
-                cmd_args = []
-                for arg in current_node.arguments:
-                    if arg.option_name and arg.option_name in arg_config.opt:
-                        cmd_args.append(arg)
-                        debug(f"  找到选项参数: {arg.option_name}")
-                    elif not arg.option_name and arg_config.is_positional() and arg.node_type == ArgType.POSITIONAL:
-                        cmd_args.append(arg)
-                        debug(f"  找到位置参数: {arg_config.name}")
-                
-                debug(f"找到 {len(cmd_args)} 个匹配的参数")
-                
-                if cmd_args:
-                    # 检查参数数量
-                    actual_count = len(cmd_args[0].values)
-                    if not arg_config.validate_count(actual_count):
-                        debug(f"❌ 验证失败: 参数 {arg_config.name} 需要 {arg_config.nargs} 个值，实际有 {actual_count} 个")
-                        validation_passed = False
-                    else:
-                        debug(f"✅ 参数 {arg_config.name} 数量验证通过")
-                else:
-                    # 参数不存在，检查是否是必需的
-                    if arg_config.is_required():
-                        debug(f"❌ 验证失败: 必需参数 {arg_config.name} 不存在")
-                        validation_passed = False
-                    else:
-                        debug(f"✅ 参数 {arg_config.name} 是可选的，验证通过")
+            # 使用通用函数验证参数
+            if not self._validate_arguments(current_node.arguments, config_to_validate.arguments):
+                validation_passed = False
             
-            # 移动到子命令
             current_node = current_node.subcommand
         
         if validation_passed:
@@ -502,3 +523,98 @@ class ArgparseParser(BaseParser):
             debug("❌ 命令验证失败")
         
         return validation_passed
+
+    def _validate_arguments(self, parsed_arguments: List[CommandArg], config_arguments: List[ArgumentConfig]) -> bool:
+        """
+        通用参数验证函数
+        
+        Args:
+            parsed_arguments: 解析出的参数
+            config_arguments: 配置的参数
+            
+        Returns:
+            bool: 验证是否通过
+        """
+        validation_passed = True
+        
+        # 分离位置参数和选项参数
+        positional_configs = [c for c in config_arguments if c.is_positional()]
+        option_configs = [c for c in config_arguments if not c.is_positional()]
+        
+        parsed_positionals = [a for a in parsed_arguments 
+                            if a.node_type == ArgType.POSITIONAL and not a.option_name]
+        parsed_options = [a for a in parsed_arguments 
+                        if a.node_type in (ArgType.OPTION, ArgType.FLAG)]
+        
+        # 验证位置参数（按顺序匹配）
+        for i, pos_config in enumerate(positional_configs):
+            if i < len(parsed_positionals):
+                actual_count = len(parsed_positionals[i].values)
+                if not pos_config.validate_count(actual_count):
+                    debug(f"❌ 位置参数验证失败: {pos_config.name} 需要 {pos_config.nargs} 个值，实际有 {actual_count} 个")
+                    validation_passed = False
+                else:
+                    debug(f"✅ 位置参数验证通过: {pos_config.name}")
+            elif pos_config.is_required():
+                debug(f"❌ 必需位置参数缺失: {pos_config.name}")
+                validation_passed = False
+        
+        # 验证选项参数（按名称匹配）
+        for opt_config in option_configs:
+            matched_args = []
+            for parsed_arg in parsed_options:
+                if parsed_arg.option_name and parsed_arg.option_name in opt_config.opt:
+                    matched_args.append(parsed_arg)
+            
+            if matched_args:
+                # 对于选项，通常只关心第一个匹配的参数
+                actual_count = len(matched_args[0].values)
+                if not opt_config.validate_count(actual_count):
+                    debug(f"❌ 选项参数验证失败: {opt_config.name} 需要 {opt_config.nargs} 个值，实际有 {actual_count} 个")
+                    validation_passed = False
+                else:
+                    debug(f"✅ 选项参数验证通过: {opt_config.name}")
+            elif opt_config.is_required():
+                debug(f"❌ 必需选项参数缺失: {opt_config.name}")
+                validation_passed = False
+        
+        return validation_passed
+    
+    def _print_command_tree(self, node: CommandNode, level: int = 0):
+        """打印命令树结构（用于调试）"""
+        indent = "  " * level
+        debug(f"{indent}└── {node.name}")
+        
+        # 打印当前节点的参数
+        for arg in node.arguments:
+            arg_info = self._format_command_arg(arg)
+            debug(f"{indent}    ├── {arg_info}")
+        
+        # 递归打印子命令
+        if node.subcommand:
+            self._print_command_tree(node.subcommand, level + 1)
+
+    def _format_command_arg(self, arg: CommandArg) -> str:
+        """格式化 CommandArg 为可读字符串"""
+        parts = []
+        
+        # 参数类型
+        parts.append(f"type={arg.node_type.value}")
+        
+        # 选项名（如果有）
+        if arg.option_name:
+            parts.append(f"option='{arg.option_name}'")
+        
+        # 值（如果有）
+        if arg.values:
+            parts.append(f"values={arg.values}")
+        
+        # 重复次数（如果是标志）
+        if arg.repeat and arg.repeat > 1:
+            parts.append(f"repeat={arg.repeat}")
+        
+        # 占位符标记（如果有）
+        if hasattr(arg, 'is_placeholder') and arg.is_placeholder:
+            parts.append("placeholder=True")
+        
+        return f"CommandArg({', '.join(parts)})"

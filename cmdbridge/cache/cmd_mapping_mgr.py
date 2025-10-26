@@ -91,6 +91,15 @@ class CmdMappingMgr:
         cmd_format = operation_config["cmd_format"]
         final_cmd_format = operation_config.get("final_cmd_format")  # 新增
         
+        # 预处理：移除参数周围的引号，但记录原始格式
+        import re
+        original_cmd_format = cmd_format
+        
+        # 移除参数周围的单引号或双引号
+        cmd_format = re.sub(r"""['"]\{(\w+)\}['"]""", r'{\1}', cmd_format)
+        
+        debug(f"命令格式预处理: '{original_cmd_format}' -> '{cmd_format}'")
+
         debug(f"分析命令格式: {cmd_format}, final_cmd_format: {final_cmd_format}")
         
         # 从 operation_key 提取 operation_name
@@ -244,25 +253,20 @@ class CmdMappingMgr:
             return None
     
     def _mark_placeholder_args(self, cmd_node: CommandNode, cmd_format: str):
-        """标记包含占位符值的参数"""
-        import re
-        param_names = re.findall(r'\{(\w+)\}', cmd_format)
+        """标记占位符参数（简化版本，实际不再需要）"""
+        # 由于新的参数提取逻辑不依赖占位符标记，
+        # 这个方法可以保持空实现或简单标记所有参数
+        debug("使用新的参数提取逻辑，跳过占位符标记")
         
-        def mark_node(n: CommandNode):
-            for arg in n.arguments:
-                # 检查这个参数的值是否包含占位符模式
-                for value in arg.values:
-                    if any(f"__param_{name}" in value for name in param_names):
-                        # 只设置 is_placeholder 标记，不修改 option_name
-                        arg.is_placeholder = True
-                        debug(f"标记占位符参数: {arg.option_name}, 值: {arg.values}")
-                        break
-                
-                # 递归处理子命令
-                if n.subcommand:
-                    mark_node(n.subcommand)
+        # 可选：为了向后兼容，简单标记所有位置参数
+        # def mark_all_positionals(node: CommandNode):
+        #     for arg in node.arguments:
+        #         if arg.node_type == ArgType.POSITIONAL:
+        #             arg.is_placeholder = True
+        #     if node.subcommand:
+        #         mark_all_positionals(node.subcommand)
         
-        mark_node(cmd_node)
+        # mark_all_positionals(cmd_node)
     
     def _analyze_parameter_mapping(self, cmd_node: CommandNode, cmd_format: str) -> Dict[str, Any]:
         """分析参数映射"""
@@ -281,20 +285,22 @@ class CmdMappingMgr:
         return param_mapping
     
     def _find_parameter_in_node(self, node: CommandNode, param_name: str) -> Optional[Dict[str, Any]]:
-        """在命令节点中查找参数"""
-        # 在当前节点中查找
-        for i, arg in enumerate(node.arguments):
-            for j, value in enumerate(arg.values):
-                if f"__param_{param_name}" in value:
-                    return {
-                        "cmd_arg": self._serialize_command_arg(arg),
-                        "value_index": j,
-                        "found_in": arg.node_type.value
-                    }
+        """在命令节点中查找参数（简化版本）"""
+        # 查找第一个位置参数
+        def find_first_positional(current_node: CommandNode) -> Optional[CommandArg]:
+            for arg in current_node.arguments:
+                if arg.node_type == ArgType.POSITIONAL:
+                    return arg
+            if current_node.subcommand:
+                return find_first_positional(current_node.subcommand)
+            return None
         
-        # 在子命令中查找
-        if node.subcommand:
-            return self._find_parameter_in_node(node.subcommand, param_name)
+        positional_arg = find_first_positional(node)
+        if positional_arg:
+            return {
+                "cmd_arg": self._serialize_command_arg(positional_arg),
+                "found_in": "positional"
+            }
         
         return None
     

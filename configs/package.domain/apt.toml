@@ -12,7 +12,7 @@ cmd_format = "apt list --installed {pkgs}"
 cmd_format = "apt list --installed"
 
 [operations.find_file_owner_remote_with_regexp]
-cmd_format = "apt-file search --regexp {regexp}"
+cmd_format = "apt-file search --regexp '{regexp}'"
 
 [operations.force_refresh_repo_db]
 cmd_format = "apt update --force-refresh-all"

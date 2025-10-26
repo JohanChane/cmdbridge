@@ -12,7 +12,7 @@ cmd_format = "pacman -Qs {pkgs}"
 cmd_format = "pacman -Q"
 
 [operations.find_file_owner_remote_with_regexp]
-cmd_format = "pacman -Fx {regexp}"
+cmd_format = "pacman -Fx '{regexp}'"
 
 [operations.force_refresh_repo_db]
 cmd_format = "pacman -Syy"

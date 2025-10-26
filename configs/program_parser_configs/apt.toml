@@ -21,16 +21,6 @@ name = "install"
 name = "packages"
 nargs = "+"
 
-[[apt.sub_commands.arguments]]
-name = "installed"
-opt = ["", "--installed"]
-nargs = "0"
-
-[[apt.sub_commands.arguments]]
-name = "my"
-opt = ["", "--my"]
-nargs = "0"
-
 # ## subcommand search
 [[apt.sub_commands]]
 name = "search"
@@ -46,6 +36,16 @@ name = "list"
 [[apt.sub_commands.arguments]]
 name = "packages"
 nargs = "*"
+
+[[apt.sub_commands.arguments]]
+name = "installed"
+opt = ["", "--installed"]
+nargs = "0"
+
+[[apt.sub_commands.arguments]]
+name = "my"
+opt = ["", "--my"]
+nargs = "0"
 
 # ## subcommand update
 [[apt.sub_commands]]
