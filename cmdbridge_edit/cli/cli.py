@@ -3,7 +3,8 @@
 import click
 import sys
 
-from .cli_helper import CmdBridgeEditCLIHelper, CustomCommand, create_edit_cli_helper  # 更新导入路径
+from .cli_helper import CmdBridgeEditCLIHelper, create_edit_cli_helper  # 更新导入路径
+from .completor import DomainType, SourceGroupType, DestGroupType, CommandType, OperationType
 
 
 # Click 命令行接口
@@ -33,10 +34,11 @@ def cli(ctx, debug):
     ctx.obj = cli_helper
 
 
-@cli.command(cls=CustomCommand)
-@click.option('-d', '--domain', help='领域名称')
-@click.option('-s', '--source-group', help='源程序组（只有无法识别才需要使用）')
-@click.option('-t', '--dest-group', help='目标程序组')
+@cli.command()
+@click.option('-d', '--domain', type= DomainType(), help='领域名称')
+@click.option('-s', '--source-group', type=SourceGroupType(), help='源程序组（只有无法识别才需要使用）')
+@click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
+@click.argument('command', nargs=1, type=CommandType())
 @click.pass_context
 def map(ctx, domain, source_group, dest_group):
     """映射完整命令到 line editor
@@ -53,9 +55,10 @@ def map(ctx, domain, source_group, dest_group):
     cli_helper.exit_with_success_code(success)
 
 
-@cli.command(cls=CustomCommand)
+@cli.command()
 @click.option('-d', '--domain', help='领域名称')
 @click.option('-t', '--dest-group', help='目标程序组')
+@click.argument('operation', nargs=1, type=OperationType())
 @click.pass_context
 def op(ctx, domain, dest_group):
     """映射操作和参数到 line editor

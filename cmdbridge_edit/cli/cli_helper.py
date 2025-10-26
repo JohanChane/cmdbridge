@@ -89,20 +89,6 @@ class CmdBridgeEditCLIHelper:
         sys.exit(exit_code)
 
 
-class CustomCommand(click.Command):
-    """自定义命令类，支持 -- 分隔符"""
-    
-    def parse_args(self, ctx, args):
-        """解析参数，处理 -- 分隔符"""
-        if '--' in args:
-            idx = args.index('--')
-            # 使用 ctx.meta 来存储保护参数
-            ctx.meta['protected_args'] = args[idx+1:]
-            args = args[:idx]
-        
-        return super().parse_args(ctx, args)
-
-
 # 便捷函数
 def create_edit_cli_helper() -> CmdBridgeEditCLIHelper:
     """创建 cmdbridge-edit CLI 辅助类实例"""
