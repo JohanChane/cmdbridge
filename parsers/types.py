@@ -104,7 +104,6 @@ class CommandArg:
             repeat=data.get("repeat")
         )
 
-# 在 parsers/types.py 中修改 CommandArg
 @dataclass
 class CommandArg:
     """Command argument in tree structure"""
@@ -112,14 +111,13 @@ class CommandArg:
     option_name: Optional[str] = None
     values: List[str] = field(default_factory=list)
     repeat: Optional[int] = None
-    is_placeholder: bool = False  # 新增：标记是否为占位符值
+    placeholder: Optional[str] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """序列化为字典"""
         result = {
             "node_type": self.node_type.value,
             "values": self.values.copy(),
-            "is_placeholder": self.is_placeholder  # 序列化标记
         }
         
         # 只有非 None 的字段才包含
@@ -127,6 +125,8 @@ class CommandArg:
             result["option_name"] = self.option_name
         if self.repeat is not None:
             result["repeat"] = self.repeat
+        if self.placeholder is not None:
+            result["placeholder"] = self.placeholder
             
         return result
     
@@ -138,7 +138,7 @@ class CommandArg:
             option_name=data.get("option_name"),
             values=data.get("values", []),
             repeat=data.get("repeat"),
-            is_placeholder=data.get("is_placeholder", False)  # 反序列化标记
+            placeholder=data.get("placeholder")  # 反序列化 placeholder
         )
 
 @dataclass

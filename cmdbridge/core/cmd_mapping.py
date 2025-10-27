@@ -93,21 +93,8 @@ class CmdMapping:
     def map_to_operation(self, source_cmdline: List[str], 
                         source_parser_config: ParserConfig,
                         dst_operation_group: str) -> Optional[Dict[str, Any]]:
-        """
-        将源命令映射到目标操作组的操作和参数
-        
-        Args:
-            source_cmdline: 源命令行参数列表
-            source_parser_config: 源程序的解析器配置
-            dst_operation_group: 目标操作组 (如 "apt", "pacman")
-            
-        Returns:
-            Optional[Dict[str, Any]]: 包含 operation_name 和 params 的字典，如果无法映射则返回 None
-        """
+        """将源命令映射到目标操作组的操作和参数"""
         debug(f"开始映射命令到操作组 '{dst_operation_group}': {' '.join(source_cmdline)}")
-        
-        # 保存解析器配置供后续使用
-        self.source_parser_config = source_parser_config
         
         # 1. 解析源命令
         source_parser = self._create_source_parser(source_parser_config)
@@ -123,10 +110,13 @@ class CmdMapping:
             debug(f"在操作组 '{dst_operation_group}' 中未找到匹配的命令映射")
             return None
         
-        # 3. 提取参数值 (保持顺序)
-        param_values = self._extract_parameter_values(source_node, matched_mapping["params"])
+        # 3. 反序列化映射节点
+        mapping_node = self._deserialize_command_node(matched_mapping["cmd_node"])
         
-        # 4. 返回操作和参数
+        # 4. 提取参数值
+        param_values = self._extract_parameter_values(source_node, mapping_node)
+        
+        # 5. 返回操作和参数
         result = {
             "operation_name": matched_mapping["operation"],
             "params": param_values
@@ -197,6 +187,7 @@ class CmdMapping:
                 return mapping
         
         return None
+    
     def _is_command_match(self, source_node: CommandNode, mapping: Dict[str, Any]) -> bool:
         """
         检查源命令是否与映射配置匹配
@@ -204,19 +195,19 @@ class CmdMapping:
         匹配规则:
         1. 程序名相同（已在外部检查）
         2. 命令节点结构相同（名称、参数数量、子命令结构）
-        3. 参数结构相同（类型、选项名、重复次数、值数量）
-        4. 忽略占位符参数的具体值内容
+        3. 参数结构相同（类型、选项名、重复次数）
+        4. 忽略参数值内容
         """
         # 1. 程序名匹配（已经在 _find_matching_mapping 中检查过）
         
         # 2. 反序列化映射配置中的 CommandNode
         mapping_node = self._deserialize_command_node(mapping["cmd_node"])
         
-        # 3. 深度比较命令节点结构，忽略占位符值内容
-        return self._compare_command_nodes_deep(source_node, mapping_node, ignore_param_values=True)
+        # 3. 深度比较命令节点结构
+        return self._compare_command_nodes_deep(source_node, mapping_node)
     
-    def _compare_command_nodes_deep(self, node1: CommandNode, node2: CommandNode, ignore_param_values: bool = False) -> bool:
-        """深度比较两个命令节点结构（忽略参数顺序）"""
+    def _compare_command_nodes_deep(self, node1: CommandNode, node2: CommandNode) -> bool:
+        """深度比较两个命令节点结构"""
         # 比较节点名称
         if node1.name != node2.name:
             return False
@@ -227,40 +218,41 @@ class CmdMapping:
         
         if node1.subcommand and node2.subcommand:
             # 递归比较子命令
-            if not self._compare_command_nodes_deep(node1.subcommand, node2.subcommand, ignore_param_values):
+            if not self._compare_command_nodes_deep(node1.subcommand, node2.subcommand):
                 return False
-        elif node1.subcommand or node2.subcommand:
-            return False
         
         # 比较参数数量
         if len(node1.arguments) != len(node2.arguments):
             return False
         
-        # 创建参数特征集合用于比较
-        def get_arg_features(arg: CommandArg) -> tuple:
-            """获取 CommandArg 的特征元组（可哈希）"""
-            # 对于位置参数，忽略 option_name 的比较
-            if arg.node_type == ArgType.POSITIONAL:
-                return (
-                    arg.node_type.value,      # 参数类型
-                    "",                       # 位置参数忽略选项名
-                    arg.repeat or 1,          # 重复次数
-                )
-            else:
-                # 对于选项和标志，需要比较选项名
-                return (
-                    arg.node_type.value,      # 参数类型
-                    arg.option_name or "",    # 选项名
-                    arg.repeat or 1,          # 重复次数
-                )
+        # 逐个比较参数
+        for arg1, arg2 in zip(node1.arguments, node2.arguments):
+            if not self._compare_command_args(arg1, arg2):
+                return False
         
-        # 使用集合比较参数特征
-        node1_features = {get_arg_features(arg) for arg in node1.arguments}
-        node2_features = {get_arg_features(arg) for arg in node2.arguments}
+        return True
+
+    def _compare_command_args(self, arg1: CommandArg, arg2: CommandArg) -> bool:
+        """比较两个 CommandArg"""
+        # 1. 比较类型
+        if arg1.node_type != arg2.node_type:
+            return False
         
-        debug(f"节点比较 - {node1.name}: {node1_features} vs {node2_features}")
-        return node1_features == node2_features
-    
+        # 2. 比较 option_name（对于 Option 和 Flag 类型）
+        if arg1.node_type in [ArgType.OPTION, ArgType.FLAG]:
+            if arg1.option_name != arg2.option_name:
+                return False
+        
+        # 3. 对于 Flag 类型，比较 repeat 次数
+        if arg1.node_type == ArgType.FLAG:
+            if arg1.repeat != arg2.repeat:
+                return False
+        
+        # 4. 忽略 values 的比较（因为有 placeholder）
+        # 5. 忽略 placeholder 字段本身的比较
+        
+        return True
+
     def _compare_command_args_ignore_values(self, arg1: CommandArg, arg2: CommandArg) -> bool:
         """比较两个 CommandArg，忽略参数值内容"""
         # 比较参数类型
@@ -318,21 +310,26 @@ class CmdMapping:
         # 如果源命令的 CommandArg 数量多于映射配置，说明有多余的 CommandArg
         return source_args_count > mapping_args_count
     
-    def _extract_parameter_values(self, source_node: CommandNode, params_mapping: Dict[str, Any]) -> Dict[str, str]:
+    def _extract_parameter_values(self, source_node: CommandNode, mapping_node: CommandNode) -> Dict[str, str]:
         """从源命令节点中提取参数值"""
         param_values = {}
         
-        debug(f"开始提取参数，共有 {len(params_mapping)} 个参数需要提取")
-        
-        for param_name, param_info in params_mapping.items():
-            values = self._find_parameter_values(source_node, param_info)
+        # 递归遍历节点提取参数
+        def extract_from_node(source_node: CommandNode, mapping_node: CommandNode):
+            # 逐个参数比较和提取
+            for source_arg, mapping_arg in zip(source_node.arguments, mapping_node.arguments):
+                if mapping_arg.placeholder:
+                    # 提取参数值
+                    param_name = mapping_arg.placeholder
+                    if source_arg.values:
+                        param_values[param_name] = " ".join(source_arg.values)
+                        debug(f"提取参数 {param_name} = '{param_values[param_name]}'")
             
-            if values:
-                param_values[param_name] = " ".join(values)
-                debug(f"成功提取参数 {param_name} = '{param_values[param_name]}'")
-            else:
-                warning(f"无法提取参数 {param_name} 的值")
+            # 递归处理子命令
+            if source_node.subcommand and mapping_node.subcommand:
+                extract_from_node(source_node.subcommand, mapping_node.subcommand)
         
+        extract_from_node(source_node, mapping_node)
         debug(f"参数提取完成: {param_values}")
         return param_values
 

@@ -89,18 +89,14 @@ class CmdMappingMgr:
             return
         
         cmd_format = operation_config["cmd_format"]
-        final_cmd_format = operation_config.get("final_cmd_format")  # 新增
+        final_cmd_format = operation_config.get("final_cmd_format")
         
-        # 预处理：移除参数周围的引号，但记录原始格式
+        # 预处理：移除参数周围的引号
         import re
         original_cmd_format = cmd_format
-        
-        # 移除参数周围的单引号或双引号
         cmd_format = re.sub(r"""['"]\{(\w+)\}['"]""", r'{\1}', cmd_format)
         
         debug(f"命令格式预处理: '{original_cmd_format}' -> '{cmd_format}'")
-
-        debug(f"分析命令格式: {cmd_format}, final_cmd_format: {final_cmd_format}")
         
         # 从 operation_key 提取 operation_name
         operation_parts = operation_key.split('.')
@@ -109,36 +105,34 @@ class CmdMappingMgr:
         else:
             operation_name = operation_key
         
-        debug(f"提取操作名: {operation_name} (原始键: {operation_key}, 程序组: {self.group_name})")
+        debug(f"提取操作名: {operation_name}")
         
         # 生成示例命令并解析得到 CommandNode
-        cmd_node, param_mapping = self._parse_command_and_map_params(cmd_format, self.group_name)
+        cmd_node = self._parse_command_and_map_params(cmd_format, self.group_name)
         if not cmd_node:
             error(f"无法解析命令: {cmd_format}")
             return
         
-        # 创建映射条目，包含 operation 和 final_cmd_format 字段
+        # 创建映射条目（移除 params 字段）
         mapping_entry = {
             "operation": operation_name,
             "cmd_format": cmd_format,
-            "params": param_mapping,
             "cmd_node": self._serialize_command_node(cmd_node)
         }
         
         # 添加 final_cmd_format（如果存在）
         if final_cmd_format:
             mapping_entry["final_cmd_format"] = final_cmd_format
-            debug(f"添加 final_cmd_format: {final_cmd_format}")
         
         self.mapping_data[self.group_name]["command_mappings"].append(mapping_entry)
-        debug(f"为 {self.group_name} 创建映射: {operation_name}, {len(param_mapping)} 个参数")
-    
-    def _parse_command_and_map_params(self, cmd_format: str, program_cmd: str) -> tuple[Optional[CommandNode], Dict[str, Any]]:
-        """解析命令并映射参数"""
+        debug(f"为 {self.group_name} 创建映射: {operation_name}")
+
+    def _parse_command_and_map_params(self, cmd_format: str, program_cmd: str) -> Optional[CommandNode]:
+        """解析命令并设置 placeholder"""
         # 加载解析器配置
         parser_config = self._load_parser_config(program_cmd)
         if not parser_config:
-            return None, {}
+            return None
         
         # 生成示例命令
         example_command = self._generate_example_command(cmd_format, parser_config)
@@ -146,16 +140,39 @@ class CmdMappingMgr:
         # 解析命令得到 CommandNode
         cmd_node = self._parse_command(parser_config, example_command)
         if not cmd_node:
-            return None, {}
+            return None
         
-        # 标记占位符参数
-        self._mark_placeholder_args(cmd_node, cmd_format)
+        # 设置 placeholder 标记
+        self._set_placeholder_markers(cmd_node, cmd_format)
         
-        # 分析参数映射
-        param_mapping = self._analyze_parameter_mapping(cmd_node, cmd_format)
-        
-        return cmd_node, param_mapping
+        return cmd_node
     
+    def _set_placeholder_markers(self, cmd_node: CommandNode, cmd_format: str):
+        """在 CommandNode 中设置 placeholder 标记"""
+        import re
+        
+        # 从 cmd_format 中提取所有参数名
+        param_names = re.findall(r'\{(\w+)\}', cmd_format)
+        if not param_names:
+            return
+        
+        # 递归遍历 CommandNode 设置 placeholder
+        def set_placeholders(node: CommandNode):
+            for arg in node.arguments:
+                # 检查参数值是否包含占位符
+                for value in arg.values:
+                    placeholder_match = re.match(r'__param_(\w+)(?:_\d+)?__', value)
+                    if placeholder_match:
+                        param_name = placeholder_match.group(1)
+                        arg.placeholder = param_name
+                        debug(f"设置参数 {param_name} 的 placeholder")
+                        break  # 一个 CommandArg 只需要设置一次
+            
+            if node.subcommand:
+                set_placeholders(node.subcommand)
+        
+        set_placeholders(cmd_node)
+
     def _generate_example_command(self, cmd_format: str, parser_config: ParserConfig) -> List[str]:
         """为 cmd_format 生成示例命令"""
         parts = cmd_format.split()
@@ -174,7 +191,7 @@ class CmdMappingMgr:
         return example_parts
     
     def _generate_param_example_values(self, param_name: str, parser_config: ParserConfig) -> List[str]:
-        """为参数生成示例值"""
+        """为参数生成示例值（带placeholder标记）"""
         # 使用独特的占位符格式
         PLACEHOLDER_PREFIX = "__param_"
         PLACEHOLDER_SUFFIX = "__"
