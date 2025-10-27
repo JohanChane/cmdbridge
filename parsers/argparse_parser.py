@@ -541,56 +541,30 @@ class ArgparseParser(BaseParser):
 
     def _validate_arguments(self, parsed_arguments: List[CommandArg], config_arguments: List[ArgumentConfig]) -> bool:
         """
-        通用参数验证函数
-        
-        Args:
-            parsed_arguments: 解析出的参数
-            config_arguments: 配置的参数
-            
-        Returns:
-            bool: 验证是否通过
+        通用参数验证函数 - 最简版本：只检查是否有配置
         """
         validation_passed = True
         
-        # 分离位置参数和选项参数
-        positional_configs = [c for c in config_arguments if c.is_positional()]
-        option_configs = [c for c in config_arguments if not c.is_positional()]
-        
-        parsed_positionals = [a for a in parsed_arguments 
-                            if a.node_type == ArgType.POSITIONAL and not a.option_name]
-        parsed_options = [a for a in parsed_arguments 
-                        if a.node_type in (ArgType.OPTION, ArgType.FLAG)]
-        
-        # 验证位置参数（按顺序匹配）
-        for i, pos_config in enumerate(positional_configs):
-            if i < len(parsed_positionals):
-                actual_count = len(parsed_positionals[i].values)
-                if not pos_config.validate_count(actual_count):
-                    debug(f"❌ 位置参数验证失败: {pos_config.name} 需要 {pos_config.nargs} 个值，实际有 {actual_count} 个")
-                    validation_passed = False
-                else:
-                    debug(f"✅ 位置参数验证通过: {pos_config.name}")
-            elif pos_config.is_required():
-                debug(f"❌ 必需位置参数缺失: {pos_config.name}")
-                validation_passed = False
-        
-        # 验证选项参数（按名称匹配）
-        for opt_config in option_configs:
-            matched_args = []
-            for parsed_arg in parsed_options:
-                if parsed_arg.option_name and parsed_arg.option_name in opt_config.opt:
-                    matched_args.append(parsed_arg)
+        for parsed_arg in parsed_arguments:
+            has_config = any(
+                self._does_argument_match_config(parsed_arg, config_arg)
+                for config_arg in config_arguments
+            )
             
-            if matched_args:
-                # 对于选项，通常只关心第一个匹配的参数
-                actual_count = len(matched_args[0].values)
-                if not opt_config.validate_count(actual_count):
-                    debug(f"❌ 选项参数验证失败: {opt_config.name} 需要 {opt_config.nargs} 个值，实际有 {actual_count} 个")
-                    validation_passed = False
-                else:
-                    debug(f"✅ 选项参数验证通过: {opt_config.name}")
-            elif opt_config.is_required():
-                debug(f"❌ 必需选项参数缺失: {opt_config.name}")
+            if not has_config:
+                debug(f"❌ 未知参数: {parsed_arg.option_name or '位置参数'}")
                 validation_passed = False
         
         return validation_passed
+
+    def _does_argument_match_config(self, parsed_arg: CommandArg, config: ArgumentConfig) -> bool:
+        """检查解析的参数是否匹配配置"""
+        # 位置参数：只要配置是位置参数就匹配
+        if parsed_arg.node_type == ArgType.POSITIONAL and config.is_positional():
+            return True
+        
+        # 选项参数：检查选项名是否在配置中
+        if parsed_arg.node_type in (ArgType.OPTION, ArgType.FLAG) and parsed_arg.option_name:
+            return parsed_arg.option_name in config.opt
+        
+        return False
