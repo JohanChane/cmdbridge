@@ -252,63 +252,6 @@ class CmdMapping:
         # 5. 忽略 placeholder 字段本身的比较
         
         return True
-
-    def _compare_command_args_ignore_values(self, arg1: CommandArg, arg2: CommandArg) -> bool:
-        """比较两个 CommandArg，忽略参数值内容"""
-        # 比较参数类型
-        if arg1.node_type != arg2.node_type:
-            return False
-        
-        # 比较选项名（忽略占位符标记）
-        option1 = self._strip_placeholder_marker(arg1.option_name)
-        option2 = self._strip_placeholder_marker(arg2.option_name)
-        if option1 != option2:
-            return False
-        
-        # 比较重复次数
-        if arg1.repeat != arg2.repeat:
-            return False
-        
-        # 比较值数量
-        if len(arg1.values) != len(arg2.values):
-            return False
-        
-        # 忽略参数值内容比较，因为映射配置的值是占位符
-        return True
-    
-    def _strip_placeholder_marker(self, option_name: Optional[str]) -> Optional[str]:
-        """去除占位符标记"""
-        if option_name and option_name.startswith("__placeholder__"):
-            return option_name[15:]  # 去除 "__placeholder__" 前缀
-        return option_name
-    
-    def _has_extra_command_args(self, source_node: CommandNode, mapping_node: CommandNode) -> bool:
-        """
-        检查源命令是否有多余的 CommandArg
-        
-        Args:
-            source_node: 源命令节点
-            mapping_node: 映射配置的命令节点
-            
-        Returns:
-            bool: 如果源命令有映射配置中没有的 CommandArg，返回 True
-        """
-        def count_command_args(node: CommandNode) -> int:
-            """计算命令节点中的 CommandArg 总数"""
-            count = len(node.arguments)
-            current = node.subcommand
-            while current:
-                count += len(current.arguments)
-                current = current.subcommand
-            return count
-        
-        source_args_count = count_command_args(source_node)
-        mapping_args_count = count_command_args(mapping_node)
-        
-        debug(f"CommandArg 数量检查: 源命令={source_args_count}, 映射配置={mapping_args_count}")
-        
-        # 如果源命令的 CommandArg 数量多于映射配置，说明有多余的 CommandArg
-        return source_args_count > mapping_args_count
     
     def _extract_parameter_values(self, source_node: CommandNode, mapping_node: CommandNode) -> Dict[str, str]:
         """从源命令节点中提取参数值"""
@@ -332,39 +275,6 @@ class CmdMapping:
         extract_from_node(source_node, mapping_node)
         debug(f"参数提取完成: {param_values}")
         return param_values
-
-    def _find_parameter_values(self, source_node: CommandNode, param_info: Dict[str, Any]) -> List[str]:
-        cmd_arg_info = param_info.get("cmd_arg", {})
-        target_node_type = ArgType(cmd_arg_info["node_type"])
-        target_option_name = cmd_arg_info.get("option_name")
-        
-        values = []
-        
-        def search_in_node(node: CommandNode):
-            for arg in node.arguments:
-                # 基于类型和选项名匹配
-                if (arg.node_type == target_node_type and 
-                    arg.option_name == target_option_name):
-                    
-                    # 对于位置参数，提取所有值
-                    if target_node_type == ArgType.POSITIONAL:
-                        values.extend(arg.values)
-                    # 对于选项参数，提取所有值
-                    elif target_node_type == ArgType.OPTION:
-                        values.extend(arg.values)
-                    # 对于标志参数，不需要值
-            
-            if node.subcommand:
-                search_in_node(node.subcommand)
-        
-        search_in_node(source_node)
-
-        if not values:
-            debug(f"未找到参数值 (目标类型: {target_node_type.value}, 目标选项名: {target_option_name})")
-        else:
-            debug(f"成功找到参数值: {values}")
-        
-        return values
 
     def _deserialize_command_node(self, serialized_node: Dict[str, Any]) -> CommandNode:
         """反序列化 CommandNode"""
