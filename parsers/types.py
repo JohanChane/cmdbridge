@@ -290,6 +290,18 @@ class ArgumentConfig:
     def is_required(self) -> bool:
         """检查是否是必需参数"""
         return self.required
+    
+    def matches_option(self, option_name: str) -> bool:
+        """检查选项名称是否匹配此配置"""
+        # 跳过空字符串，只匹配实际的选项名
+        for opt in self.opt:
+            if opt and opt == option_name:
+                return True
+        return False
+    
+    def get_effective_options(self) -> List[str]:
+        """获取有效的选项名称（过滤空字符串）"""
+        return [opt for opt in self.opt if opt]
 
 @dataclass
 class SubCommandConfig:

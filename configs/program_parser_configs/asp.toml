@@ -1,0 +1,11 @@
+[asp.parser_config]
+parser_type = "argparse"
+program_name = "asp"
+
+# ## subcommand export
+[[asp.sub_commands]]
+name = "export"
+
+[[asp.sub_commands.arguments]]
+name = "packages"
+nargs = "+"

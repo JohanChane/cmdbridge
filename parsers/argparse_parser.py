@@ -82,25 +82,38 @@ class ArgparseParser(BaseParser):
                 continue
             
             if in_options and arg.startswith("-"):
-                # 查找选项配置 - 根据是否找到子命令决定查找范围
+                # 根据是否找到子命令决定查找范围
                 option_config = None
                 
-                if found_subcommand and current_subcommand:
-                    # 在子命令中查找选项配置
+                if found_subcommand:
+                    # 子命令之后的选项：在子命令配置中查找
                     sub_cmd_config = self.parser_config.find_subcommand(current_subcommand)
                     if sub_cmd_config:
                         for arg_config in sub_cmd_config.arguments:
-                            if arg in arg_config.opt:
-                                option_config = arg_config
-                                debug(f"在子命令 '{current_subcommand}' 中找到选项 '{arg}' 的配置: {arg_config.name}")
+                            # 修复：只检查非空的选项名称
+                            for opt in arg_config.opt:
+                                if opt and opt == arg:  # 只匹配非空的选项名
+                                    option_config = arg_config
+                                    debug(f"在子命令 '{current_subcommand}' 中找到选项 '{arg}' 的配置: {arg_config.name}")
+                                    break
+                            if option_config:
                                 break
+                else:
+                    # 子命令之前的选项：在全局配置中查找
+                    for arg_config in self.parser_config.arguments:
+                        # 修复：只检查非空的选项名称
+                        for opt in arg_config.opt:
+                            if opt and opt == arg:  # 只匹配非空的选项名
+                                option_config = arg_config
+                                debug(f"在全局参数中找到选项 '{arg}' 的配置: {arg_config.name}")
+                                break
+                        if option_config:
+                            break
                 
-                # 如果没在子命令中找到，再在全局中查找
                 if not option_config:
-                    option_config = self._find_option_config(arg)
-                    if option_config:
-                        debug(f"在全局参数中找到选项 '{arg}' 的配置: {option_config.name}")
-                
+                    error(f"❌ 未找到选项 '{arg}' 的配置")
+                    raise ValueError(f"未知选项: {arg}")
+
                 debug(f"选项 '{arg}' 的配置: {option_config.name if option_config else '未找到'}")
                 
                 if current_option:
@@ -113,30 +126,39 @@ class ArgparseParser(BaseParser):
                     current_option = None
                     current_option_config = None
                 
-                if arg.startswith("--"):
-                    # 长选项
-                    current_option = arg
-                    current_option_config = option_config
-                    debug(f"设置当前长选项: {arg}")
-                    
-                    # 检查是否有等号形式的值
-                    if "=" in arg:
-                        opt_name, opt_value = arg.split("=", 1)
-                        tokens.append(CommandToken(
-                            token_type=TokenType.OPTION_NAME,
-                            values=[opt_name]
-                        ))
-                        tokens.append(CommandToken(
-                            token_type=TokenType.OPTION_VALUE,
-                            values=[opt_value]
-                        ))
-                        current_option = None
-                        current_option_config = None
+                # 🔧 修复：对于标志选项，立即添加到 tokens
+                if option_config and not option_config.accepts_values():
+                    # 立即添加标志
+                    tokens.append(CommandToken(
+                        token_type=TokenType.FLAG,
+                        values=[arg]
+                    ))
+                    debug(f"立即添加标志: {arg}")
                 else:
-                    # 短选项
-                    current_option = arg
-                    current_option_config = option_config
-                    debug(f"设置当前短选项: {arg}")
+                    if arg.startswith("--"):
+                        # 长选项
+                        current_option = arg
+                        current_option_config = option_config
+                        debug(f"设置当前长选项: {arg}")
+                        
+                        # 检查是否有等号形式的值
+                        if "=" in arg:
+                            opt_name, opt_value = arg.split("=", 1)
+                            tokens.append(CommandToken(
+                                token_type=TokenType.OPTION_NAME,
+                                values=[opt_name]
+                            ))
+                            tokens.append(CommandToken(
+                                token_type=TokenType.OPTION_VALUE,
+                                values=[opt_value]
+                            ))
+                            current_option = None
+                            current_option_config = None
+                    else:
+                        # 短选项
+                        current_option = arg
+                        current_option_config = option_config
+                        debug(f"设置当前短选项: {arg}")
             else:
                 # 位置参数或选项值
                 if current_option and current_option_config and current_option_config.accepts_values():
@@ -199,24 +221,6 @@ class ArgparseParser(BaseParser):
             if sub_cmd.name == arg:
                 return True
         return False
-    
-    def _find_option_config(self, option_name: str) -> Optional[ArgumentConfig]:
-        """根据选项名称查找配置"""
-        # 先检查全局参数（全局选项在任何位置都有效）
-        for arg_config in self.parser_config.arguments:
-            if option_name in arg_config.opt:
-                debug(f"在全局参数中找到选项 '{option_name}' 的配置: {arg_config.name}")
-                return arg_config
-        
-        # 再检查所有子命令的参数
-        for sub_cmd in self.parser_config.sub_commands:
-            for arg_config in sub_cmd.arguments:
-                if option_name in arg_config.opt:
-                    debug(f"在子命令 '{sub_cmd.name}' 中找到选项 '{option_name}' 的配置: {arg_config.name}")
-                    return arg_config
-        
-        debug(f"未找到选项 '{option_name}' 的配置")
-        return None
     
     def _build_command_tree(self, tokens: List[CommandToken]) -> CommandNode:
         if not tokens:
@@ -354,9 +358,6 @@ class ArgparseParser(BaseParser):
         if positional_args:
             self._add_positional_args(node, positional_args, config_arguments)
         
-        # 更新标志重复次数
-        self._update_flag_repeats(node, flag_counts)
-        
         return node
     
     def _process_flag_token(self, token: CommandToken, node: CommandNode, 
@@ -364,32 +365,77 @@ class ArgparseParser(BaseParser):
                         tokens: List[CommandToken], i: int) -> int:
         """处理标志 token"""
         option_name = token.get_first_value() or ""
+        
+        # 查找配置名
         config_name = self._find_config_name_for_option(option_name, config_arguments)
         
         if not config_name:
             debug(f"警告：未找到选项 '{option_name}' 的配置")
             return i
         
-        debug(f"添加标志: {option_name} (配置: {config_name})")
+        # 🔍 添加详细调试日志 - 在增加计数之前
+        current_count = flag_counts.get(id(node), {}).get(config_name, 0)
+        debug(f"🔍 处理标志: '{option_name}' -> 配置: '{config_name}', 当前计数: {current_count}, 节点: {node.name}")
+        
+        debug(f"处理标志: {option_name} (配置: {config_name})")
         
         # 统计重复次数 - 使用配置名作为键
         node_key = id(node)
         if node_key not in flag_counts:
             flag_counts[node_key] = {}
         
+        # 增加计数
         if config_name in flag_counts[node_key]:
             flag_counts[node_key][config_name] += 1
-            debug(f"标志 '{config_name}' 重复次数: {flag_counts[node_key][config_name]}")
         else:
             flag_counts[node_key][config_name] = 1
+        
+        # 🔍 添加详细调试日志 - 在增加计数之后
+        debug(f"🔍 增加后计数: '{config_name}' = {flag_counts[node_key][config_name]}")
+        
+        debug(f"标志 '{config_name}' 重复次数: {flag_counts[node_key][config_name]}")
+        
+        # 查找或创建 CommandArg（基于配置名）
+        existing_arg = None
+        for arg in node.arguments:
+            if arg.node_type == ArgType.FLAG:
+                # 检查这个 CommandArg 是否属于同一个配置
+                arg_config_name = self._find_config_name_for_option(arg.option_name, config_arguments)
+                if arg_config_name == config_name:
+                    existing_arg = arg
+                    break
+        
+        if existing_arg:
+            # 更新已存在的 CommandArg
+            existing_arg.repeat = flag_counts[node_key][config_name]
+            # 如果遇到长选项名，可以更新 option_name（可选）
+            if option_name.startswith("--") and not existing_arg.option_name.startswith("--"):
+                existing_arg.option_name = option_name
+            debug(f"🔍 更新标志 '{existing_arg.option_name}' 重复次数为: {existing_arg.repeat}")
+            debug(f"更新标志 '{existing_arg.option_name}' 重复次数为: {existing_arg.repeat}")
+        else:
+            # 创建新的 CommandArg（使用配置的第一个选项名或当前选项名）
+            first_option = self._get_first_option_for_config(config_name, config_arguments) or option_name
             node.arguments.append(CommandArg(
                 node_type=ArgType.FLAG,
-                option_name=option_name,  # 仍然保存原始选项名
+                option_name=first_option,
                 values=[],
-                repeat=1
+                repeat=flag_counts[node_key][config_name]  # 直接设置正确的重复次数
             ))
+            debug(f"🔍 创建新标志 '{first_option}' 重复次数为: {flag_counts[node_key][config_name]}")
+            debug(f"创建新标志 '{first_option}' 重复次数为: {flag_counts[node_key][config_name]}")
         
         return i
+    
+    def _get_first_option_for_config(self, config_name: str, config_arguments: List[ArgumentConfig]) -> Optional[str]:
+        """获取配置的第一个选项名"""
+        for arg_config in config_arguments:
+            if arg_config.name == config_name and arg_config.opt:
+                # 返回第一个非空的选项名
+                for opt in arg_config.opt:
+                    if opt:  # 跳过空字符串
+                        return opt
+        return None
 
     def _process_option_token(self, token: CommandToken, node: CommandNode,
                             config_arguments: List[ArgumentConfig], tokens: List[CommandToken], i: int) -> int:
@@ -443,42 +489,11 @@ class ArgparseParser(BaseParser):
     def _find_config_name_for_option(self, option_name: str, config_arguments: List[ArgumentConfig]) -> Optional[str]:
         """在给定的配置中查找选项对应的配置名称"""
         for arg_config in config_arguments:
-            if option_name in arg_config.opt:
-                return arg_config.name
+            # 修复：只检查非空的选项名称
+            for opt in arg_config.opt:
+                if opt and opt == option_name:  # 只匹配非空的选项名
+                    return arg_config.name
         return None
-    
-    def _update_flag_repeats(self, node: CommandNode, flag_counts: Dict):
-        """更新标志的重复次数"""
-        node_key = id(node)
-        if node_key in flag_counts:
-            # 确定当前节点对应的配置参数
-            config_arguments = self._get_config_arguments_for_node(node)
-            
-            for arg in node.arguments:
-                if arg.node_type == ArgType.FLAG and arg.option_name:
-                    # 使用正确的配置参数查找配置名
-                    config_name = self._find_config_name_for_option(arg.option_name, config_arguments)
-                    if config_name and config_name in flag_counts[node_key]:
-                        arg.repeat = flag_counts[node_key][config_name]
-                        debug(f"设置标志 '{arg.option_name}' (配置: {config_name}) 的重复次数为: {arg.repeat}")
-        
-        # 递归更新子命令
-        if node.subcommand:
-            self._update_flag_repeats(node.subcommand, flag_counts)
-
-    def _get_config_arguments_for_node(self, node: CommandNode) -> List[ArgumentConfig]:
-        """简化版本：获取节点对应的配置参数"""
-        # 如果是程序名，使用全局参数
-        if node.name == self.parser_config.program_name:
-            return self.parser_config.arguments
-        
-        # 否则查找子命令配置
-        sub_cmd_config = self.parser_config.find_subcommand(node.name)
-        if sub_cmd_config:
-            return sub_cmd_config.arguments
-        
-        # 如果都没找到，返回空列表
-        return []
 
     def validate(self, command_node: CommandNode) -> bool:
         """

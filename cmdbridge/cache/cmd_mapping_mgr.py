@@ -129,9 +129,16 @@ class CmdMappingMgr:
 
     def _parse_command_and_map_params(self, cmd_format: str, program_cmd: str) -> Optional[CommandNode]:
         """解析命令并设置 placeholder"""
-        # 加载解析器配置
-        parser_config = self._load_parser_config(program_cmd)
+        # 从命令格式中提取实际的程序名
+        parts = cmd_format.split()
+        actual_program_name = parts[0] if parts else program_cmd
+        
+        debug(f"解析命令: '{cmd_format}', 配置程序: {program_cmd}, 实际程序: {actual_program_name}")
+        
+        # 加载正确的解析器配置
+        parser_config = self._load_parser_config(actual_program_name)  # 使用实际程序名
         if not parser_config:
+            error(f"无法加载程序 '{actual_program_name}' 的解析器配置")
             return None
         
         # 生成示例命令
