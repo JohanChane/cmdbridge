@@ -266,9 +266,29 @@ class ArgumentConfig:
                 return True
         return False
     
-    def get_effective_options(self) -> List[str]:
-        """获取有效的选项名称（过滤空字符串）"""
-        return [opt for opt in self.opt if opt]
+    def get_primary_option_name(self) -> Optional[str]:
+        """获取主要选项名称
+        
+        选择规则:
+        1. 优先返回长参数名 (第二个元素，如果存在且非空)
+        2. 如果没有长参数名，返回短参数名 (第一个元素，如果存在且非空)
+        3. 如果没有有效的选项名，返回 None
+        
+        Returns:
+            Optional[str]: 主要选项名称
+        """
+        if not self.opt or len(self.opt) < 2:
+            return None
+        
+        # 优先返回长参数名 (第二个元素)
+        if self.opt[1] and self.opt[1].strip():
+            return self.opt[1]
+        
+        # 回退到短参数名 (第一个元素)
+        if self.opt[0] and self.opt[0].strip():
+            return self.opt[0]
+        
+        return None
 
 @dataclass
 class SubCommandConfig:
