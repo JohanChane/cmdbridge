@@ -123,7 +123,7 @@ class CacheMgr:
         
         if cache_key not in self._cache_data:
             # 加载操作到程序映射
-            op_to_program_file = self.path_manager.get_operation_mappings_domain_dir_of_cache(domain) / "operation_to_program.toml"
+            op_to_program_file = self.path_manager.get_operation_to_program_path(domain)  # 使用新路径
             operation_to_program = {}
             
             if op_to_program_file.exists():
@@ -135,19 +135,26 @@ class CacheMgr:
                 except Exception as e:
                     error(f"加载操作到程序映射失败 {op_to_program_file}: {e}")
             
-            # 加载所有程序的命令格式
+            # 加载所有程序的命令格式（新结构）
             command_formats = {}
             cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache(domain)
             
-            for command_file in cache_dir.glob("*_commands.toml"):
-                program_name = command_file.stem.replace("_commands", "")
-                try:
-                    with open(command_file, 'rb') as f:
-                        data = tomli.load(f)
-                    command_formats[program_name] = data.get("commands", {})
-                    debug(f"加载 {program_name} 命令格式: {len(command_formats[program_name])} 个命令")
-                except Exception as e:
-                    error(f"加载命令格式文件失败 {command_file}: {e}")
+            # 遍历所有操作组目录
+            for group_dir in cache_dir.iterdir():
+                if group_dir.is_dir():
+                    group_name = group_dir.name
+                    # 遍历操作组目录中的所有程序命令文件
+                    for command_file in group_dir.glob("*_commands.toml"):
+                        program_name = command_file.stem.replace("_commands", "")
+                        try:
+                            with open(command_file, 'rb') as f:
+                                data = tomli.load(f)
+                            if program_name not in command_formats:
+                                command_formats[program_name] = {}
+                            command_formats[program_name].update(data.get("commands", {}))
+                            debug(f"加载 {group_name}/{program_name} 命令格式: {len(data.get('commands', {}))} 个命令")
+                        except Exception as e:
+                            error(f"加载命令格式文件失败 {command_file}: {e}")
             
             self._cache_data[cache_key] = {
                 "operation_to_program": operation_to_program,
