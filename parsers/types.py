@@ -77,39 +77,6 @@ class CommandArg:
     node_type: ArgType
     option_name: Optional[str] = None
     values: List[str] = field(default_factory=list)
-    repeat: Optional[int] = None  # 重复次数，仅 FLAG 类型使用
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """序列化为字典"""
-        result = {
-            "node_type": self.node_type.value,  # 使用枚举值的小写字符串
-            "values": self.values.copy(),
-        }
-        
-        # 只有非 None 的字段才包含
-        if self.option_name is not None:
-            result["option_name"] = self.option_name
-        if self.repeat is not None:
-            result["repeat"] = self.repeat
-            
-        return result
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'CommandArg':
-        """从字典反序列化"""
-        return cls(
-            node_type=ArgType(data["node_type"]),
-            option_name=data.get("option_name"),
-            values=data.get("values", []),
-            repeat=data.get("repeat")
-        )
-
-@dataclass
-class CommandArg:
-    """Command argument in tree structure"""
-    node_type: ArgType
-    option_name: Optional[str] = None
-    values: List[str] = field(default_factory=list)
     repeat: Optional[int] = None
     placeholder: Optional[str] = None
     
