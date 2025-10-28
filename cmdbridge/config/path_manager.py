@@ -45,9 +45,17 @@ class CachePathMgr:
     def get_cmd_mappings_domain_dir(self, domain_name) -> Path:
         return self._base_cache_dir / "cmd_mappings" / f"{domain_name}.domain"
     
-    def get_cmd_mappings_group_path(self, domain_name: str, group_name: str) -> Path:
-        """获取命令映射缓存文件路径"""
-        return self.get_cmd_mappings_domain_dir(domain_name) / f"{group_name}.toml"
+    def get_cmd_mappings_group_dir(self, domain_name: str, group_name: str) -> Path:
+        """获取命令映射组目录路径"""
+        return self.get_cmd_mappings_domain_dir(domain_name) / group_name
+    
+    def get_cmd_mappings_group_program_path(self, domain_name: str, group_name: str, program_name: str) -> Path:
+        """获取命令映射组中特定程序的命令文件路径"""
+        return self.get_cmd_mappings_group_dir(domain_name, group_name) / f"{program_name}_command.toml"
+    
+    def get_cmd_to_operation_path(self, domain_name: str) -> Path:
+        """获取命令到操作映射文件路径"""
+        return self.get_cmd_mappings_domain_dir(domain_name) / "cmd_to_operation.toml"
     
     def get_operation_mappings_domain_dir(self, domain_name) -> Path:
         return self._base_cache_dir / "operation_mappings" / f"{domain_name}.domain"
@@ -209,9 +217,9 @@ class PathManager:
         """获取命令映射缓存文件路径"""
         return self._cache_path_mgr.get_cmd_mappings_domain_dir(domain_name)
 
-    def get_cmd_mappings_group_path_of_cache(self, domain_name: str, group_name: str) -> Path:
-        """获取命令映射缓存文件路径"""
-        return self._cache_path_mgr.get_cmd_mappings_group_path(domain_name, group_name)
+    # def get_cmd_mappings_group_path_of_cache(self, domain_name: str, group_name: str) -> Path:
+    #     """获取命令映射缓存文件路径"""
+    #     return self._cache_path_mgr.get_cmd_mappings_group_path(domain_name, group_name)
     
     def get_operation_to_program_path(self, domain_name: str) -> Path:
         """获取操作到程序映射文件路径"""
@@ -225,6 +233,23 @@ class PathManager:
         """获取操作映射组中特定程序的命令文件路径"""
         return self._cache_path_mgr.get_operation_mappings_group_program_path(domain_name, group_name, program_name)
     
+    def get_cmd_mappings_group_dir_of_cache(self, domain_name: str, group_name: str) -> Path:
+        """获取命令映射组目录路径"""
+        return self._cache_path_mgr.get_cmd_mappings_group_dir(domain_name, group_name)
+    
+    def get_cmd_mappings_group_program_path_of_cache(self, domain_name: str, group_name: str, program_name: str) -> Path:
+        """获取命令映射组中特定程序的命令文件路径"""
+        return self._cache_path_mgr.get_cmd_mappings_group_program_path(domain_name, group_name, program_name)
+    
+    def get_cmd_to_operation_path(self, domain_name: str) -> Path:
+        """获取命令到操作映射文件路径"""
+        return self._cache_path_mgr.get_cmd_to_operation_path(domain_name)
+    
+    def ensure_cmd_mappings_group_dir(self, domain_name: str, group_name: str) -> None:
+        """确保命令映射组目录存在"""
+        group_dir = self.get_cmd_mappings_group_dir_of_cache(domain_name, group_name)
+        group_dir.mkdir(parents=True, exist_ok=True)
+
     def ensure_operation_mappings_group_dir(self, domain_name: str, group_name: str) -> None:
         """确保操作映射组目录存在"""
         group_dir = self.get_operation_mappings_group_dir_of_cache(domain_name, group_name)

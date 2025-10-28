@@ -1,5 +1,3 @@
-# cmdbridge/core/cmd_mapping.py
-
 """
 命令映射核心模块 - 基于操作组的映射系统
 """
@@ -12,7 +10,7 @@ from parsers.types import ParserConfig, ParserType
 from ..config.path_manager import PathManager
 
 from log import debug, info, warning, error
-
+import tomli
 
 class CmdMapping:
     """
@@ -38,33 +36,72 @@ class CmdMapping:
         self.source_parser_config = None
 
     @classmethod
-    def load_from_cache(cls, domain_name: str, group_name: str) -> 'CmdMapping':
+    def load_from_cache(cls, domain_name: str, program_name: str) -> 'CmdMapping':
         """
-        从缓存加载指定程序组的命令映射
+        从缓存加载指定程序的命令映射（跨操作组查找）
         
         Args:
             domain_name: 领域名称
-            group_name: 程序组名称
+            program_name: 程序名称
             
         Returns:
             CmdMapping: 命令映射器实例
         """
         path_manager = PathManager.get_instance()
-        cache_file = path_manager.get_cmd_mappings_domain_dir_of_cache(domain_name) / f"{group_name}.toml"
         
-        if not cache_file.exists():
-            debug(f"缓存文件不存在: {cache_file}")
+        # 新的缓存结构：从 cmd_to_operation.toml 获取程序列表
+        cmd_to_operation_file = path_manager.get_cmd_to_operation_path(domain_name)
+        
+        if not cmd_to_operation_file.exists():
+            debug(f"cmd_to_operation 文件不存在: {cmd_to_operation_file}")
             return cls({})
         
         try:
-            with open(cache_file, 'rb') as f:
-                mapping_config = tomli.load(f)
-            debug(f"从缓存加载 {domain_name}.{group_name} 的命令映射")
+            with open(cmd_to_operation_file, 'rb') as f:
+                cmd_to_operation_data = tomli.load(f)
+            
+            debug(f"跨操作组查找程序: {program_name}")
+            found_group = None
+            
+            # 在所有操作组中查找包含该程序的操作组
+            for op_group, group_data in cmd_to_operation_data.get("cmd_to_operation", {}).items():
+                if program_name in group_data.get("programs", []):
+                    found_group = op_group
+                    debug(f"在操作组 {op_group} 中找到程序 {program_name}")
+                    break
+            
+            if not found_group:
+                debug(f"在所有操作组中未找到程序 {program_name}")
+                return cls({})
+            
+            # 加载该程序的命令映射
+            program_file = path_manager.get_cmd_mappings_group_program_path_of_cache(
+                domain_name, found_group, program_name
+            )
+            
+            if not program_file.exists():
+                debug(f"程序映射文件不存在: {program_file}")
+                return cls({})
+            
+            with open(program_file, 'rb') as f:
+                program_data = tomli.load(f)
+            
+            debug(f"加载程序 {program_name} 的命令映射（来自操作组 {found_group}）")
+            debug(f"程序数据: {program_data}")
+            
+            # 🔧 修复：确保返回正确的数据结构
+            # 程序文件的结构是 {"command_mappings": [...]}
+            # 但 CmdMapping 期望的是 {program_name: {"command_mappings": [...]}}
+            mapping_config = {
+                program_name: program_data
+            }
+            
             return cls(mapping_config)
+            
         except Exception as e:
-            error(f"加载缓存文件失败 {cache_file}: {e}")
+            error(f"加载缓存文件失败: {e}")
             return cls({})
-
+        
     @classmethod
     def load_all_for_domain(cls, domain_name: str) -> Dict[str, 'CmdMapping']:
         """
@@ -77,18 +114,27 @@ class CmdMapping:
             Dict[str, CmdMapping]: 程序组名到命令映射器的字典
         """
         path_manager = PathManager.get_instance()
-        cache_dir = path_manager.get_cmd_mappings_domain_dir_of_cache(domain_name)
+        cmd_to_operation_file = path_manager.get_cmd_to_operation_path(domain_name)
         
-        if not cache_dir.exists():
+        if not cmd_to_operation_file.exists():
             return {}
         
-        mappings = {}
-        for cache_file in cache_dir.glob("*.toml"):
-            group_name = cache_file.stem
-            mappings[group_name] = cls.load_from_cache(domain_name, group_name)
-        
-        debug(f"加载 {domain_name} 领域的 {len(mappings)} 个程序组映射")
-        return mappings
+        try:
+            with open(cmd_to_operation_file, 'rb') as f:
+                cmd_to_operation_data = tomli.load(f)
+            
+            mappings = {}
+            cmd_to_operation = cmd_to_operation_data.get("cmd_to_operation", {})
+            
+            for group_name in cmd_to_operation.keys():
+                mappings[group_name] = cls.load_from_cache(domain_name, group_name)
+            
+            debug(f"加载 {domain_name} 领域的 {len(mappings)} 个程序组映射")
+            return mappings
+            
+        except Exception as e:
+            error(f"加载领域映射失败: {e}")
+            return {}
 
     def map_to_operation(self, source_cmdline: List[str], 
                         source_parser_config: ParserConfig,
@@ -165,20 +211,21 @@ class CmdMapping:
         
         Args:
             source_node: 解析后的源命令节点
-            dst_operation_group: 目标程序名
+            dst_operation_group: 目标操作组名称
             
         Returns:
             Optional[Dict[str, Any]]: 匹配的映射配置，如果没有匹配则返回 None
         """
-        program_name = source_node.name
-        debug(f"在程序 {program_name} 中查找匹配的映射，目标程序: {dst_operation_group}")
+        program_name = source_node.name  # 源程序名，如 "asp"
+        debug(f"在程序 {program_name} 中查找匹配的映射，目标操作组: {dst_operation_group}")
         
-        # 检查程序名是否在映射配置中（移除程序名必须匹配的限制）
+        # 直接根据源程序名查找对应的映射配置
         if program_name not in self.mapping_config:
             debug(f"程序 {program_name} 不在映射配置中")
             return None
         
-        command_mappings = self.mapping_config[program_name].get("command_mappings", [])
+        program_data = self.mapping_config[program_name]
+        command_mappings = program_data.get("command_mappings", [])
         debug(f"找到 {len(command_mappings)} 个可能的映射")
         
         for mapping in command_mappings:
@@ -186,6 +233,7 @@ class CmdMapping:
                 debug(f"找到匹配的映射: {mapping['operation']}")
                 return mapping
         
+        debug(f"在操作组 {dst_operation_group} 中未找到程序 {program_name} 的匹配映射")
         return None
     
     def _is_command_match(self, source_node: CommandNode, mapping: Dict[str, Any]) -> bool:

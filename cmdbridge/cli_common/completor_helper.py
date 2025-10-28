@@ -55,8 +55,6 @@ class CommonCompletorHelper:
     def get_commands(domain: Optional[str], source_group: str) -> List[str]:
         """从缓存中获取指定领域和源程序组的命令列表"""
         try:
-            cache_mgr = CacheMgr.get_instance()
-            
             # 如果没有指定领域，尝试自动检测
             if not domain:
                 domains = CommonCompletorHelper.get_domains()
@@ -69,52 +67,71 @@ class CommonCompletorHelper:
                 warning(f"无法确定源程序组 '{source_group}' 所属的领域")
                 return []
             
-            # 从缓存中获取命令映射
-            cmd_mappings = cache_mgr.get_cmd_mappings(domain, source_group)
-            if not cmd_mappings or source_group not in cmd_mappings:
-                debug(f"未找到 {domain}.{source_group} 的命令映射")
+            # 使用新的缓存结构获取命令
+            path_manager = PathManager.get_instance()
+            cmd_to_operation_file = path_manager.get_cmd_to_operation_path(domain)
+            
+            if not cmd_to_operation_file.exists():
                 return []
             
-            commands = []
-            for mapping in cmd_mappings[source_group].get("command_mappings", []):
-                cmd_format = mapping.get("cmd_format", "")
-                if cmd_format:
-                    commands.append(cmd_format)
+            with open(cmd_to_operation_file, 'rb') as f:
+                cmd_to_operation_data = tomli.load(f)
             
-            debug(f"获取 {domain}.{source_group} 的命令列表: {len(commands)} 个命令")
+            # 获取该操作组的所有程序
+            programs = cmd_to_operation_data.get("cmd_to_operation", {}).get(source_group, {}).get("programs", [])
+            if not programs:
+                return []
+            
+            # 收集所有程序的命令格式
+            commands = []
+            for program_name in programs:
+                program_file = path_manager.get_cmd_mappings_group_program_path_of_cache(
+                    domain, source_group, program_name
+                )
+                
+                if program_file.exists():
+                    try:
+                        with open(program_file, 'rb') as f:
+                            program_data = tomli.load(f)
+                        
+                        # 提取该程序的所有命令格式
+                        for mapping in program_data.get("command_mappings", []):
+                            cmd_format = mapping.get("cmd_format", "")
+                            if cmd_format:
+                                commands.append(cmd_format)
+                                
+                    except Exception as e:
+                        warning(f"读取程序命令文件失败 {program_file}: {e}")
+            
             return commands
             
         except Exception as e:
             warning(f"获取命令列表失败 (domain={domain}, group={source_group}): {e}")
             return []
-
+        
     @staticmethod
     def get_all_commands(domain: Optional[str]) -> List[str]:
         """获取指定领域的所有命令"""
         try:
-            if not domain:
-                # 如果没有指定领域，获取所有领域的命令
-                all_commands = []
-                domains = CommonCompletorHelper.get_domains()
-                for dom in domains:
-                    groups = CommonCompletorHelper.get_operation_groups(dom)
-                    for group in groups:
-                        commands = CommonCompletorHelper.get_commands(dom, group)
-                        all_commands.extend(commands)
-                return list(set(all_commands))
-            else:
-                # 获取指定领域的所有命令
-                all_commands = []
-                groups = CommonCompletorHelper.get_operation_groups(domain)
+            all_commands = []
+            
+            # 确定要处理的领域列表
+            domains = [domain] if domain else CommonCompletorHelper.get_domains()
+            
+            # 收集所有领域的命令
+            for dom in domains:
+                groups = CommonCompletorHelper.get_operation_groups(dom)
                 for group in groups:
-                    commands = CommonCompletorHelper.get_commands(domain, group)
+                    commands = CommonCompletorHelper.get_commands(dom, group)
                     all_commands.extend(commands)
-                return list(set(all_commands))
+            
+            # 去重并返回
+            return list(set(all_commands))
                 
         except Exception as e:
             warning(f"获取所有命令失败 (domain={domain}): {e}")
             return []
-
+        
     @staticmethod
     def get_operation_names(domain: Optional[str], dest_group: Optional[str]) -> List[str]:
         """从缓存中获取操作名称列表"""

@@ -95,16 +95,43 @@ class CacheMgr:
         cache_key = f"{domain}.{group_name}"
         
         if cache_key not in self._cache_data:
-            cache_file = self.path_manager.get_cmd_mappings_group_path_of_cache(domain, group_name)
-            if cache_file.exists():
-                try:
-                    with open(cache_file, 'rb') as f:
-                        self._cache_data[cache_key] = tomli.load(f)
-                    debug(f"加载命令映射缓存: {cache_key}")
-                except Exception as e:
-                    error(f"加载命令映射缓存失败 {cache_file}: {e}")
+            # 🔧 修复：使用新的缓存结构
+            try:
+                # 从 cmd_to_operation.toml 获取该操作组的所有程序
+                cmd_to_operation_file = self.path_manager.get_cmd_to_operation_path(domain)
+                if not cmd_to_operation_file.exists():
                     self._cache_data[cache_key] = {}
-            else:
+                    return self._cache_data[cache_key]
+                
+                with open(cmd_to_operation_file, 'rb') as f:
+                    cmd_to_operation_data = tomli.load(f)
+                
+                # 获取该操作组的所有程序
+                programs = cmd_to_operation_data.get("cmd_to_operation", {}).get(group_name, {}).get("programs", [])
+                if not programs:
+                    self._cache_data[cache_key] = {}
+                    return self._cache_data[cache_key]
+                
+                # 加载所有程序的命令映射
+                group_mappings = {}
+                for program_name in programs:
+                    program_file = self.path_manager.get_cmd_mappings_group_program_path_of_cache(
+                        domain, group_name, program_name
+                    )
+                    if program_file.exists():
+                        try:
+                            with open(program_file, 'rb') as f:
+                                program_data = tomli.load(f)
+                            # 合并程序数据
+                            group_mappings.update(program_data)
+                        except Exception as e:
+                            error(f"加载程序命令文件失败 {program_file}: {e}")
+                
+                self._cache_data[cache_key] = group_mappings
+                debug(f"加载命令映射缓存: {cache_key}, 包含程序: {programs}")
+                
+            except Exception as e:
+                error(f"加载命令映射缓存失败: {e}")
                 self._cache_data[cache_key] = {}
         
         return self._cache_data[cache_key]

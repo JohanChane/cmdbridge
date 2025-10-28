@@ -62,18 +62,32 @@ class CmdBridge:
         if not command.strip():
             return None
         
-        # 获取命令的第一个单词
-        first_word = command.strip().split()[0]
+        # 获取命令的第一个单词（程序名）
+        program_name = command.strip().split()[0]
+        debug(f"自动识别源操作组，命令: '{command}', 程序名: '{program_name}', 领域: '{domain}'")
         
-        # 列出该领域的所有组
-        groups = self.path_manager.get_operation_groups_from_config(domain)
+        # 使用 cmd_to_operation.toml 查找程序所属的操作组
+        cmd_to_operation_file = self.path_manager.get_cmd_to_operation_path(domain)
+        if not cmd_to_operation_file.exists():
+            debug(f"cmd_to_operation 文件不存在: {cmd_to_operation_file}")
+            return None
         
-        # 检查是否有组名与命令前缀匹配
-        for group in groups:
-            if first_word == group:
-                return group
-        
-        return None
+        try:
+            with open(cmd_to_operation_file, 'rb') as f:
+                cmd_to_operation_data = tomli.load(f)
+            
+            # 在所有操作组中查找包含该程序的操作组
+            for op_group, group_data in cmd_to_operation_data.get("cmd_to_operation", {}).items():
+                if program_name in group_data.get("programs", []):
+                    debug(f"自动识别成功: 程序 '{program_name}' 属于操作组 '{op_group}'")
+                    return op_group
+                    
+            debug(f"自动识别失败: 未找到程序 '{program_name}' 所属的操作组")
+            return None
+            
+        except Exception as e:
+            error(f"读取 cmd_to_operation 文件失败: {e}")
+            return None
 
     def _get_mapping_config(self, domain: str, group_name: str) -> Dict[str, Any]:
         """获取指定领域和程序组的映射配置"""
@@ -94,7 +108,7 @@ class CmdBridge:
         return self._mapping_config_cache[cache_key]
 
     def map_command(self, domain: Optional[str], src_group: Optional[str], 
-                dest_group: Optional[str], command_args: List[str]) -> Optional[str]:
+                    dest_group: Optional[str], command_args: List[str]) -> Optional[str]:
         """映射完整命令"""
         try:
             # 将参数列表合并为命令字符串
@@ -112,24 +126,26 @@ class CmdBridge:
                 if not src_group:
                     return None
             
-            # 动态加载映射配置
-            mapping_config = self._get_mapping_config(domain, src_group)
+            # 从命令中提取实际程序名
+            actual_program_name = command_args[0] if command_args else None
+            if not actual_program_name:
+                return None
             
-            # 重新初始化命令映射器
-            self.command_mapper = CmdMapping(mapping_config)
+            # 🔧 修复：使用跨操作组查找加载映射配置
+            self.command_mapper = CmdMapping.load_from_cache(domain, actual_program_name)
             
             # 加载源程序的解析器配置
-            parser_config_file = self.path_manager.get_program_parser_config_path(src_group)
+            parser_config_file = self.path_manager.get_program_parser_config_path(actual_program_name)
             if not parser_config_file.exists():
-                error(f"找不到 {src_group} 的解析器配置")
+                error(f"找不到 {actual_program_name} 的解析器配置")
                 return None
             
             from parsers.config_loader import load_parser_config_from_file
-            source_parser_config = load_parser_config_from_file(str(parser_config_file), src_group)
+            source_parser_config = load_parser_config_from_file(str(parser_config_file), actual_program_name)
             
             # 使用正确的 map_to_operation 方法
             operation_result = self.command_mapper.map_to_operation(
-                source_cmdline=command_args,  # 直接使用参数列表
+                source_cmdline=command_args,
                 source_parser_config=source_parser_config,
                 dst_operation_group=dest_group
             )
@@ -150,7 +166,7 @@ class CmdBridge:
         except Exception as e:
             error(f"命令映射失败: {e}")
             return None
-
+        
     def map_operation(self, domain: Optional[str], dest_group: Optional[str], 
                     operation_args: List[str]) -> Optional[str]:
         """映射操作和参数"""
