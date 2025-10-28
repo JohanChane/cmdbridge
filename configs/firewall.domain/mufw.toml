@@ -1,0 +1,65 @@
+# === mufw 命令实现（ufw 作为最终命令）===
+
+[operations.allow_port]
+cmd_format = "mufw allow --port {port} --proto {protocol}"
+final_cmd_format = "ufw allow {port}/{protocol}"
+
+[operations.deny_port]
+cmd_format = "mufw deny --port {port} --proto {protocol}"
+final_cmd_format = "ufw deny {port}/{protocol}"
+
+[operations.delete_allow_port]
+cmd_format = "mufw delete --allow --port {port} --proto {protocol}"
+final_cmd_format = "ufw delete allow {port}/{protocol}"
+
+[operations.delete_deny_port]
+cmd_format = "mufw delete --deny --port {port} --proto {protocol}"
+final_cmd_format = "ufw delete deny {port}/{protocol}"
+
+[operations.allow_ip]
+cmd_format = "mufw allow --from-ip {ip}"
+final_cmd_format = "ufw allow from {ip}"
+
+[operations.deny_ip]
+cmd_format = "mufw deny --from-ip {ip}"
+final_cmd_format = "ufw deny from {ip}"
+
+[operations.delete_allow_ip]
+cmd_format = "mufw delete --allow --from-ip {ip}"
+final_cmd_format = "ufw delete allow from {ip}"
+
+[operations.delete_deny_ip]
+cmd_format = "mufw delete --deny --from-ip {ip}"
+final_cmd_format = "ufw delete deny from {ip}"
+
+[operations.allow_service]
+cmd_format = "mufw allow --service {service}"
+final_cmd_format = "ufw allow {service}"
+
+[operations.deny_service]
+cmd_format = "mufw deny --service {service}"
+final_cmd_format = "ufw deny {service}"
+
+[operations.delete_allow_service]
+cmd_format = "mufw delete --allow --service {service}"
+final_cmd_format = "ufw delete allow {service}"
+
+[operations.delete_deny_service]
+cmd_format = "mufw delete --deny --service {service}"
+final_cmd_format = "ufw delete deny {service}"
+
+[operations.enable_firewall]
+cmd_format = "mufw enable"
+final_cmd_format = "ufw enable"
+
+[operations.disable_firewall]
+cmd_format = "mufw disable"
+final_cmd_format = "ufw disable"
+
+[operations.status]
+cmd_format = "mufw status numbered"
+final_cmd_format = "ufw status numbered"
+
+[operations.reset]
+cmd_format = "mufw reset"
+final_cmd_format = "ufw reset"

@@ -1,0 +1,83 @@
+[iptables.parser_config]
+parser_type = "getopt"
+program_name = "iptables"
+
+# 链名称参数
+[[iptables.arguments]]
+name = "targets"
+nargs = "*"
+
+[[iptables.arguments]]
+name = "append"
+opt = ["-A", ""]
+nargs = "1"
+
+[[iptables.arguments]]
+name = "delete"
+opt = ["-D", ""]
+nargs = "1"
+
+[[iptables.arguments]]
+name = "flush"
+opt = ["-F", ""]
+nargs = "0"
+
+[[iptables.arguments]]
+name = "list"
+opt = ["-L", ""]
+nargs = "0"
+
+[[iptables.arguments]]
+name = "numeric"
+opt = ["-n", ""]
+nargs = "0"
+
+[[iptables.arguments]]
+name = "verbose"
+opt = ["-v", ""]
+nargs = "0"
+
+[[iptables.arguments]]
+name = "policy"
+opt = ["-P", ""]
+nargs = "2"
+
+[[iptables.arguments]]
+name = "protocol"
+opt = ["-p", ""]
+nargs = "1"
+
+[[iptables.arguments]]
+name = "dport"
+opt = ["", "--dport"]
+nargs = "1"
+
+[[iptables.arguments]]
+name = "source"
+opt = ["-s", ""]
+nargs = "1"
+
+[[iptables.arguments]]
+name = "jump"
+opt = ["-j", ""]
+nargs = "1"
+
+[[iptables.arguments]]
+name = "table"
+opt = ["-t", ""]
+nargs = "1"
+
+[[iptables.arguments]]
+name = "match"
+opt = ["-m", ""]
+nargs = "1"
+
+[[iptables.arguments]]
+name = "multiport"
+opt = ["multiport", ""]
+nargs = "0"
+
+[[iptables.arguments]]
+name = "dports"
+opt = ["", "--dports"]
+nargs = "1"

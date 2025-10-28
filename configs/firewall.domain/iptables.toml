@@ -1,0 +1,49 @@
+# === iptables 命令实现 ===
+
+[operations.allow_port]
+cmd_format = "iptables -A INPUT -p {protocol} --dport {port} -j ACCEPT"
+
+[operations.deny_port]
+cmd_format = "iptables -A INPUT -p {protocol} --dport {port} -j DROP"
+
+[operations.delete_allow_port]
+cmd_format = "iptables -D INPUT -p {protocol} --dport {port} -j ACCEPT"
+
+[operations.delete_deny_port]
+cmd_format = "iptables -D INPUT -p {protocol} --dport {port} -j DROP"
+
+[operations.allow_service]
+cmd_format = "iptables -A INPUT -p tcp -m multiport --dports {service} -j ACCEPT"
+
+[operations.deny_service]
+cmd_format = "iptables -A INPUT -p tcp -m multiport --dports {service} -j DROP"
+
+[operations.delete_allow_service]
+cmd_format = "iptables -D INPUT -p tcp -m multiport --dports {service} -j ACCEPT"
+
+[operations.delete_deny_service]
+cmd_format = "iptables -D INPUT -p tcp -m multiport --dports {service} -j DROP"
+
+[operations.allow_ip]
+cmd_format = "iptables -A INPUT -s {ip} -j ACCEPT"
+
+[operations.deny_ip]
+cmd_format = "iptables -A INPUT -s {ip} -j DROP"
+
+[operations.delete_allow_ip]
+cmd_format = "iptables -D INPUT -s {ip} -j ACCEPT"
+
+[operations.delete_deny_ip]
+cmd_format = "iptables -D INPUT -s {ip} -j DROP"
+
+[operations.enable_firewall]
+cmd_format = "iptables -P INPUT DROP && iptables -P FORWARD DROP && iptables -P OUTPUT ACCEPT"
+
+[operations.disable_firewall]
+cmd_format = "iptables -P INPUT ACCEPT && iptables -P FORWARD ACCEPT && iptables -P OUTPUT ACCEPT"
+
+[operations.status]
+cmd_format = "iptables -L -n -v && echo '=== NAT Rules ===' && iptables -t nat -L -n -v"
+
+[operations.reset]
+cmd_format = "iptables -F"

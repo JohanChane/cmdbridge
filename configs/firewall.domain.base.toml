@@ -1,0 +1,68 @@
+# === 防火墙管理接口 ===
+
+[operations.status]
+description = "Show firewall status"
+args = []
+
+[operations.enable_firewall]
+description = "Enable firewall"
+args = []
+
+[operations.disable_firewall]
+description = "Disable firewall"
+args = []
+
+[operations.reset]
+description = "Reset firewall rules to defaults"
+args = []
+
+# 端口操作
+[operations.allow_port]
+description = "Allow traffic on specific port"
+args = ["port", "protocol"]
+
+[operations.deny_port]
+description = "Deny traffic on specific port"
+args = ["port", "protocol"]
+
+[operations.delete_allow_port]
+description = "Delete allow rule for specific port"
+args = ["port", "protocol"]
+
+[operations.delete_deny_port]
+description = "Delete deny rule for specific port"
+args = ["port", "protocol"]
+
+# IP 操作
+[operations.allow_ip]
+description = "Allow traffic from specific IP"
+args = ["ip"]
+
+[operations.deny_ip]
+description = "Deny traffic from specific IP"
+args = ["ip"]
+
+[operations.delete_allow_ip]
+description = "Delete allow rule for specific IP"
+args = ["ip"]
+
+[operations.delete_deny_ip]
+description = "Delete deny rule for specific IP"
+args = ["ip"]
+
+# 服务操作
+[operations.allow_service]
+description = "Allow traffic for specific service"
+args = ["service"]
+
+[operations.deny_service]
+description = "Deny traffic for specific service"
+args = ["service"]
+
+[operations.delete_allow_service]
+description = "Delete allow rule for specific service"
+args = ["service"]
+
+[operations.delete_deny_service]
+description = "Delete deny rule for specific service"
+args = ["service"]
