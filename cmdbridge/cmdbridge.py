@@ -168,7 +168,7 @@ class CmdBridge:
             return None
         
     def map_operation(self, domain: Optional[str], dest_group: Optional[str], 
-                    operation_args: List[str]) -> Optional[str]:
+                operation_args: List[str]) -> Optional[str]:
         """映射操作和参数"""
         try:
             # 将参数列表合并为操作字符串
@@ -185,13 +185,33 @@ class CmdBridge:
             if not parts:
                 return None
             
-            # 第一个参数是操作名，其余是包名
+            # 第一个参数是操作名
             operation_name = parts[0]
             params = {}
             
-            # 简单参数解析：假设后续参数都是包名
-            if len(parts) > 1:
-                params = {"pkgs": " ".join(parts[1:])}
+            # 获取该操作的实际参数列表
+            cache_mgr = CacheMgr.get_instance()
+            expected_params = cache_mgr.get_operation_parameters(domain, operation_name, dest_group)
+            
+            if expected_params:
+                # 根据预期的参数名来解析参数
+                if len(parts) > 1:
+                    # 简单处理：如果只有一个预期参数，把所有剩余参数都给它
+                    if len(expected_params) == 1:
+                        param_name = expected_params[0]
+                        params[param_name] = " ".join(parts[1:])
+                    else:
+                        # 如果有多个预期参数，需要更复杂的解析逻辑
+                        # 这里简化处理，按顺序分配
+                        for i, param_name in enumerate(expected_params):
+                            if i + 1 < len(parts):
+                                params[param_name] = parts[i + 1]
+                            else:
+                                params[param_name] = ""  # 缺少参数给空值
+            else:
+                # 没有预期参数，但用户提供了参数，发出警告
+                if len(parts) > 1:
+                    warning(f"操作 {operation_name} 不需要参数，但提供了: {' '.join(parts[1:])}")
             
             # 调用 OperationMapping 生成命令
             result = self.operation_mapper.generate_command(
@@ -202,6 +222,10 @@ class CmdBridge:
             )
             
             return result
+                
+        except Exception as e:
+            error(f"操作映射失败: {e}")
+            return None
                 
         except Exception as e:
             error(f"操作映射失败: {e}")

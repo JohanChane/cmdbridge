@@ -6,10 +6,19 @@ import sys
 from .cli_helper import CmdBridgeCLIHelper
 from ..cli_common.completor import DomainType, SourceGroupType, DestGroupType, CommandType, OperationType
 
+def print_version(ctx, param, value):
+    """版本信息回调函数"""
+    if not value or ctx.resilient_parsing:
+        return
+    cli_helper = CmdBridgeCLIHelper()
+    cli_helper.handle_version()
+    ctx.exit()
 
 # Click 命令行接口
 @click.group(invoke_without_command=True)
 @click.option('--debug', is_flag=True, help='启用调试模式')
+@click.option('--version', is_flag=True, callback=print_version, 
+              expose_value=False, is_eager=True, help='显示版本信息')
 @click.pass_context
 def cli(ctx, debug):
     """cmdbridge: 输出映射后的命令
@@ -25,7 +34,7 @@ def cli(ctx, debug):
     
     # 设置日志级别
     cli_helper.handle_debug_mode(debug)
-    
+
     # 如果没有子命令，显示帮助信息
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
@@ -137,14 +146,6 @@ def op(ctx, domain, dest_group, operation):
     
     success = cli_helper.handle_map_operation(domain, dest_group, operation)
     sys.exit(0 if success else 1)
-
-
-@cli.command()
-@click.pass_obj
-def version(cli_helper):
-    """显示版本信息"""
-    cli_helper.handle_version()
-
 
 def main():
     """主入口函数"""

@@ -6,9 +6,19 @@ import sys
 from .cli_helper import CmdBridgeEditCLIHelper
 from cmdbridge.cli_common.completor import DomainType, SourceGroupType, DestGroupType, CommandType, OperationType
 
+def print_version(ctx, param, value):
+    """版本信息回调函数"""
+    if not value or ctx.resilient_parsing:
+        return
+    cli_helper = CmdBridgeEditCLIHelper()
+    cli_helper.handle_version()
+    ctx.exit()
+
 # Click 命令行接口
 @click.group(invoke_without_command=True)
 @click.option('--debug', is_flag=True, help='启用调试模式')
+@click.option('--version', is_flag=True, callback=print_version, 
+              expose_value=False, is_eager=True, help='显示版本信息')
 @click.pass_context
 def cli(ctx, debug):
     """cmdbridge-edit: 将映射后命令放在用户的 line editor
@@ -72,14 +82,6 @@ def op(ctx, domain, dest_group, operation):
     
     success = cli_helper.handle_map_operation(domain, dest_group, operation)
     cli_helper.exit_with_success_code(success)
-
-
-@cli.command()
-@click.pass_context
-def version(ctx):
-    """显示版本信息"""
-    cli_helper = ctx.obj
-    cli_helper.handle_version()
 
 
 def main():

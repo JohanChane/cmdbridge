@@ -68,6 +68,10 @@ class CmdBridgeCLIHelper:
         if dest_group:
             operations = cache_mgr.get_supported_operations(domain, dest_group)
             
+            if not operations:
+                click.echo("❌ 该程序组不支持任何操作")
+                return
+            
             # 收集所有操作和参数信息
             op_data = []
             for op in sorted(operations):
@@ -92,10 +96,9 @@ class CmdBridgeCLIHelper:
             for op in sorted(operations):
                 click.echo(op)
 
-
     def handle_list_cmd_mappings(self, domain: Optional[str], source_group: Optional[str], 
                             dest_group: Optional[str]) -> None:
-        """输出命令之间的映射 - 使用 shlex 处理复杂命令"""        
+        """输出命令之间的映射 - 简化版本"""
         cache_mgr = CacheMgr.get_instance()
         
         # 设置默认值
@@ -103,38 +106,41 @@ class CmdBridgeCLIHelper:
         source_group = source_group or self._get_default_group()
         dest_group = dest_group or self._get_default_group()
         
-        # 获取源程序组的命令映射
-        cmd_mappings = cache_mgr.get_cmd_mappings(domain, source_group)
-        if not cmd_mappings:
-            click.echo("❌ 未找到命令映射")
+        # 获取所有操作
+        operations = cache_mgr.get_all_operations(domain)
+        if not operations:
+            click.echo("❌ 未找到任何操作")
             return
         
         # 收集数据
-        operations = []
-        sources = []
-        targets = []
+        operation_data = []
         
-        for mapping in cmd_mappings.get(source_group, {}).get("command_mappings", []):
-            operation = mapping.get("operation", "")
-            cmd_format = mapping.get("cmd_format", "")
-            
+        for operation in operations:
+            # 获取源命令格式
+            source_programs = cache_mgr.get_supported_programs(domain, operation)
+            if source_group not in [pg for pg in source_programs]:
+                continue
+                
+            source_cmd_format = cache_mgr.get_command_format(domain, operation, source_group)
+            if not source_cmd_format:
+                continue
+                
+            # 获取目标命令格式
             target_cmd_format = cache_mgr.get_command_format(domain, operation, dest_group)
             final_cmd_format = cache_mgr.get_final_command_format(domain, operation, dest_group)
             
             if target_cmd_format or final_cmd_format:
                 display_cmd = final_cmd_format if final_cmd_format else target_cmd_format
-                operations.append(f"{operation}:")
-                sources.append(cmd_format)
-                targets.append(display_cmd)
+                operation_data.append((operation, source_cmd_format, display_cmd))
         
-        if not operations:
+        if not operation_data:
             click.echo("❌ 未找到有效的命令映射")
             return
         
         # 计算列宽
-        max_op_len = max(len(op) for op in operations)
-        max_source_len = max(len(source) for source in sources)
+        max_op_len = max(len(op) for op, _, _ in operation_data)
+        max_source_len = max(len(source) for _, source, _ in operation_data)
         
-        # 输出对齐的结果
-        for op, source, target in zip(operations, sources, targets):
-            click.echo(f"{op:<{max_op_len}} {source:<{max_source_len}} -> {target}")
+        # 输出对齐的结果        
+        for operation, source, target in operation_data:
+            click.echo(f"{operation:<{max_op_len}} {source:<{max_source_len}} -> {target}")

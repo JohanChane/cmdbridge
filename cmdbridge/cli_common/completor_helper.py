@@ -172,7 +172,7 @@ class CommonCompletorHelper:
         try:
             cache_mgr = CacheMgr.get_instance()
             
-            # 获取操作的参数
+            # 直接调用 cache_mgr 的方法，让它处理 domain 为 None 的情况
             params = cache_mgr.get_operation_parameters(domain, operation_name, dest_group)
             
             if params:
@@ -184,5 +184,6 @@ class CommonCompletorHelper:
                 return operation_name
                 
         except Exception as e:
-            warning(f"获取带参数的操作信息失败: {e}")
+            # 如果出错，返回原始操作名
+            warning(f"获取操作参数失败: {e}")
             return operation_name

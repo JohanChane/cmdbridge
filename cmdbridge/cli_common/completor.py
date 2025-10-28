@@ -2,6 +2,7 @@ import sys
 import click
 from .completor_helper import CommonCompletorHelper
 from log import get_out, set_out
+from cmdbridge.config.path_manager import PathManager
 
 
 def completion_handler(func):
@@ -104,8 +105,36 @@ class OperationType(click.ParamType):
         else:
             operations = CommonCompletorHelper.get_all_operation_names(domain)
 
+        # 获取带参数的操作字符串
+        operation_items = []
+        for op in operations:
+            if dest_group:
+                # 确保 domain 不为 None
+                actual_domain = domain
+                if not actual_domain:
+                    # 如果没有指定 domain，使用默认 domain
+                    path_manager = PathManager.get_instance()
+                    domains = path_manager.get_domains_from_config()
+                    if domains:
+                        actual_domain = domains[0]
+                
+                if actual_domain:
+                    # 获取带参数的操作字符串
+                    op_with_params = CommonCompletorHelper.get_operation_with_params(actual_domain, op, dest_group)
+                    operation_items.append(
+                        click.shell_completion.CompletionItem(op_with_params)
+                    )
+                else:
+                    # 如果还是没有 domain，使用原始操作名
+                    operation_items.append(
+                        click.shell_completion.CompletionItem(op)
+                    )
+            else:
+                operation_items.append(
+                    click.shell_completion.CompletionItem(op)
+                )
+
         return [
-            click.shell_completion.CompletionItem(g)
-            for g in operations
-            if g.startswith(incomplete)
+            item for item in operation_items
+            if item.value.startswith(incomplete)
         ]
