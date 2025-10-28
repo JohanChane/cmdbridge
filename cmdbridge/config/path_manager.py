@@ -216,10 +216,6 @@ class PathManager:
     def get_cmd_mappings_domain_of_cache(self, domain_name: str) -> Path:
         """获取命令映射缓存文件路径"""
         return self._cache_path_mgr.get_cmd_mappings_domain_dir(domain_name)
-
-    # def get_cmd_mappings_group_path_of_cache(self, domain_name: str, group_name: str) -> Path:
-    #     """获取命令映射缓存文件路径"""
-    #     return self._cache_path_mgr.get_cmd_mappings_group_path(domain_name, group_name)
     
     def get_operation_to_program_path(self, domain_name: str) -> Path:
         """获取操作到程序映射文件路径"""
