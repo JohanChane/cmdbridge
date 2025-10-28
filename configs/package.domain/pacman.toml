@@ -21,7 +21,7 @@ cmd_format = "pacman -Syy"
 cmd_format = "asp export {pkgs}"
 
 [operations.install_with_config]
-cmd_format = "pacman -S {pkgs} --config {config_path}"
+cmd_format = "pacman -S {pkgs} --config \"{config_path}\""
 
 [operations.help]
 cmd_format = "pacman -h"

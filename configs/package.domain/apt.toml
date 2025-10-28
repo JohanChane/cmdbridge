@@ -21,7 +21,7 @@ cmd_format = "apt update --force-refresh-all"
 cmd_format = "apt source {pkgs}"
 
 [operations.install_with_config]
-cmd_format = "apt --config {config_path} install {pkgs}"
+cmd_format = "apt --config \"{config_path}\" install {pkgs}"
 
 [operations.help]
 cmd_format = "apt --help"
