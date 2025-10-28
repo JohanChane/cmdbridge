@@ -39,12 +39,17 @@ class ArgparseParser(BaseParser):
             CommandNode: 解析后的命令树
         """
         debug(f"开始解析命令行: {args}")
-        tokens = self._tokenize(args)
+        
+        # 🔧 使用统一的命令行预处理
+        normalized_args = Utils.normalize_command_line(args)
+        debug(f"预处理后命令行: {normalized_args}")
+        
+        tokens = self._tokenize(normalized_args)
         debug(f"生成的 tokens: {[str(t) for t in tokens]}")
         result = self._build_command_tree(tokens)
         debug(f"构建的命令树: {result.name}, 参数数量: {len(result.arguments)}")
         return result
-    
+
     def _tokenize(self, args: List[str]) -> List[CommandToken]:
         """将命令行参数转换为 token 列表"""
         tokens = []
@@ -126,39 +131,19 @@ class ArgparseParser(BaseParser):
                     current_option = None
                     current_option_config = None
                 
-                # 🔧 修复：对于标志选项，立即添加到 tokens
+                # 🔧 简化：所有选项都按相同逻辑处理
                 if option_config and not option_config.accepts_values():
-                    # 立即添加标志
+                    # 标志选项，立即添加到 tokens
                     tokens.append(CommandToken(
                         token_type=TokenType.FLAG,
                         values=[arg]
                     ))
                     debug(f"立即添加标志: {arg}")
                 else:
-                    if arg.startswith("--"):
-                        # 长选项
-                        current_option = arg
-                        current_option_config = option_config
-                        debug(f"设置当前长选项: {arg}")
-                        
-                        # 检查是否有等号形式的值
-                        if "=" in arg:
-                            opt_name, opt_value = arg.split("=", 1)
-                            tokens.append(CommandToken(
-                                token_type=TokenType.OPTION_NAME,
-                                values=[opt_name]
-                            ))
-                            tokens.append(CommandToken(
-                                token_type=TokenType.OPTION_VALUE,
-                                values=[opt_value]
-                            ))
-                            current_option = None
-                            current_option_config = None
-                    else:
-                        # 短选项
-                        current_option = arg
-                        current_option_config = option_config
-                        debug(f"设置当前短选项: {arg}")
+                    # 接受值的选项
+                    current_option = arg
+                    current_option_config = option_config
+                    debug(f"设置当前选项: {arg}")
             else:
                 # 位置参数或选项值
                 if current_option and current_option_config and current_option_config.accepts_values():

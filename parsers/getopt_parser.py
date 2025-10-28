@@ -36,7 +36,12 @@ class GetoptParser(BaseParser):
             CommandNode: 解析后的命令树
         """
         debug(f"开始解析命令行: {args}")
-        tokens = self._tokenize(args)
+        
+        # 🔧 使用统一的命令行预处理
+        normalized_args = Utils.normalize_command_line(args)
+        debug(f"预处理后命令行: {normalized_args}")
+        
+        tokens = self._tokenize(normalized_args)
         debug(f"生成的 tokens: {[str(t) for t in tokens]}")
         result = self._build_command_tree(tokens)
         debug(f"构建的命令树: {result.name}, 参数数量: {len(result.arguments)}")
@@ -91,51 +96,19 @@ class GetoptParser(BaseParser):
                     current_option = None
                     current_option_config = None
                 
-                if arg.startswith("--"):
-                    # 长选项
+                # 🔧 简化：所有选项都按相同逻辑处理，不再区分长短选项和组合选项
+                if option_config and not option_config.accepts_values():
+                    # 标志选项，立即添加到 tokens
+                    tokens.append(CommandToken(
+                        token_type=TokenType.FLAG,
+                        values=[arg]
+                    ))
+                    debug(f"立即添加标志: {arg}")
+                else:
+                    # 接受值的选项
                     current_option = arg
                     current_option_config = option_config
-                    debug(f"设置当前长选项: {arg}")
-                    
-                    # 检查是否有等号形式的值
-                    if "=" in arg:
-                        opt_name, opt_value = arg.split("=", 1)
-                        debug(f"长选项带等号值: {opt_name} = {opt_value}")
-                        tokens.append(CommandToken(
-                            token_type=TokenType.OPTION_NAME,
-                            values=[opt_name]
-                        ))
-                        tokens.append(CommandToken(
-                            token_type=TokenType.OPTION_VALUE,
-                            values=[opt_value]
-                        ))
-                        current_option = None
-                        current_option_config = None
-                else:
-                    # 短选项
-                    if len(arg) > 1:
-                        # 组合短选项，如 -xyz
-                        debug(f"处理组合短选项: {arg}")
-                        for char_index, char in enumerate(arg[1:]):
-                            short_opt = f"-{char}"
-                            opt_config = self._find_option_config(short_opt)
-                            debug(f"  短选项 '{short_opt}' 配置: {opt_config.name if opt_config else '未找到'}")
-                            
-                            if opt_config and opt_config.accepts_values() and char_index == len(arg[1:]) - 1:
-                                # 如果接受值，只能是最后一个字符
-                                debug(f"  选项 '{short_opt}' 接受值，设置为当前选项")
-                                current_option = short_opt
-                                current_option_config = opt_config
-                            else:
-                                debug(f"  选项 '{short_opt}' 作为标志处理")
-                                tokens.append(CommandToken(
-                                    token_type=TokenType.FLAG,
-                                    values=[short_opt]
-                                ))
-                    else:
-                        current_option = arg
-                        current_option_config = option_config
-                        debug(f"设置当前短选项: {arg}")
+                    debug(f"设置当前选项: {arg}")
             else:
                 # 位置参数或选项值
                 if current_option and current_option_config and current_option_config.accepts_values():
@@ -154,7 +127,7 @@ class GetoptParser(BaseParser):
                 else:
                     # 位置参数
                     token_type = (TokenType.EXTRA_ARG if not in_options 
-                                 else TokenType.POSITIONAL_ARG)
+                                else TokenType.POSITIONAL_ARG)
                     debug(f"参数 '{arg}' 作为 {token_type.value}")
                     tokens.append(CommandToken(
                         token_type=token_type,
