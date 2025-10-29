@@ -268,26 +268,26 @@ class ArgumentConfig:
     
     def get_primary_option_name(self) -> Optional[str]:
         """获取主要选项名称
-        
+
         选择规则:
-        1. 优先返回长参数名 (第二个元素，如果存在且非空)
-        2. 如果没有长参数名，返回短参数名 (第一个元素，如果存在且非空)
+        1. 优先返回长参数名 (包含 '--' 的选项)
+        2. 如果没有长参数名，返回短参数名 (包含 '-') (如果有多个，返回第一个)
         3. 如果没有有效的选项名，返回 None
-        
+
         Returns:
             Optional[str]: 主要选项名称
         """
-        if not self.opt or len(self.opt) < 2:
-            return None
-        
-        # 优先返回长参数名 (第二个元素)
-        if self.opt[1] and self.opt[1].strip():
-            return self.opt[1]
-        
-        # 回退到短参数名 (第一个元素)
-        if self.opt[0] and self.opt[0].strip():
-            return self.opt[0]
-        
+        # 1. 查找并返回第一个长参数名 (以 '--' 开头)
+        for opt in self.opt:
+            if opt and opt.startswith('--') and opt.strip():
+                return opt
+
+        # 2. 查找并返回第一个短参数名 (以 '-' 开头)
+        for opt in self.opt:
+            if opt and opt.startswith('-') and not opt.startswith('--') and opt.strip():
+                return opt
+
+        # 3. 如果都没有找到有效选项名，返回 None
         return None
 
 @dataclass
@@ -297,14 +297,10 @@ class SubCommandConfig:
     arguments: List[ArgumentConfig] = field(default_factory=list)  # 子命令参数
     description: Optional[str] = None      # 子命令描述
     
-    def find_argument(self, opt_name: str) -> Optional[ArgumentConfig]:
+    def find_argument(self, option_name: str) -> Optional['ArgumentConfig']:
         """根据选项名称查找参数配置"""
         for arg in self.arguments:
-            if opt_name in arg.opt:
-                return arg
-        # 也检查位置参数
-        for arg in self.arguments:
-            if arg.is_positional() and opt_name == "":
+            if arg.matches_option(option_name):
                 return arg
         return None
 
@@ -319,7 +315,7 @@ class ParserConfig:
     def find_argument(self, opt_name: str) -> Optional[ArgumentConfig]:
         """根据选项名称查找参数配置"""
         for arg in self.arguments:
-            if opt_name in arg.opt:
+            if arg.matches_option(opt_name):
                 return arg
         return None
     

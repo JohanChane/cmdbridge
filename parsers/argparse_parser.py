@@ -399,27 +399,24 @@ class ArgparseParser(BaseParser):
             debug(f"🔍 更新标志 '{existing_arg.option_name}' 重复次数为: {existing_arg.repeat}")
             debug(f"更新标志 '{existing_arg.option_name}' 重复次数为: {existing_arg.repeat}")
         else:
-            # 创建新的 CommandArg（使用配置的第一个选项名或当前选项名）
-            first_option = self._get_first_option_for_config(config_name, config_arguments) or option_name
+            # 创建新的 CommandArg（使用配置的 primary option name）
+            primary_option = self._get_primary_option_name_for_config(config_name, config_arguments) or option_name
             node.arguments.append(CommandArg(
                 node_type=ArgType.FLAG,
-                option_name=first_option,
+                option_name=primary_option,
                 values=[],
                 repeat=flag_counts[node_key][config_name]  # 直接设置正确的重复次数
             ))
-            debug(f"🔍 创建新标志 '{first_option}' 重复次数为: {flag_counts[node_key][config_name]}")
-            debug(f"创建新标志 '{first_option}' 重复次数为: {flag_counts[node_key][config_name]}")
+            debug(f"🔍 创建新标志 '{primary_option}' 重复次数为: {flag_counts[node_key][config_name]}")
+            debug(f"创建新标志 '{primary_option}' 重复次数为: {flag_counts[node_key][config_name]}")
         
         return i
     
-    def _get_first_option_for_config(self, config_name: str, config_arguments: List[ArgumentConfig]) -> Optional[str]:
-        """获取配置的第一个选项名"""
+    def _get_primary_option_name_for_config(self, config_name: str, config_arguments: List[ArgumentConfig]) -> Optional[str]:
+        """获取配置的主要选项名"""
         for arg_config in config_arguments:
-            if arg_config.name == config_name and arg_config.opt:
-                # 返回第一个非空的选项名
-                for opt in arg_config.opt:
-                    if opt:  # 跳过空字符串
-                        return opt
+            if arg_config.name == config_name:
+                return arg_config.get_primary_option_name()
         return None
 
     def _process_option_token(self, token: CommandToken, node: CommandNode,

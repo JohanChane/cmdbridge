@@ -12,5 +12,5 @@ nargs = "+"
 
 [[apt-file.sub_commands.arguments]]
 name = "regexp"
-opt = ["", "--regexp"]
+opt = ["--regexp"]
 nargs = "1"

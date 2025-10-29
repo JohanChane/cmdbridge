@@ -360,17 +360,17 @@ nargs = "+"
 
 [[pacman.arguments]]
 name = "S"
-opt = ["-S", ""]
+opt = ["-S"]
 nargs = "0"
 
 [[pacman.arguments]]
 name = "y"
-opt = ["-y", ""]
+opt = ["-y"]
 nargs = "0"
 
 [[pacman.arguments]]
 name = "noconfirm"
-opt = ["--noconfirm", ""]
+opt = ["--noconfirm"]
 nargs = "0"
 ```
 

@@ -122,7 +122,7 @@ class TestArgparseParser:
         assert result.name == "apt"
         assert len(result.arguments) == 1
         assert result.arguments[0].node_type == ArgType.FLAG
-        assert result.arguments[0].option_name == "-h"
+        assert result.arguments[0].option_name == "--help"
         
         assert result.subcommand is not None
         assert result.subcommand.name == "install"

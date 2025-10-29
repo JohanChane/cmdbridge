@@ -13,40 +13,40 @@ nargs = "0"
 
 [[pacman.arguments]]
 name = "S"
-opt = ["-S", ""]
+opt = ["-S"]
 nargs = "0"
 
 [[pacman.arguments]]
 name = "Q"
-opt = ["-Q", ""]
+opt = ["-Q"]
 nargs = "0"
 
 [[pacman.arguments]]
 name = "F"
-opt = ["-F", ""]
+opt = ["-F"]
 nargs = "0"
 
 [[pacman.arguments]]
 name = "s"
-opt = ["-s", ""]
+opt = ["-s"]
 nargs = "0"
 
 [[pacman.arguments]]
 name = "x"
-opt = ["-x", ""]
+opt = ["-x"]
 nargs = "0"
 
 [[pacman.arguments]]
 name = "y"
-opt = ["-y", ""]
+opt = ["-y"]
 nargs = "0"
 
 [[pacman.arguments]]
 name = "my"
-opt = ["", "--my"]
+opt = ["--my"]
 nargs = "0"
 
 [[pacman.arguments]]
 name = "config"
-opt = ["", "--config"]
+opt = ["--config"]
 nargs = "1"

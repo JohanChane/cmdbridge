@@ -9,75 +9,75 @@ nargs = "*"
 
 [[iptables.arguments]]
 name = "append"
-opt = ["-A", ""]
+opt = ["-A"]
 nargs = "1"
 
 [[iptables.arguments]]
 name = "delete"
-opt = ["-D", ""]
+opt = ["-D"]
 nargs = "1"
 
 [[iptables.arguments]]
 name = "flush"
-opt = ["-F", ""]
+opt = ["-F"]
 nargs = "0"
 
 [[iptables.arguments]]
 name = "list"
-opt = ["-L", ""]
+opt = ["-L"]
 nargs = "0"
 
 [[iptables.arguments]]
 name = "numeric"
-opt = ["-n", ""]
+opt = ["-n"]
 nargs = "0"
 
 [[iptables.arguments]]
 name = "verbose"
-opt = ["-v", ""]
+opt = ["-v"]
 nargs = "0"
 
 [[iptables.arguments]]
 name = "policy"
-opt = ["-P", ""]
+opt = ["-P"]
 nargs = "2"
 
 [[iptables.arguments]]
 name = "protocol"
-opt = ["-p", ""]
+opt = ["-p"]
 nargs = "1"
 
 [[iptables.arguments]]
 name = "dport"
-opt = ["", "--dport"]
+opt = ["--dport"]
 nargs = "1"
 
 [[iptables.arguments]]
 name = "source"
-opt = ["-s", ""]
+opt = ["-s"]
 nargs = "1"
 
 [[iptables.arguments]]
 name = "jump"
-opt = ["-j", ""]
+opt = ["-j"]
 nargs = "1"
 
 [[iptables.arguments]]
 name = "table"
-opt = ["-t", ""]
+opt = ["-t"]
 nargs = "1"
 
 [[iptables.arguments]]
 name = "match"
-opt = ["-m", ""]
+opt = ["-m"]
 nargs = "1"
 
 [[iptables.arguments]]
 name = "multiport"
-opt = ["multiport", ""]
+opt = ["multiport"]
 nargs = "0"
 
 [[iptables.arguments]]
 name = "dports"
-opt = ["", "--dports"]
+opt = ["--dports"]
 nargs = "1"

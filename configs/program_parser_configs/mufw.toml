@@ -8,22 +8,22 @@ name = "allow"
 
 [[mufw.sub_commands.arguments]]
 name = "port"
-opt = ["--port", ""]
+opt = ["--port"]
 nargs = "1"
 
 [[mufw.sub_commands.arguments]]
 name = "protocol"
-opt = ["--proto", ""]
+opt = ["--proto"]
 nargs = "1"
 
 [[mufw.sub_commands.arguments]]
 name = "service"
-opt = ["--service", ""]
+opt = ["--service"]
 nargs = "1"
 
 [[mufw.sub_commands.arguments]]
 name = "from-ip"
-opt = ["--from-ip", ""]
+opt = ["--from-ip"]
 nargs = "1"
 
 # 子命令：deny
@@ -32,22 +32,22 @@ name = "deny"
 
 [[mufw.sub_commands.arguments]]
 name = "port"
-opt = ["--port", ""]
+opt = ["--port"]
 nargs = "1"
 
 [[mufw.sub_commands.arguments]]
 name = "protocol"
-opt = ["--proto", ""]
+opt = ["--proto"]
 nargs = "1"
 
 [[mufw.sub_commands.arguments]]
 name = "service"
-opt = ["--service", ""]
+opt = ["--service"]
 nargs = "1"
 
 [[mufw.sub_commands.arguments]]
 name = "from-ip"
-opt = ["--from-ip", ""]
+opt = ["--from-ip"]
 nargs = "1"
 
 # 子命令：delete
@@ -56,32 +56,32 @@ name = "delete"
 
 [[mufw.sub_commands.arguments]]
 name = "allow"
-opt = ["--allow", ""]
+opt = ["--allow"]
 nargs = "0"
 
 [[mufw.sub_commands.arguments]]
 name = "deny"
-opt = ["--deny", ""]
+opt = ["--deny"]
 nargs = "0"
 
 [[mufw.sub_commands.arguments]]
 name = "port"
-opt = ["--port", ""]
+opt = ["--port"]
 nargs = "1"
 
 [[mufw.sub_commands.arguments]]
 name = "protocol"
-opt = ["--proto", ""]
+opt = ["--proto"]
 nargs = "1"
 
 [[mufw.sub_commands.arguments]]
 name = "service"
-opt = ["--service", ""]
+opt = ["--service"]
 nargs = "1"
 
 [[mufw.sub_commands.arguments]]
 name = "from-ip"
-opt = ["--from-ip", ""]
+opt = ["--from-ip"]
 nargs = "1"
 
 # 子命令：deny

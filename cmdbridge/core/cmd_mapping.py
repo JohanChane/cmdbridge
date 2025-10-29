@@ -182,19 +182,11 @@ class CmdMapping:
         # 在解析器配置中查找对应的参数配置
         arg_config = self.source_parser_config.find_argument(option_name)
         if not arg_config:
-            # 如果在全局参数中没找到，尝试在子命令参数中查找
-            # 注意：这里简化处理，实际可能需要更复杂的查找逻辑
             return option_name
         
-        if arg_config.opt:
-            # 优先返回长参数名
-            for opt in arg_config.opt:
-                if opt.startswith("--"):
-                    return opt
-            # 如果没有长参数名，返回第一个选项名
-            return arg_config.opt[0]
-        
-        return option_name
+        # 使用新的主要选项名方法
+        primary_name = arg_config.get_primary_option_name()
+        return primary_name or option_name
     
     def _create_source_parser(self, source_parser_config: ParserConfig):
         """创建源程序的解析器"""
