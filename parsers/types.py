@@ -51,9 +51,20 @@ class CommandToken:
         """Check if this is a flag token"""
         return self.token_type == TokenType.FLAG
     
-    def is_option(self) -> bool:
-        """Check if this is an option token (OPTION_NAME or OPTION_VALUE)"""
-        return self.token_type in (TokenType.OPTION_NAME, TokenType.OPTION_VALUE)
+    def is_option_name(self) -> bool:
+        return self.token_type == TokenType.OPTION_NAME
+    
+    def is_option_value(self) -> bool:
+        return self.token_type == TokenType.OPTION_VALUE
+
+    def is_positional_arg(self) -> bool:
+        return  self.token_type == TokenType.POSITIONAL_ARG
+
+    def is_separator(self) -> bool:
+        return  self.token_type == TokenType.SEPARATOR
+    
+    def is_extra_arg(self) -> bool:
+        return  self.token_type == TokenType.EXTRA_ARG
     
     def get_first_value(self) -> Optional[str]:
         """Get the first value if exists"""
@@ -214,6 +225,11 @@ class ArgumentCount:
         # 只有 nargs='+' 或数字 > 0 时才是必需的
         return self.spec == '+' or (self.spec.isdigit() and int(self.spec) > 0)
     
+    def get_exact_count(self) -> Optional[int]:
+        if self.spec not in ["?", "*", "+"]:
+            return int(self.spec)
+        return None
+    
 # 常用预设
 ArgumentCount.ZERO = ArgumentCount('0')           # 无参数 (标志)
 ArgumentCount.ZERO_OR_ONE = ArgumentCount('?')    # 可选参数
@@ -246,10 +262,10 @@ class ArgumentConfig:
         """检查是否接受值"""
         return not self.is_flag()
     
-    def get_expected_count(self) -> str:
+    def get_expected_count(self) -> ArgumentCount:
         """获取期望的参数数量"""
-        return str(self.nargs)
-    
+        return self.nargs
+
     def validate_count(self, actual_count: int) -> bool:
         """验证实际参数数量是否符合要求"""
         return self.nargs.validate_count(actual_count)
@@ -295,12 +311,19 @@ class SubCommandConfig:
     """子命令配置"""
     name: str                              # 子命令名称
     arguments: List[ArgumentConfig] = field(default_factory=list)  # 子命令参数
+    sub_commands: List['SubCommandConfig'] = field(default_factory=list)  # 🔧 新增：嵌套子命令
     description: Optional[str] = None      # 子命令描述
     
-    def find_argument(self, option_name: str) -> Optional['ArgumentConfig']:
+    def find_argument(self, option_name: str) -> Optional[ArgumentConfig]:
         """根据选项名称查找参数配置"""
         for arg in self.arguments:
             if arg.matches_option(option_name):
+                return arg
+        return None
+
+    def get_positional_arg_config(self) -> Optional[ArgumentConfig]:
+        for arg in self.arguments:
+            if arg.is_positional():
                 return arg
         return None
 

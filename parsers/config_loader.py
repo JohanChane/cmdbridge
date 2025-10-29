@@ -106,7 +106,7 @@ class ConfigLoader:
         return arguments
     
     def _parse_sub_commands(self, sub_commands_data: list) -> list[SubCommandConfig]:
-        """解析子命令配置列表"""
+        """递归解析子命令配置"""
         sub_commands = []
         
         for sub_cmd_data in sub_commands_data:
@@ -119,9 +119,15 @@ class ConfigLoader:
             if "arguments" in sub_cmd_data:
                 sub_cmd_arguments = self._parse_arguments(sub_cmd_data["arguments"])
             
+            # 🔧 递归解析嵌套子命令
+            nested_sub_commands = []
+            if "sub_commands" in sub_cmd_data:
+                nested_sub_commands = self._parse_sub_commands(sub_cmd_data["sub_commands"])
+            
             sub_command = SubCommandConfig(
                 name=sub_command_name,
                 arguments=sub_cmd_arguments,
+                sub_commands=nested_sub_commands,  # 🔧 新增嵌套子命令
                 description=sub_cmd_data.get("description")
             )
             sub_commands.append(sub_command)
