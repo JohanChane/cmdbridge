@@ -373,3 +373,16 @@ class PathManager:
             programs.append(program_name)
         
         return sorted(programs)
+    
+    def get_domain_for_group(self, group_name: str) -> Optional[str]:
+        """根据程序组名称获取所属领域"""
+        try:
+            domains = self.get_domains_from_config()
+            
+            for domain in domains:
+                groups = self.get_operation_groups_from_config(domain)
+                if group_name in groups:
+                    return domain
+            return None
+        except Exception:
+            return None

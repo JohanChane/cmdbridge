@@ -68,3 +68,7 @@ class CommonCliHelper:
         else:
             click.echo("错误: 无法映射操作", err=True)
             return False
+        
+    def get_domain_for_group(self, group_name: str) -> Optional[str]:
+        """根据程序组名称获取所属领域"""
+        return self.get_cmdbridge().path_manager.get_domain_for_group(group_name)

@@ -33,6 +33,9 @@ class CmdBridgeCLIHelper:
                            operation_args: List[str]) -> bool:
         return self._get_common_cli_helper().handle_map_operation(domain, dest_group, operation_args)
 
+    def get_domain_for_group(self, group_name: str) -> Optional[str]:
+        return self._get_common_cli_helper().get_domain_for_group(group_name)
+    
     def handle_init_config(self) -> bool:
         """初始化用户配置"""
         success = self._get_cmdbridge().init_config()
@@ -50,10 +53,6 @@ class CmdBridgeCLIHelper:
         else:
             click.echo("❌ 命令映射缓存刷新失败", err=True)
         return success
-    
-    def get_domain_for_group(self, group_name: str) -> Optional[str]:
-        """根据程序组名称获取所属领域"""
-        return self._get_cmdbridge().get_domain_for_group(group_name)
     
     def handle_list_op_cmds(self, domain: Optional[str], dest_group: str) -> None:
         """输出动作映射 - 使用 shlex 处理参数显示"""

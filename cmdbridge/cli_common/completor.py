@@ -4,7 +4,7 @@ import click
 from .completor_helper import CommonCompletorHelper
 from log import get_out, set_out
 from cmdbridge.config.path_manager import PathManager
-
+from .cli_helper import CommonCliHelper
 
 def completion_handler(func):
     """装饰器：在补全模式下正确处理输出流"""
@@ -98,9 +98,10 @@ class OperationType(click.ParamType):
     def shell_complete(self, ctx: click.Context, param: click.Parameter, incomplete: str):
         operations = []
 
-        domain = ctx.params.get("domain")
         dest_group = ctx.params.get("dest_group")
-        
+        domain = ctx.params.get("domain")
+        domain = domain or CommonCompletorHelper.get_domain_for_group(dest_group)
+
         if dest_group:
             operations = CommonCompletorHelper.get_operation_names(domain, dest_group)
         else:

@@ -187,3 +187,7 @@ class CommonCompletorHelper:
             # 如果出错，返回原始操作名
             warning(f"获取操作参数失败: {e}")
             return operation_name
+      
+    @staticmethod
+    def get_domain_for_group(group_name: str) -> Optional[str]:
+        return PathManager.get_instance().get_domain_for_group(group_name)

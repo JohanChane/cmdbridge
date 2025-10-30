@@ -49,19 +49,6 @@ class CmdBridge:
                 warning(f"无法读取全局配置文件: {e}")
         return {}
     
-    def get_domain_for_group(self, group_name: str) -> Optional[str]:
-        """根据程序组名称获取所属领域"""
-        try:
-            domains = self.path_manager.get_domains_from_config()
-            
-            for domain in domains:
-                groups = self.path_manager.get_operation_groups_from_config(domain)
-                if group_name in groups:
-                    return domain
-            return None
-        except Exception:
-            return None
-    
     def _auto_detect_source_group(self, command: str, domain: str) -> Optional[str]:
         """自动识别源命令所属的组"""
         if not command.strip():
@@ -122,7 +109,7 @@ class CmdBridge:
                 return None
             
             # 设置默认值
-            domain = domain or self.get_domain_for_group(dest_group)
+            domain = domain or self.path_manager.get_domain_for_group(dest_group)
             if domain is None:
                 raise ValueError("需要指定 domain")
             
@@ -183,7 +170,7 @@ class CmdBridge:
                 return None
             
             # 设置默认值
-            domain = domain or self.get_domain_for_group(dest_group)
+            domain = domain or self.path_manager.get_domain_for_group(dest_group)
             if domain is None:
                 raise ValueError("需要指定 domain")
             

@@ -34,6 +34,9 @@ class CmdBridgeEditCLIHelper:
                            operation_args: List[str]) -> bool:
         return self._get_common_cli_helper().handle_map_operation(domain, dest_group, operation_args)
     
+    def get_domain_for_group(self, group_name: str) -> Optional[str]:
+        return self._get_common_cli_helper().get_domain_for_group(group_name)
+    
     def handle_debug_mode(self, debug: bool) -> None:
         """处理调试模式设置"""
         if debug:
