@@ -91,3 +91,15 @@ name = "status"
 [[mufw.sub_commands.arguments]]
 name = "targets"
 nargs = "*"
+
+# 子命令：enable
+[[mufw.sub_commands]]
+name = "enable"
+
+# 子命令：disable
+[[mufw.sub_commands]]
+name = "disable"
+
+# 子命令：reset
+[[mufw.sub_commands]]
+name = "reset"
