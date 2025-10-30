@@ -109,7 +109,12 @@ class ArgumentConfig:
 
     def is_option(self) -> bool:
         """检查是否是选项参数"""
-        return self.opt and "" not in self.opt and not self.is_flag()
+        if self.is_flag():
+            return False
+        
+        # 获取有效的选项（非空字符串）
+        valid_options = [opt for opt in self.opt if opt and opt.strip()]
+        return len(valid_options) > 0
     
     def accepts_values(self) -> bool:
         """检查是否接受值"""
