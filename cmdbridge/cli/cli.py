@@ -79,7 +79,7 @@ def refresh(cli_helper):
 
 @list.command()
 @click.option('-d', '--domain', type=DomainType(), help='领域名称')
-@click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
 @click.pass_obj
 def op_cmds(cli_helper, domain, dest_group):
     """输出动作映射
@@ -93,8 +93,8 @@ def op_cmds(cli_helper, domain, dest_group):
 
 @list.command()
 @click.option('-d', '--domain', type=DomainType(), help='领域名称')
-@click.option('-s', '--source-group', type=SourceGroupType(), help='源程序组')
-@click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
+@click.option('-s', '--source-group',required=True, type=SourceGroupType(), help='源程序组')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
 @click.pass_obj
 def cmd_mappings(cli_helper, domain, source_group, dest_group):
     """输出命令之间的映射
@@ -109,7 +109,7 @@ def cmd_mappings(cli_helper, domain, source_group, dest_group):
 @cli.command()
 @click.option('-d', '--domain', type=DomainType(), help='领域名称')
 @click.option('-s', '--source-group', type=SourceGroupType(), help='源程序组（只有无法识别才需要使用）')
-@click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
 @click.argument('command', nargs=-1, type=CommandType())
 @click.pass_context
 def map(ctx, domain, source_group, dest_group, command):
@@ -130,7 +130,7 @@ def map(ctx, domain, source_group, dest_group, command):
 
 @cli.command()
 @click.option('-d', '--domain', type=DomainType(), help='领域名称')
-@click.option('-t', '--dest-group', type=DestGroupType(), help='目标程序组')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
 @click.argument('operation', nargs=-1, type=OperationType())
 @click.pass_context
 def op(ctx, domain, dest_group, operation):

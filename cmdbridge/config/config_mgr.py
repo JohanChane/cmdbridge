@@ -133,10 +133,7 @@ class ConfigMgr:
                     info("  跳过已存在的: config.toml")
             else:
                 # 创建默认的 config.toml
-                default_config = """[global_settings]
-    default_operation_domain = "package"
-    default_operation_group = "pacman"
-    """
+                default_config = """[global_settings]"""
                 dest_config_file = self.path_manager.get_global_config_path()
                 if not dest_config_file.exists():
                     with open(dest_config_file, 'w') as f:

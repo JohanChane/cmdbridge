@@ -1,4 +1,5 @@
 import sys
+from typing import Optional
 import click
 from .completor_helper import CommonCompletorHelper
 from log import get_out, set_out
@@ -108,33 +109,37 @@ class OperationType(click.ParamType):
         # 获取带参数的操作字符串
         operation_items = []
         for op in operations:
-            if dest_group:
-                # 确保 domain 不为 None
-                actual_domain = domain
-                if not actual_domain:
-                    # 如果没有指定 domain，使用默认 domain
-                    path_manager = PathManager.get_instance()
-                    domains = path_manager.get_domains_from_config()
-                    if domains:
-                        actual_domain = domains[0]
-                
-                if actual_domain:
-                    # 获取带参数的操作字符串
-                    op_with_params = CommonCompletorHelper.get_operation_with_params(actual_domain, op, dest_group)
-                    operation_items.append(
-                        click.shell_completion.CompletionItem(op_with_params)
-                    )
-                else:
-                    # 如果还是没有 domain，使用原始操作名
-                    operation_items.append(
-                        click.shell_completion.CompletionItem(op)
-                    )
-            else:
-                operation_items.append(
-                    click.shell_completion.CompletionItem(op)
-                )
+            # 无论是否指定 domain，都尝试获取带参数的操作字符串
+            op_with_params = self._get_operation_with_params(domain, op, dest_group)
+            operation_items.append(
+                click.shell_completion.CompletionItem(op_with_params)
+            )
 
         return [
             item for item in operation_items
             if item.value.startswith(incomplete)
         ]
+    
+    def _get_operation_with_params(self, domain: Optional[str], operation_name: str, dest_group: Optional[str]) -> str:
+        """获取带参数的操作字符串"""
+        # 如果没有指定 domain，尝试获取默认的 domain
+        actual_domain = domain
+        if not actual_domain:
+            path_manager = PathManager.get_instance()
+            domains = path_manager.get_domains_from_config()
+            if domains:
+                actual_domain = domains[0]
+        
+        # 如果没有指定 dest_group，尝试获取默认的 dest_group
+        target_group = dest_group
+        if not target_group and actual_domain:
+            groups = path_manager.get_operation_groups_from_config(actual_domain)
+            if groups:
+                target_group = groups[0]
+        
+        # 如果有 domain 和 dest_group，获取带参数的操作字符串
+        if actual_domain and target_group:
+            return CommonCompletorHelper.get_operation_with_params(actual_domain, operation_name, target_group)
+        else:
+            # 回退到原始操作名
+            return operation_name

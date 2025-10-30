@@ -48,25 +48,19 @@ class CmdBridge:
             except Exception as e:
                 warning(f"无法读取全局配置文件: {e}")
         return {}
-
-    def _get_default_domain(self) -> Optional[str]:
-        """获取默认领域"""
-        default_domain = self.global_config.get('global_settings', {}).get('default_operation_domain', 'package')
-        if default_domain:
-            return default_domain
-        
-        return None
     
-    def _get_default_group(self, domain: Optional[str] = None) -> Optional[str]:
-        """获取指定领域的默认程序组"""
-        domain = domain or self._get_default_domain()
-        
-        # 从领域特定配置中获取
-        default_operation_groups = self.global_config.get('default_operation_groups', {})
-        if domain in default_operation_groups:
-            return default_operation_groups[domain]
-        
-        return None
+    def get_domain_for_group(self, group_name: str) -> Optional[str]:
+        """根据程序组名称获取所属领域"""
+        try:
+            domains = self.path_manager.get_domains_from_config()
+            
+            for domain in domains:
+                groups = self.path_manager.get_operation_groups_from_config(domain)
+                if group_name in groups:
+                    return domain
+            return None
+        except Exception:
+            return None
     
     def _auto_detect_source_group(self, command: str, domain: str) -> Optional[str]:
         """自动识别源命令所属的组"""
@@ -119,7 +113,7 @@ class CmdBridge:
         return self._mapping_config_cache[cache_key]
 
     def map_command(self, domain: Optional[str], src_group: Optional[str], 
-                    dest_group: Optional[str], command_args: List[str]) -> Optional[str]:
+                    dest_group: str, command_args: List[str]) -> Optional[str]:
         """映射完整命令"""
         try:
             # 将参数列表合并为命令字符串
@@ -128,12 +122,9 @@ class CmdBridge:
                 return None
             
             # 设置默认值
-            domain = domain or self._get_default_domain()
+            domain = domain or self.get_domain_for_group(dest_group)
             if domain is None:
                 raise ValueError("需要指定 domain")
-            dest_group = dest_group or self._get_default_group()
-            if dest_group is None:
-                raise ValueError("需要指定 dest_group")
             
             # 自动识别源组（如果未指定）
             if not src_group:
@@ -182,7 +173,7 @@ class CmdBridge:
             error(f"命令映射失败: {e}")
             return None
         
-    def map_operation(self, domain: Optional[str], dest_group: Optional[str], 
+    def map_operation(self, domain: Optional[str], dest_group: str, 
                 operation_args: List[str]) -> Optional[str]:
         """映射操作和参数"""
         try:
@@ -192,12 +183,9 @@ class CmdBridge:
                 return None
             
             # 设置默认值
-            domain = domain or self._get_default_domain()
+            domain = domain or self.get_domain_for_group(dest_group)
             if domain is None:
                 raise ValueError("需要指定 domain")
-            dest_group = dest_group or self._get_default_group()
-            if dest_group is None:
-                raise ValueError("需要指定 dest_group")
             
             # 解析操作字符串，提取操作名和参数
             parts = operation_str.split()
