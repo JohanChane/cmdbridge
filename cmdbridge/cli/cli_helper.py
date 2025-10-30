@@ -51,11 +51,11 @@ class CmdBridgeCLIHelper:
             click.echo("❌ 命令映射缓存刷新失败", err=True)
         return success
 
-    def _get_default_domain(self) -> str:
+    def _get_default_domain(self) -> Optional[str]:
         """获取默认领域"""
         return self._get_cmdbridge()._get_default_domain()
     
-    def _get_default_group(self) -> str:
+    def _get_default_group(self) -> Optional[str]:
         """获取默认程序组"""
         return self._get_cmdbridge()._get_default_group()
     
@@ -63,7 +63,11 @@ class CmdBridgeCLIHelper:
         """输出动作映射 - 使用 shlex 处理参数显示"""
         cache_mgr = CacheMgr.get_instance()
         domain = domain or self._get_default_domain()
+        if domain is None:
+            raise ValueError("需要指定 domain")
         dest_group = dest_group or self._get_default_group()
+        if dest_group is None:
+            raise ValueError("需要指定 dest_group")
         
         if dest_group:
             operations = cache_mgr.get_supported_operations(domain, dest_group)
@@ -103,8 +107,14 @@ class CmdBridgeCLIHelper:
         
         # 设置默认值
         domain = domain or self._get_default_domain()
+        if domain is None:
+            raise ValueError("需要指定 domain")
         source_group = source_group or self._get_default_group()
+        if source_group is None:
+            raise ValueError("需要指定 source_group")
         dest_group = dest_group or self._get_default_group()
+        if dest_group is None:
+            raise ValueError("需要指定 dest_group")
         
         # 获取所有操作
         operations = cache_mgr.get_all_operations(domain)

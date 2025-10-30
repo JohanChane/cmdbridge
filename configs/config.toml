@@ -1,3 +1,7 @@
 [global_settings]
 default_operation_domain = "package"
-default_operation_group = "pacman"
+
+# 为每个领域设置默认操作组
+[default_operation_groups]
+package = "pacman"
+firewall = "ufw"

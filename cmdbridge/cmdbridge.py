@@ -49,13 +49,24 @@ class CmdBridge:
                 warning(f"无法读取全局配置文件: {e}")
         return {}
 
-    def _get_default_domain(self) -> str:
+    def _get_default_domain(self) -> Optional[str]:
         """获取默认领域"""
-        return self.global_config.get('global_settings', {}).get('default_operation_domain', 'package')
+        default_domain = self.global_config.get('global_settings', {}).get('default_operation_domain', 'package')
+        if default_domain:
+            return default_domain
+        
+        return None
     
-    def _get_default_group(self) -> str:
-        """获取默认程序组"""
-        return self.global_config.get('global_settings', {}).get('default_operation_group', 'pacman')
+    def _get_default_group(self, domain: Optional[str] = None) -> Optional[str]:
+        """获取指定领域的默认程序组"""
+        domain = domain or self._get_default_domain()
+        
+        # 从领域特定配置中获取
+        default_operation_groups = self.global_config.get('default_operation_groups', {})
+        if domain in default_operation_groups:
+            return default_operation_groups[domain]
+        
+        return None
     
     def _auto_detect_source_group(self, command: str, domain: str) -> Optional[str]:
         """自动识别源命令所属的组"""
@@ -118,7 +129,11 @@ class CmdBridge:
             
             # 设置默认值
             domain = domain or self._get_default_domain()
+            if domain is None:
+                raise ValueError("需要指定 domain")
             dest_group = dest_group or self._get_default_group()
+            if dest_group is None:
+                raise ValueError("需要指定 dest_group")
             
             # 自动识别源组（如果未指定）
             if not src_group:
@@ -178,7 +193,11 @@ class CmdBridge:
             
             # 设置默认值
             domain = domain or self._get_default_domain()
+            if domain is None:
+                raise ValueError("需要指定 domain")
             dest_group = dest_group or self._get_default_group()
+            if dest_group is None:
+                raise ValueError("需要指定 dest_group")
             
             # 解析操作字符串，提取操作名和参数
             parts = operation_str.split()
