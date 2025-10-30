@@ -2,158 +2,6 @@ from enum import Enum
 from typing import List, Optional, Union, Dict, Any
 from dataclasses import dataclass, field
 
-# === CommandToken ===
-class TokenType(Enum):
-    """Command line token types"""
-    PROGRAM = "program"                 # Program name (e.g., git, pacman, apt)
-    SUBCOMMAND = "subcommand"           # Subcommand name (e.g., commit, install, search)
-    POSITIONAL_ARG = "positional_arg"   # Positional argument (non-option)
-    OPTION_NAME = "option_name"         # Option name (-o/--output)
-    OPTION_VALUE = "option_value"       # Option value
-    FLAG = "flag"                       # Boolean flag
-    SEPARATOR = "separator"             # Separator (--)
-    EXTRA_ARG = "extra_arg"             # Arguments after separator
-
-@dataclass
-class CommandToken:
-    """Command line token
-    
-    Represents a syntactic node in command line parsing.
-    
-    Attributes:
-        token_type: Type of token, defined in TokenType enum
-        values: List of values for this token
-        original_text: Original command line string for debugging,
-                      auto-generated from values if not provided
-    """
-    token_type: TokenType
-    values: List[str]
-    original_text: Optional[str] = None
-    
-    def __post_init__(self):
-        """Post-initialization processing"""
-        if self.original_text is None and self.values:
-            self.original_text = " ".join(self.values)
-    
-    def __str__(self) -> str:
-        """String representation of the token"""
-        return f"CommandToken(type={self.token_type.value}, values={self.values}, original='{self.original_text}')"
-    
-    def is_program(self) -> bool:
-        """Check if this is a program token"""
-        return self.token_type == TokenType.PROGRAM
-    
-    def is_subcommand(self) -> bool:
-        """Check if this is a subcommand token"""
-        return self.token_type == TokenType.SUBCOMMAND
-    
-    def is_flag(self) -> bool:
-        """Check if this is a flag token"""
-        return self.token_type == TokenType.FLAG
-    
-    def is_option_name(self) -> bool:
-        return self.token_type == TokenType.OPTION_NAME
-    
-    def is_option_value(self) -> bool:
-        return self.token_type == TokenType.OPTION_VALUE
-
-    def is_positional_arg(self) -> bool:
-        return  self.token_type == TokenType.POSITIONAL_ARG
-
-    def is_separator(self) -> bool:
-        return  self.token_type == TokenType.SEPARATOR
-    
-    def is_extra_arg(self) -> bool:
-        return  self.token_type == TokenType.EXTRA_ARG
-    
-    def get_first_value(self) -> Optional[str]:
-        """Get the first value if exists"""
-        return self.values[0] if self.values else None
-    
-    def get_joined_values(self, separator: str = " ") -> str:
-        """Join all values with separator into a single string"""
-        return separator.join(self.values)
-
-# === Command Tree ===
-class ArgType(Enum):
-    """Command tree node types"""
-    POSITIONAL = "positional"
-    OPTION = "option"
-    FLAG = "flag"
-    EXTRA = "extra"
-
-@dataclass
-class CommandArg:
-    """Command argument in tree structure"""
-    node_type: ArgType
-    option_name: Optional[str] = None
-    values: List[str] = field(default_factory=list)
-    repeat: Optional[int] = None
-    placeholder: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """序列化为字典"""
-        result = {
-            "node_type": self.node_type.value,
-            "values": self.values.copy(),
-        }
-        
-        # 只有非 None 的字段才包含
-        if self.option_name is not None:
-            result["option_name"] = self.option_name
-        if self.repeat is not None:
-            result["repeat"] = self.repeat
-        if self.placeholder is not None:
-            result["placeholder"] = self.placeholder
-            
-        return result
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'CommandArg':
-        """从字典反序列化"""
-        return cls(
-            node_type=ArgType(data["node_type"]),
-            option_name=data.get("option_name"),
-            values=data.get("values", []),
-            repeat=data.get("repeat"),
-            placeholder=data.get("placeholder")  # 反序列化 placeholder
-        )
-
-@dataclass
-class CommandNode:
-    """Command tree node - tree structure where subcommands create child nodes"""
-    name: str
-    arguments: List[CommandArg] = field(default_factory=list)  # Arguments for current node
-    subcommand: Optional['CommandNode'] = None                # Subcommand node (tree expansion)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """序列化为字典"""
-        result = {
-            "name": self.name,
-            "arguments": [arg.to_dict() for arg in self.arguments],
-        }
-        
-        # 只有非 None 的子命令才包含
-        if self.subcommand is not None:
-            result["subcommand"] = self.subcommand.to_dict()
-            
-        return result
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'CommandNode':
-        """从字典反序列化"""
-        arguments = [CommandArg.from_dict(arg_data) for arg_data in data.get("arguments", [])]
-        
-        node = cls(
-            name=data["name"],
-            arguments=arguments
-        )
-        
-        # 递归反序列化子命令
-        if "subcommand" in data and data["subcommand"] is not None:
-            node.subcommand = cls.from_dict(data["subcommand"])
-            
-        return node
 
 # === 参数配置 ===
 # 解析器类型
@@ -357,3 +205,159 @@ class ParserConfig:
     def get_positional_arguments(self) -> List[ArgumentConfig]:
         """获取所有位置参数"""
         return [arg for arg in self.arguments if arg.is_positional()]
+
+# === CommandToken ===
+class TokenType(Enum):
+    """Command line token types"""
+    PROGRAM = "program"                 # Program name (e.g., git, pacman, apt)
+    SUBCOMMAND = "subcommand"           # Subcommand name (e.g., commit, install, search)
+    POSITIONAL_ARG = "positional_arg"   # Positional argument (non-option)
+    OPTION_NAME = "option_name"         # Option name (-o/--output)
+    OPTION_VALUE = "option_value"       # Option value
+    FLAG = "flag"                       # Boolean flag
+    SEPARATOR = "separator"             # Separator (--)
+    EXTRA_ARG = "extra_arg"             # Arguments after separator
+
+@dataclass
+class CommandToken:
+    """Command line token
+    
+    Represents a syntactic node in command line parsing.
+    
+    Attributes:
+        token_type: Type of token, defined in TokenType enum
+        values: List of values for this token
+        original_text: Original command line string for debugging,
+                      auto-generated from values if not provided
+    """
+    token_type: TokenType
+    values: List[str]
+    original_text: Optional[str] = None
+    
+    def __post_init__(self):
+        """Post-initialization processing"""
+        if self.original_text is None and self.values:
+            self.original_text = " ".join(self.values)
+    
+    def __str__(self) -> str:
+        """String representation of the token"""
+        return f"CommandToken(type={self.token_type.value}, values={self.values}, original='{self.original_text}')"
+    
+    def is_program(self) -> bool:
+        """Check if this is a program token"""
+        return self.token_type == TokenType.PROGRAM
+    
+    def is_subcommand(self) -> bool:
+        """Check if this is a subcommand token"""
+        return self.token_type == TokenType.SUBCOMMAND
+    
+    def is_flag(self) -> bool:
+        """Check if this is a flag token"""
+        return self.token_type == TokenType.FLAG
+    
+    def is_option_name(self) -> bool:
+        return self.token_type == TokenType.OPTION_NAME
+    
+    def is_option_value(self) -> bool:
+        return self.token_type == TokenType.OPTION_VALUE
+
+    def is_positional_arg(self) -> bool:
+        return  self.token_type == TokenType.POSITIONAL_ARG
+
+    def is_separator(self) -> bool:
+        return  self.token_type == TokenType.SEPARATOR
+    
+    def is_extra_arg(self) -> bool:
+        return  self.token_type == TokenType.EXTRA_ARG
+    
+    def get_first_value(self) -> Optional[str]:
+        """Get the first value if exists"""
+        return self.values[0] if self.values else None
+    
+    def get_joined_values(self, separator: str = " ") -> str:
+        """Join all values with separator into a single string"""
+        return separator.join(self.values)
+    
+    def set_option_name(self, arg_config: ArgumentConfig):
+        self.values = [arg_config.get_primary_option_name()]
+
+# === Command Tree ===
+class ArgType(Enum):
+    """Command tree node types"""
+    POSITIONAL = "positional"
+    OPTION = "option"
+    FLAG = "flag"
+    EXTRA = "extra"
+
+@dataclass
+class CommandArg:
+    """Command argument in tree structure"""
+    node_type: ArgType
+    option_name: Optional[str] = None   # flag 的值放在这里
+    values: List[str] = field(default_factory=list)
+    repeat: Optional[int] = None
+    placeholder: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """序列化为字典"""
+        result = {
+            "node_type": self.node_type.value,
+            "values": self.values.copy(),
+        }
+        
+        # 只有非 None 的字段才包含
+        if self.option_name is not None:
+            result["option_name"] = self.option_name
+        if self.repeat is not None:
+            result["repeat"] = self.repeat
+        if self.placeholder is not None:
+            result["placeholder"] = self.placeholder
+            
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CommandArg':
+        """从字典反序列化"""
+        return cls(
+            node_type=ArgType(data["node_type"]),
+            option_name=data.get("option_name"),
+            values=data.get("values", []),
+            repeat=data.get("repeat"),
+            placeholder=data.get("placeholder")  # 反序列化 placeholder
+        )
+
+@dataclass
+class CommandNode:
+    """Command tree node - tree structure where subcommands create child nodes"""
+    name: str
+    arguments: List[CommandArg] = field(default_factory=list)  # Arguments for current node
+    subcommand: Optional['CommandNode'] = None                # Subcommand node (tree expansion)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """序列化为字典"""
+        result = {
+            "name": self.name,
+            "arguments": [arg.to_dict() for arg in self.arguments],
+        }
+        
+        # 只有非 None 的子命令才包含
+        if self.subcommand is not None:
+            result["subcommand"] = self.subcommand.to_dict()
+            
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CommandNode':
+        """从字典反序列化"""
+        arguments = [CommandArg.from_dict(arg_data) for arg_data in data.get("arguments", [])]
+        
+        node = cls(
+            name=data["name"],
+            arguments=arguments
+        )
+        
+        # 递归反序列化子命令
+        if "subcommand" in data and data["subcommand"] is not None:
+            node.subcommand = cls.from_dict(data["subcommand"])
+            
+        return node

@@ -245,12 +245,12 @@ class NewArgparseParser(BaseParser):
                     if option_config.is_flag():
                         tokens.append(CommandToken(
                             token_type=TokenType.FLAG,
-                            values=[arg]
+                            values=[option_config.get_primary_option_name()]            # 为了后续的节点判断, 必须统一 option_name
                         ))
                     elif option_config.is_option():
                         tokens.append(CommandToken(
                             token_type=TokenType.OPTION_NAME,
-                            values=[arg]
+                            values=[option_config.get_primary_option_name()]            # 为了后续的节点判断, 必须统一 option_name
                         ))
 
                         current_option_argconfig = option_config

@@ -258,6 +258,7 @@ class CmdMapping:
         # 逐个比较参数
         for arg1, arg2 in zip(node1.arguments, node2.arguments):
             if not self._compare_command_args(arg1, arg2):
+                debug(f"arg1 和 arg2 不相同。arg1: {arg1}, arg2: {arg2}")
                 return False
         
         return True
@@ -268,18 +269,25 @@ class CmdMapping:
         if arg1.node_type != arg2.node_type:
             return False
         
-        # 2. 比较 option_name（对于 Option 和 Flag 类型）
-        if arg1.node_type in [ArgType.OPTION, ArgType.FLAG]:
-            if arg1.option_name != arg2.option_name:
-                return False
-        
-        # 3. 对于 Flag 类型，比较 repeat 次数
+        # 2. 对于 Flag 类型，比较 repeat 次数
         if arg1.node_type == ArgType.FLAG:
+            if arg1.option_name != arg2.option_name:        # option_name 必须要用统一名称。ArgumentConfig.get_primary_option_name()
+                return False
             if arg1.repeat != arg2.repeat:
                 return False
-        
-        # 4. 忽略 values 的比较（因为有 placeholder）
-        # 5. 忽略 placeholder 字段本身的比较
+            
+        # 3. 比较 option_name（对于 Option 和 Flag 类型）。
+        if arg1.node_type == ArgType.OPTION:
+            if arg1.option_name != arg2.option_name:        # option_name 必须要用统一名称。ArgumentConfig.get_primary_option_name()
+                return False
+            if not arg1.placeholder and not arg2.placeholder:   # 其中一个有 placeholder 字段则忽略比较
+                if set(arg1.values) != set(arg2.values):
+                    return False
+        # 4. 比较 positional value
+        if arg1.node_type == ArgType.POSITIONAL:
+            if not arg1.placeholder and not arg2.placeholder:   # 其中一个有 placeholder 字段则忽略比较
+                if set(arg1.values) != set(arg2.values):
+                    return False
         
         return True
     
