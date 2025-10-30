@@ -327,7 +327,7 @@ class NewArgparseParser(BaseParser):
 
                         current_positional_value_num += 1
                     else:
-                        raise ValueError(f"有过多的位置参数: {arg}")
+                        raise ValueError(f"有过多的位置参数. positional_value_config.nargs: {positional_value_config.nargs}, current_positional_value_num: {current_positional_value_num}")
 
                     # 因为有 positional value 则没有子命令, 到下次循环再处理即可
 
@@ -368,4 +368,5 @@ class NewArgparseParser(BaseParser):
             bool: 是否验证通过
         """
 
+        # _tokenize 和 build_command_tree 时已经判断了
         return True

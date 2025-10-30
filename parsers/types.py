@@ -249,11 +249,16 @@ class ArgumentConfig:
     def is_flag(self) -> bool:
         """检查是否是标志参数"""
         return self.nargs.is_flag()
-    
+        
     def is_positional(self) -> bool:
         """检查是否是位置参数"""
-        return not self.opt or (self.opt and "" in self.opt)
-    
+        if not self.opt:
+            return True
+        
+        # 获取有效的选项（非空字符串）
+        valid_options = [opt for opt in self.opt if opt and opt.strip()]
+        return len(valid_options) == 0
+
     def is_option(self) -> bool:
         """检查是否是选项参数"""
         return self.opt and "" not in self.opt and not self.is_flag()

@@ -4,9 +4,8 @@
 
 from typing import List, Dict, Any, Optional
 from parsers.types import CommandNode, CommandArg, ArgType
-from parsers.argparse_parser import ArgparseParser
-from parsers.getopt_parser import GetoptParser
-from parsers.types import ParserConfig, ParserType
+from parsers.types import ParserConfig
+from parsers.factory import ParserFactory
 from ..config.path_manager import PathManager
 
 from log import debug, info, warning, error
@@ -143,7 +142,7 @@ class CmdMapping:
         debug(f"开始映射命令到操作组 '{dst_operation_group}': {' '.join(source_cmdline)}")
         
         # 1. 解析源命令
-        source_parser = self._create_source_parser(source_parser_config)
+        source_parser = ParserFactory.create_parser(source_parser_config)
         source_node = source_parser.parse(source_cmdline)
         
         if not source_parser.validate(source_node):
@@ -187,15 +186,6 @@ class CmdMapping:
         # 使用新的主要选项名方法
         primary_name = arg_config.get_primary_option_name()
         return primary_name or option_name
-    
-    def _create_source_parser(self, source_parser_config: ParserConfig):
-        """创建源程序的解析器"""
-        if source_parser_config.parser_type == ParserType.ARGPARSE:
-            return ArgparseParser(source_parser_config)
-        elif source_parser_config.parser_type == ParserType.GETOPT:
-            return GetoptParser(source_parser_config)
-        else:
-            raise ValueError(f"不支持的解析器类型: {source_parser_config.parser_type}")
     
     def _find_matching_mapping(self, source_node: CommandNode, dst_operation_group: str) -> Optional[Dict[str, Any]]:
         """

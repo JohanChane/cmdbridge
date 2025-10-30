@@ -18,6 +18,7 @@ from .types import (
 )
 
 from .config_loader import ConfigLoader, load_parser_config_from_data, load_parser_config_from_file
+from .factory import ParserFactory
 
 __all__ = [
     # 配置加载
@@ -41,7 +42,9 @@ __all__ = [
     'TokenType',
     'CommandNode', 
     'CommandArg',
-    'ArgType'
+    'ArgType',
+
+    'ParserFactory',
 ]
 
 # 模块版本信息

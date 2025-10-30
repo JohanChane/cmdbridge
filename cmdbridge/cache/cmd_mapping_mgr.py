@@ -5,9 +5,8 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from parsers.types import CommandNode, CommandArg, ArgType, ParserConfig, ParserType, ArgumentConfig
-from parsers.argparse_parser import ArgparseParser
-from parsers.getopt_parser import GetoptParser
 from parsers.config_loader import load_parser_config_from_file
+from parsers.factory import ParserFactory
 
 from log import debug, info, warning, error
 from ..config.path_manager import PathManager
@@ -296,13 +295,8 @@ class CmdMappingMgr:
     def _parse_command(self, parser_config: ParserConfig, command_parts: List[str]) -> Optional[CommandNode]:
         """解析命令得到 CommandNode"""
         try:
-            if parser_config.parser_type == ParserType.ARGPARSE:
-                parser = ArgparseParser(parser_config)
-            elif parser_config.parser_type == ParserType.GETOPT:
-                parser = GetoptParser(parser_config)
-            else:
-                error(f"不支持的解析器类型: {parser_config.parser_type}")
-                return None
+
+            parser = ParserFactory.create_parser(parser_config)
             
             # 使用完整的命令（包括程序名）
             return parser.parse(command_parts)

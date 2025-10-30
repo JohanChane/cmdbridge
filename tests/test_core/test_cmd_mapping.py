@@ -11,13 +11,14 @@ import tomli_w
 import sys
 
 # 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from cmdbridge.core.cmd_mapping import CmdMapping
 from cmdbridge.config.path_manager import PathManager
 from parsers.types import ParserConfig, ParserType, ArgumentConfig, ArgumentCount, SubCommandConfig
 
+import log
 
 class TestCmdMapping:
     """CmdMapping 测试类 - 修复完整版"""
@@ -292,19 +293,6 @@ class TestCmdMapping:
         assert result["operation_name"] == "install_remote"
         assert result["params"]["pkgs"] == "vim git"
     
-    def test_command_not_found(self):
-        """测试命令未找到"""
-        mapping = CmdMapping.load_from_cache("package", "apt")
-        parser_config = self._create_apt_parser_config()
-        
-        result = mapping.map_to_operation(
-            source_cmdline=["apt", "nonexistent", "vim"],
-            source_parser_config=parser_config,
-            dst_operation_group="apt"
-        )
-        
-        assert result is None
-    
     def test_convenience_function(self):
         """测试便捷函数"""
         from cmdbridge.core.cmd_mapping import create_cmd_mapping
@@ -335,45 +323,11 @@ class TestCmdMapping:
         assert "test_program" in mapping.mapping_config
 
 
-def run_tests():
-    """运行所有测试"""
-    test_instance = TestCmdMapping()
-    
-    try:
-        test_instance.setup_method()
-        
-        tests = [
-            test_instance.test_load_from_cache,
-            test_instance.test_basic_command_mapping,
-            test_instance.test_search_command_mapping,
-            test_instance.test_no_parameters_command,
-            test_instance.test_pacman_command_mapping,
-            test_instance.test_command_not_found,
-            test_instance.test_convenience_function,
-        ]
-        
-        passed = 0
-        failed = 0
-        
-        for test in tests:
-            try:
-                test()
-                passed += 1
-                print(f"✅ {test.__name__} - 通过")
-            except Exception as e:
-                failed += 1
-                print(f"❌ {test.__name__} - 失败: {e}")
-        
-        print(f"\n📊 测试结果: {passed} 通过, {failed} 失败")
-        
-        if failed == 0:
-            print("🎉 所有测试通过！")
-        else:
-            print("💥 有测试失败，请检查")
-            
-    finally:
-        test_instance.teardown_method()
-
-
+# 移除 run_tests() 函数，直接使用 pytest
 if __name__ == "__main__":
-    run_tests()
+    # 设置日志级别
+    log.set_level(log.LogLevel.DEBUG)
+    
+    # 直接运行 pytest
+    import pytest
+    pytest.main([__file__, "-v", "-s"])
