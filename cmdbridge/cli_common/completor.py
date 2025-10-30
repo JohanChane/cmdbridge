@@ -78,8 +78,13 @@ class CommandType(click.ParamType):
     def shell_complete(self, ctx: click.Context, param: click.Parameter, incomplete: str):
         commands = []
 
-        domain = ctx.params.get("domain")
+        dest_group = ctx.params.get("dest_group")
         source_group = ctx.params.get("source_group")
+        domain = ctx.params.get("domain")
+
+        if dest_group and not domain:
+            domain = CommonCompletorHelper.get_domain_for_group(dest_group)
+
         if source_group:
             commands = CommonCompletorHelper.get_commands(domain, source_group)
         else:
@@ -100,7 +105,9 @@ class OperationType(click.ParamType):
 
         dest_group = ctx.params.get("dest_group")
         domain = ctx.params.get("domain")
-        domain = domain or CommonCompletorHelper.get_domain_for_group(dest_group)
+
+        if dest_group and not domain:
+            domain = CommonCompletorHelper.get_domain_for_group(dest_group)
 
         if dest_group:
             operations = CommonCompletorHelper.get_operation_names(domain, dest_group)
