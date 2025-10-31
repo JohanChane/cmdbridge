@@ -1,7 +1,8 @@
-**更新文件：`docs/argparser.md`**
+# 命令行解释器的语法解析
 
-```markdown
-## 解析器的设计
+## Tokenize
+
+tokenize: 原始的字符处理太不方便了, 先将它解析为我们的熟悉的数据结构 List, 方便之后的处理。可以理解为《Crafting Interpreters》的 Lexemes and Tokens。
 
 ```python
 from enum import Enum
@@ -35,41 +36,11 @@ class CommandToken:
     token_type: TokenType
     values: List[str]
     original_text: Optional[str] = None
-    
-    def __post_init__(self):
-        """Post-initialization processing"""
-        if self.original_text is None and self.values:
-            self.original_text = " ".join(self.values)
-    
-    def __str__(self) -> str:
-        """String representation of the token"""
-        return f"CommandToken(type={self.token_type.value}, values={self.values}, original='{self.original_text}')"
-    
-    def is_program(self) -> bool:
-        """Check if this is a program token"""
-        return self.token_type == TokenType.PROGRAM
-    
-    def is_subcommand(self) -> bool:
-        """Check if this is a subcommand token"""
-        return self.token_type == TokenType.SUBCOMMAND
-    
-    def is_flag(self) -> bool:
-        """Check if this is a flag token"""
-        return self.token_type == TokenType.FLAG
-    
-    def is_option(self) -> bool:
-        """Check if this is an option token (OPTION_NAME or OPTION_VALUE)"""
-        return self.token_type in (TokenType.OPTION_NAME, TokenType.OPTION_VALUE)
-    
-    def get_first_value(self) -> Optional[str]:
-        """Get the first value if exists"""
-        return self.values[0] if self.values else None
-    
-    def get_joined_values(self, separator: str = " ") -> str:
-        """Join all values with separator into a single string"""
-        return separator.join(self.values)
+```
 
-# Example 1: apt --help install vim git --config path --noconfirm -- abc
+Example 1: apt --help install vim git --config path --noconfirm -- abc
+
+```python
 tokens_apt = [
     CommandToken(token_type=TokenType.PROGRAM, values=["apt"]),
     CommandToken(token_type=TokenType.FLAG, values=["--help"]),
@@ -82,8 +53,11 @@ tokens_apt = [
     CommandToken(token_type=TokenType.SEPARATOR, values=["--"]),
     CommandToken(token_type=TokenType.EXTRA_ARG, values=["abc"])
 ]
+```
 
-# Example 2: pacman -Syy --config path_1 --config path_2
+Example 2: pacman -Syy --config path_1 --config path_2
+
+```python
 tokens_pacman = [
     CommandToken(token_type=TokenType.PROGRAM, values=["pacman"]),
     CommandToken(token_type=TokenType.FLAG, values=["-S"]),
@@ -94,8 +68,11 @@ tokens_pacman = [
     CommandToken(token_type=TokenType.OPTION_NAME, values=["--config"]),
     CommandToken(token_type=TokenType.OPTION_VALUE, values=["path_2"]),
 ]
+```
 
-# Example 3: tar -zxvf foo.tar.gz -- path_1 path_2
+Example 3: tar -zxvf foo.tar.gz -- path_1 path_2
+
+```python
 tokens_tar = [
     CommandToken(token_type=TokenType.PROGRAM, values=["tar"]),
     CommandToken(token_type=TokenType.FLAG, values=["-z"]),
@@ -107,7 +84,11 @@ tokens_tar = [
     CommandToken(token_type=TokenType.EXTRA_ARG, values=["path_1"]),
     CommandToken(token_type=TokenType.EXTRA_ARG, values=["path_2"]),
 ]
+```
 
+## 构建 CommnadTree
+
+```python
 # === Command Tree ===
 class ArgType(Enum):
     """Command tree node types"""
@@ -129,8 +110,12 @@ class CommandNode:
     name: str
     arguments: List[CommandArg] = field(default_factory=list)  # Arguments for current node
     subcommand: Optional['CommandNode'] = None                # Subcommand node (tree expansion)
+```
 
-# Example 1: apt --help install vim git --config path --noconfirm -- abc
+
+Example 1: apt --help install vim git --config path --noconfirm -- abc
+
+```python
 tree_apt = CommandNode(
     name="apt",
     arguments=[
@@ -146,8 +131,11 @@ tree_apt = CommandNode(
         ]
     )
 )
+```
 
-# Example 2: pacman -Syy --config path_1 --config path_2
+Example 2: pacman -Syy --config path_1 --config path_2
+
+```python
 tree_pacman = CommandNode(
     name="pacman",
     arguments=[
@@ -156,8 +144,11 @@ tree_pacman = CommandNode(
         CommandArg(node_type=ArgType.OPTION, option_name="--config", values=["path_1", "path_2"]),
     ]
 )
+```
 
-# Example 3: tar -zxvf foo.tar.gz -- path_1 path_2
+Example 3: tar -zxvf foo.tar.gz -- path_1 path_2
+
+```python
 tree_tar = CommandNode(
     name="tar",
     arguments=[
@@ -170,7 +161,22 @@ tree_tar = CommandNode(
 )
 ```
 
-## getopt/argparse 解释器
+## getopt 和 argparse 的命令行风格
+
+argparse 风格只比 getopt 多了子命令, 其他都相同。
+
+getopt 的格式:
+
+```
+<程序名> [<flags>] [<options>] [--] [<位置参数>]        # <flag>, <option> 和 <位置参数> 都属于程序名 (主命令)。<位置参数> 有且只有一个。
+```
+
+argparse 风格:
+
+```
+<主命令(程序名)> [<flags>] [<options>] [--] [<位置参数>]
+<主命令(程序名)> [<主命令的 flags>] [<主命令的 options>] <子命令> [<子命令的 flags>] [<子命令的 options>] [--] [<子命令的位置参数>]     # 如果出现子命令则主命令是不能有位置参数的, 否则可能会出现歧义。
+```
 
 ### 共通之处
 
@@ -193,11 +199,7 @@ tree_tar = CommandNode(
    -Sy   # 表示 -S -y
    ```
 
-### getopt 解释器
-
-**C-style parser**
-
-#### 特别之处
+### getopt 风格的命令行
 
 1. **严格的参数顺序**
    ```bash
@@ -230,16 +232,12 @@ tree_tar = CommandNode(
     pacman -S vim git  -- -s   # 表示安装 vim git,  -s 不作用于 pacman
     ```
 
-### argparse 解释器
-
-**Parser for command-line options, arguments and subcommands**
-
-#### 特别之处
+### argparse 风格的命令行
 
 1. **子命令限制**
    ```bash
-   # 不能有两个子命令，否则会有歧义
-   git commit push        # ❌ 歧义：commit 和 push 都是子命令
+   # 不能有两个同级的子命令，否则会有歧义
+   git commit push        # ❌ 歧义：commit 和 push 都是一级子命令
    git commit && git push # ✅ 正确用法
    ```
 
@@ -330,16 +328,6 @@ kubectl get pods --namespace=production --sort-by=".status.startTime"
 docker run -it --rm -v /host:/guest -p 8080:80 nginx
 ```
 
-### 解析规则总结
-
-| 特性 | getopt | argparse |
-|------|--------|----------|
-| 子命令支持 | ❌ 无 | ✅ 有 |
-| 参数位置 | 严格相邻 | 灵活混合 |
-| 选项组合 | ✅ 支持 (`-xyz`) | ✅ 支持 |
-| 多值选项 | 有限支持 | ✅ 良好支持 |
-```
-
 ## 程序的参数配置
 
 ### pacman
@@ -381,15 +369,17 @@ pacman_config = ParserConfig(
     arguments=[
         ArgumentConfig(name="help", opt=["-h", "--help"], nargs=ArgumentCount.ZERO),
         ArgumentConfig(name="targets", opt=[], nargs=ArgumentCount.ONE_OR_MORE),
-        ArgumentConfig(name="S", opt=["-S", ""], nargs=ArgumentCount.ZERO),
-        ArgumentConfig(name="y", opt=["-y", ""], nargs=ArgumentCount.ZERO),
-        ArgumentConfig(name="noconfirm", opt=["--noconfirm", ""], nargs=ArgumentCount.ZERO),
+        ArgumentConfig(name="S", opt=["-S"], nargs=ArgumentCount.ZERO),
+        ArgumentConfig(name="y", opt=["-y"], nargs=ArgumentCount.ZERO),
+        ArgumentConfig(name="noconfirm", opt=["--noconfirm"], nargs=ArgumentCount.ZERO),
     ],
     sub_commands=[]
 )
 ```
 
 ### apt
+
+比如: `apt --help install --yes pkgs`
 
 ```toml
 # apt.toml

@@ -14,12 +14,6 @@ cmdbridge op [-d <domain> -t <dst_group>] -- install vim
 
 ${XDG_CONFIG_HOME:-$HOME/.config}"/cmdbridge/config.toml
 
-```toml
-[global_settings]
-default_operation_domain = "package"
-default_operation_group = "pacman"
-```
-
 长选项:
     -d/--domain
     -s/--source-group
@@ -34,17 +28,18 @@ cmdbridge --refresh-cmd-mappings
 配置的默认路径: "${XDG_CONFIG_HOME:-$HOME/.config}"/cmdbridge
 缓存的默认路径: "${XDG_CACHE_HOME:-$HOME/.cache}"/cmdbridge
 cmd_mappings 缓存的路径: "${XDG_CACHE_HOME:-$HOME/.cache}"/cmdbridge/cmd_mappings/{domain}
+operation_mappings 缓存的路径: "${XDG_CACHE_HOME:-$HOME/.cache}"/cmdbridge/operation_mappings/{domain}
 
 输出动作映射:
 
 ```
-cmdbridge list [-d <domain> -t <dst_group>] --op-mappings 
+cmdbridge list op-mappings [-d <domain> -t <dst_group>] 
 ```
 
 输出命令之间的映射:
 
 ```
-cmdbridge list [-d <domain> -s <src_group> -t <dst_group>] --cmd-mappings
+cmdbridge list cmd-mappings [-d <domain> -s <src_group> -t <dst_group>]
 ```
 
 ## cmdbridge-edit
