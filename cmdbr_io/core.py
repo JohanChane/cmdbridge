@@ -3,10 +3,10 @@ import sys
 from typing import Optional, TextIO
 
 
-class CmdbrIO:
+class CmdBrIO:
     def __init__(self, out: Optional[TextIO] = None):
         """
-        初始化 CmdbrIO
+        初始化 CmdBrIO
 
         :param out: 默认输出流（可选），如果为 None，则使用 click 默认 stdout/stderr
         """

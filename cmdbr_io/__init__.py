@@ -1,6 +1,6 @@
 """CmdBridge 工具模块"""
 
-from .core import CmdBrIO, cmdbr_io
+from .core import CmdBrIO
 
 # 创建全局实例
 cmdbr_io = CmdBrIO()
@@ -19,6 +19,4 @@ __all__ = [
     'cmdbr_io',
     'cprint',
     'csecho',
-    'set_out',
-    'get_out',
 ]

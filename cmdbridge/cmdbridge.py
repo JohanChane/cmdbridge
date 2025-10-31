@@ -253,7 +253,7 @@ class CmdBridge:
                         
                         for group_name in groups:
                             try:
-                                # 为每个程序组创建 CmdMappingCreator 实例
+                                # 为每个程序组创建 CmdMappingMgr 实例
                                 group_creator = CmdMappingMgr(domain, group_name)
                                 
                                 # 生成映射数据
