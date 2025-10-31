@@ -1,10 +1,10 @@
 [mufw.parser_config]
-parser_type = "argparse"
 program_name = "mufw"
 
-# 子命令：allow
+# ## allow
 [[mufw.sub_commands]]
 name = "allow"
+id = "subcmd_id_allow"
 
 [[mufw.sub_commands.arguments]]
 name = "port"
@@ -26,65 +26,25 @@ name = "from-ip"
 opt = ["--from-ip"]
 nargs = "1"
 
-# 子命令：deny
+# ## deny
 [[mufw.sub_commands]]
 name = "deny"
+include_arguments_and_subcmds = "subcmd_id_allow"
+id = "subcmd_id_deny"
 
-[[mufw.sub_commands.arguments]]
-name = "port"
-opt = ["--port"]
-nargs = "1"
-
-[[mufw.sub_commands.arguments]]
-name = "protocol"
-opt = ["--proto"]
-nargs = "1"
-
-[[mufw.sub_commands.arguments]]
-name = "service"
-opt = ["--service"]
-nargs = "1"
-
-[[mufw.sub_commands.arguments]]
-name = "from-ip"
-opt = ["--from-ip"]
-nargs = "1"
-
-# 子命令：delete
+# ## delete
 [[mufw.sub_commands]]
 name = "delete"
 
-[[mufw.sub_commands.arguments]]
+[[mufw.sub_commands.sub_commands]]
 name = "allow"
-opt = ["--allow"]
-nargs = "0"
+include_arguments_and_subcmds = "subcmd_id_allow"
 
-[[mufw.sub_commands.arguments]]
+[[mufw.sub_commands.sub_commands]]
 name = "deny"
-opt = ["--deny"]
-nargs = "0"
+include_arguments_and_subcmds = "subcmd_id_deny"
 
-[[mufw.sub_commands.arguments]]
-name = "port"
-opt = ["--port"]
-nargs = "1"
-
-[[mufw.sub_commands.arguments]]
-name = "protocol"
-opt = ["--proto"]
-nargs = "1"
-
-[[mufw.sub_commands.arguments]]
-name = "service"
-opt = ["--service"]
-nargs = "1"
-
-[[mufw.sub_commands.arguments]]
-name = "from-ip"
-opt = ["--from-ip"]
-nargs = "1"
-
-# 子命令：deny
+# ## status
 [[mufw.sub_commands]]
 name = "status"
 
@@ -92,14 +52,14 @@ name = "status"
 name = "targets"
 nargs = "*"
 
-# 子命令：enable
+# ## enable
 [[mufw.sub_commands]]
 name = "enable"
 
-# 子命令：disable
+# ## disable
 [[mufw.sub_commands]]
 name = "disable"
 
-# 子命令：reset
+# ## reset
 [[mufw.sub_commands]]
 name = "reset"
