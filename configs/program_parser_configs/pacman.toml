@@ -1,5 +1,4 @@
 [pacman.parser_config]
-parser_type = "getopt"
 program_name = "pacman"
 
 [[pacman.arguments]]

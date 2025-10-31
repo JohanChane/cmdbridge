@@ -1,5 +1,4 @@
 [apt-file.parser_config]
-parser_type = "argparse"
 program_name = "apt-file"
 
 # ## subcommand search

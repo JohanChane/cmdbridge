@@ -1,5 +1,4 @@
 [iptables.parser_config]
-parser_type = "getopt"
 program_name = "iptables"
 
 # 链名称参数
