@@ -5,15 +5,15 @@ project_root = os.path.join(os.path.dirname(__file__), '../..')
 sys.path.insert(0, project_root)
 
 import pytest
-from parsers.new_argparse_parser import NewArgparseParser
+from parsers.argparse_parser import ArgparseParser
 from parsers.types import ParserConfig, ParserType, ArgumentConfig, ArgumentCount, SubCommandConfig
 from parsers.types import CommandNode, CommandArg, ArgType, CommandToken, TokenType
 
 import log
 
 
-class TestNewArgparseParser:
-    """NewArgparseParser 测试类"""
+class TestArgparseParser:
+    """ArgparseParser 测试类"""
     
     def create_simple_parser_config(self):
         """创建简单的解析器配置"""
@@ -93,7 +93,7 @@ class TestNewArgparseParser:
     
     def test_parse_simple_command(self):
         """测试解析简单命令"""
-        parser = NewArgparseParser(self.create_simple_parser_config())
+        parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "-v", "--config", "config.toml", "file1.txt", "file2.txt"]
         
         result = parser.parse(args)
@@ -117,7 +117,7 @@ class TestNewArgparseParser:
     
     def test_parse_command_with_flags(self):
         """测试解析包含多个标志的命令"""
-        parser = NewArgparseParser(self.create_simple_parser_config())
+        parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "-v", "-h", "-v"]  # 重复的 -v 标志
         
         result = parser.parse(args)
@@ -131,7 +131,7 @@ class TestNewArgparseParser:
     
     def test_parse_command_with_separator(self):
         """测试解析包含分隔符的命令"""
-        parser = NewArgparseParser(self.create_simple_parser_config())
+        parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "file1.txt", "--", "-v", "--config=test"]
         
         result = parser.parse(args)
@@ -146,7 +146,7 @@ class TestNewArgparseParser:
     
     def test_parse_subcommand(self):
         """测试解析子命令"""
-        parser = NewArgparseParser(self.create_parser_with_subcommands())
+        parser = ArgparseParser(self.create_parser_with_subcommands())
         args = ["git", "commit", "-m", "Initial commit", "-a"]
         
         result = parser.parse(args)
@@ -165,7 +165,7 @@ class TestNewArgparseParser:
     def test_parse_nested_subcommand(self):
         """测试解析嵌套子命令（如果支持的话）"""
         # 注意：当前实现可能不支持嵌套子命令，这里测试基本功能
-        parser = NewArgparseParser(self.create_parser_with_subcommands())
+        parser = ArgparseParser(self.create_parser_with_subcommands())
         args = ["git", "push", "origin", "--force"]
         
         result = parser.parse(args)
@@ -205,7 +205,7 @@ class TestNewArgparseParser:
             sub_commands=[]
         )
         
-        parser = NewArgparseParser(parser_config)
+        parser = ArgparseParser(parser_config)
         args = ["tar", "-xvf", "archive.tar.gz"]
         
         result = parser.parse(args)
@@ -222,7 +222,7 @@ class TestNewArgparseParser:
     
     def test_parse_with_equal_sign(self):
         """测试解析等号形式的选项"""
-        parser = NewArgparseParser(self.create_simple_parser_config())
+        parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "--config=myconfig.toml"]
         
         result = parser.parse(args)
@@ -232,7 +232,7 @@ class TestNewArgparseParser:
     
     def test_invalid_option(self):
         """测试无效选项"""
-        parser = NewArgparseParser(self.create_simple_parser_config())
+        parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "--unknown-option"]
         
         # 注意：当前实现可能会在 tokenize 阶段抛出异常
@@ -247,7 +247,7 @@ class TestNewArgparseParser:
     
     def test_validate_method(self):
         """测试验证方法"""
-        parser = NewArgparseParser(self.create_simple_parser_config())
+        parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "-v"]
         result = parser.parse(args)
         
@@ -286,7 +286,7 @@ class TestNewArgparseParser:
             ]
         )
         
-        parser = NewArgparseParser(parser_config)
+        parser = ArgparseParser(parser_config)
         args = ["docker", "container", "ls", "--all"]
         
         result = parser.parse(args)
@@ -318,7 +318,7 @@ class TestTokenization:
             sub_commands=[]
         )
         
-        parser = NewArgparseParser(parser_config)
+        parser = ArgparseParser(parser_config)
         args = ["test", "-v"]
         
         tokens = parser._tokenize(args)
@@ -344,7 +344,7 @@ class TestTokenization:
             sub_commands=[]
         )
         
-        parser = NewArgparseParser(parser_config)
+        parser = ArgparseParser(parser_config)
         args = ["test", "-f", "filename.txt"]
         
         tokens = parser._tokenize(args)

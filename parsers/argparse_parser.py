@@ -9,7 +9,7 @@ from .base import BaseParser
 from log import debug, info, warning, error
 from .utils import Utils
 
-class NewArgparseParser(BaseParser):
+class ArgparseParser(BaseParser):
     def __init__(self, parser_config: ParserConfig):
         """
         初始化 argparse 解析器
@@ -186,7 +186,7 @@ class NewArgparseParser(BaseParser):
             ))
             debug(f"识别程序名: {args[0]}")
 
-        arguments_tokens = NewArgparseParser._tokenize_arguments(args[1:], self.parser_config.arguments, self.parser_config.sub_commands)
+        arguments_tokens = ArgparseParser._tokenize_arguments(args[1:], self.parser_config.arguments, self.parser_config.sub_commands)
         # debug(f"arguments_tokens: {arguments_tokens}")
         tokens.extend(arguments_tokens)
 
@@ -238,7 +238,7 @@ class NewArgparseParser(BaseParser):
                     debug(f"current_option_argconfig: {current_option_argconfig}")
                     raise ValueError("option_value 不应该以 `-` 开头")
                 
-                option_config = NewArgparseParser._find_argument_config(arg, arguments_config)
+                option_config = ArgparseParser._find_argument_config(arg, arguments_config)
                 if option_config is not None:
                     current_positional_value_num  = 0       # 有 `-` 开头的参数, 证明位置参数的计算终止了
                     
@@ -291,13 +291,13 @@ class NewArgparseParser(BaseParser):
             else:
                 # 优先判断 arg 是否是子命令
                 # subcmd_config.sub_commands
-                nested_subcmd_config = NewArgparseParser._find_subcmd_config(arg, subcmds_config)
+                nested_subcmd_config = ArgparseParser._find_subcmd_config(arg, subcmds_config)
                 if nested_subcmd_config is not None:
                     tokens.append(CommandToken(
                         token_type=TokenType.SUBCOMMAND,
                         values=[arg]
                     ))
-                    subcmd_tokens = NewArgparseParser._tokenize_arguments(args[arg_idx + 1:], nested_subcmd_config.arguments, nested_subcmd_config.sub_commands)
+                    subcmd_tokens = ArgparseParser._tokenize_arguments(args[arg_idx + 1:], nested_subcmd_config.arguments, nested_subcmd_config.sub_commands)
                     tokens.extend(subcmd_tokens)
                     return tokens
 
@@ -315,7 +315,7 @@ class NewArgparseParser(BaseParser):
 
                 # 不是子命令又不是 option_value, 所以一定是 positional value (有 positional value 的前提下)。
                 else:
-                    positional_value_config = NewArgparseParser._get_positional_arg_config(arguments_config)
+                    positional_value_config = ArgparseParser._get_positional_arg_config(arguments_config)
                     if positional_value_config is None:
                         raise ValueError(f"没有位置参数的参数配置. arguments_config: {arguments_config}")
                     

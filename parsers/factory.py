@@ -1,6 +1,6 @@
 from typing import Optional
 from .types import ParserConfig, ParserType
-from .new_argparse_parser import NewArgparseParser
+from .argparse_parser import ArgparseParser
 from .base import BaseParser
 from log import error
 
@@ -21,9 +21,9 @@ class ParserFactory:
         """
         try:
             if parser_config.parser_type == ParserType.ARGPARSE:
-                return NewArgparseParser(parser_config)
+                return ArgparseParser(parser_config)
             elif parser_config.parser_type == ParserType.GETOPT:
-                return NewArgparseParser(parser_config)
+                return ArgparseParser(parser_config)
             else:
                 error(f"不支持的解析器类型: {parser_config.parser_type}")
                 return None
