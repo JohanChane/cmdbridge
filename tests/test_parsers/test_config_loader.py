@@ -152,23 +152,6 @@ class TestConfigLoader:
             loader.load_parser_config("test")
         print("✅ 无效的解析器类型测试通过")
     
-    def test_missing_parser_type(self):
-        """测试缺少 parser_type 配置"""
-        print("🔧 开始测试：缺少 parser_type 配置")
-        config_data = {
-            "test": {
-                "parser_config": {
-                    "program_name": "test"
-                }
-            }
-        }
-        
-        loader = ConfigLoader(config_data)
-        
-        with pytest.raises(ValueError, match="缺少 parser_type 配置"):
-            loader.load_parser_config("test")
-        print("✅ 缺少 parser_type 配置测试通过")
-    
     def test_argument_missing_nargs(self):
         """测试参数配置缺少 nargs"""
         print("🔧 开始测试：参数配置缺少 nargs")

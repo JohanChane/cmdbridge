@@ -102,7 +102,7 @@ class TestNewArgparseParser:
         assert len(result.arguments) == 3
         
         # 检查 verbose 标志
-        verbose_arg = next(arg for arg in result.arguments if arg.option_name == "-v")
+        verbose_arg = next(arg for arg in result.arguments if arg.option_name == "--verbose")
         assert verbose_arg.node_type == ArgType.FLAG
         assert verbose_arg.repeat == 1
         
@@ -123,10 +123,10 @@ class TestNewArgparseParser:
         result = parser.parse(args)
         
         # 检查重复的标志计数
-        verbose_arg = next(arg for arg in result.arguments if arg.option_name == "-v")
+        verbose_arg = next(arg for arg in result.arguments if arg.option_name == "--verbose")
         assert verbose_arg.repeat == 2
         
-        help_arg = next(arg for arg in result.arguments if arg.option_name == "-h")
+        help_arg = next(arg for arg in result.arguments if arg.option_name == "--help")
         assert help_arg.repeat == 1
     
     def test_parse_command_with_separator(self):
@@ -156,10 +156,10 @@ class TestNewArgparseParser:
         assert result.subcommand.name == "commit"
         
         # 检查子命令参数
-        message_arg = next(arg for arg in result.subcommand.arguments if arg.option_name == "-m")
+        message_arg = next(arg for arg in result.subcommand.arguments if arg.option_name == "--message")
         assert message_arg.values == ["Initial commit"]
         
-        all_arg = next(arg for arg in result.subcommand.arguments if arg.option_name == "-a")
+        all_arg = next(arg for arg in result.subcommand.arguments if arg.option_name == "--all")
         assert all_arg.node_type == ArgType.FLAG
     
     def test_parse_nested_subcommand(self):
