@@ -1,8 +1,9 @@
 """
 配置加载器 - 从 TOML 配置数据加载程序解析器配置
+支持 id 和 include_arguments_and_subcmds 功能，使用预处理解决依赖问题
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 import tomli
 from .types import ParserConfig, ParserType, ArgumentConfig, ArgumentCount, SubCommandConfig
 
@@ -18,6 +19,7 @@ class ConfigLoader:
             config_data: TOML 解析后的配置数据
         """
         self.config_data = config_data
+        self._id_templates = {}  # 存储有 id 的子命令模板（预处理后的）
     
     def load_parser_config(self, program_name: str) -> ParserConfig:
         """
@@ -51,7 +53,7 @@ class ConfigLoader:
         # 解析解析器类型
         parser_type_str = parser_section.get("parser_type")
         if not parser_type_str:
-            raise ValueError("缺少 parser_type 配置")
+            parser_type_str = "argparse"    # default parser
         
         try:
             parser_type = ParserType(parser_type_str)
@@ -61,12 +63,18 @@ class ConfigLoader:
         # 解析程序名称
         config_program_name = parser_section.get("program_name", program_name)
         
+        # 步骤1: 收集所有有 id 的子命令节点
+        self._collect_id_templates(program_config)
+        
+        # 步骤2: 预处理 id 子命令节点，递归解析 include_arguments_and_subcmds
+        self._preprocess_id_templates()
+        
         # 解析全局参数
         arguments = []
         if "arguments" in program_config:
             arguments = self._parse_arguments(program_config["arguments"])
         
-        # 解析子命令
+        # 步骤3: 解析子命令，处理 include_arguments_and_subcmds
         sub_commands = []
         if "sub_commands" in program_config:
             sub_commands = self._parse_sub_commands(program_config["sub_commands"])
@@ -77,6 +85,66 @@ class ConfigLoader:
             arguments=arguments,
             sub_commands=sub_commands
         )
+    
+    def _collect_id_templates(self, program_config: dict):
+        """步骤1: 收集所有有 id 的子命令节点"""
+        if "sub_commands" not in program_config:
+            return
+        
+        def collect_recursive(sub_commands_data: list):
+            for sub_cmd_data in sub_commands_data:
+                if "id" in sub_cmd_data:
+                    template_id = sub_cmd_data["id"]
+                    # 深度复制原始数据
+                    self._id_templates[template_id] = sub_cmd_data.copy()
+                
+                # 递归收集嵌套子命令
+                if "sub_commands" in sub_cmd_data:
+                    collect_recursive(sub_cmd_data["sub_commands"])
+        
+        collect_recursive(program_config["sub_commands"])
+    
+    def _preprocess_id_templates(self):
+        """步骤2: 预处理 id 子命令节点，递归解析 include_arguments_and_subcmds"""
+        processed = set()
+        
+        def preprocess_template(template_id: str):
+            if template_id in processed:
+                return
+            
+            template_data = self._id_templates[template_id]
+            
+            # 如果模板有 include_arguments，递归处理
+            if "include_arguments_and_subcmds" in template_data:
+                referenced_id = template_data["include_arguments_and_subcmds"]
+                
+                # 确保引用的模板已预处理
+                if referenced_id in self._id_templates:
+                    preprocess_template(referenced_id)
+                    
+                    # 复制引用的模板内容
+                    referenced_template = self._id_templates[referenced_id]
+                    
+                    # 复制 arguments
+                    if "arguments" in referenced_template:
+                        template_data["arguments"] = referenced_template["arguments"].copy()
+                    
+                    # 复制 sub_commands
+                    if "sub_commands" in referenced_template:
+                        template_data["sub_commands"] = referenced_template["sub_commands"].copy()
+                    
+                    # 复制 description（如果存在）
+                    if "description" in referenced_template:
+                        template_data["description"] = referenced_template["description"]
+                
+                # 移除 include_arguments，标记为已处理
+                template_data.pop("include_arguments_and_subcmds", None)
+            
+            processed.add(template_id)
+        
+        # 预处理所有模板
+        for template_id in list(self._id_templates.keys()):
+            preprocess_template(template_id)
     
     def _parse_arguments(self, arguments_data: list) -> list[ArgumentConfig]:
         """解析参数配置列表"""
@@ -106,36 +174,60 @@ class ConfigLoader:
         return arguments
     
     def _parse_sub_commands(self, sub_commands_data: list) -> list[SubCommandConfig]:
-        """递归解析子命令配置"""
+        """步骤3: 解析子命令，处理 include_arguments_and_subcmds"""
         sub_commands = []
         
         for sub_cmd_data in sub_commands_data:
-            sub_command_name = sub_cmd_data.get("name")
-            if not sub_command_name:
-                raise ValueError("子命令配置中缺少 name")
-            
-            # 解析子命令的参数
-            sub_cmd_arguments = []
-            if "arguments" in sub_cmd_data:
-                sub_cmd_arguments = self._parse_arguments(sub_cmd_data["arguments"])
-            
-            # 🔧 递归解析嵌套子命令
-            nested_sub_commands = []
-            if "sub_commands" in sub_cmd_data:
-                nested_sub_commands = self._parse_sub_commands(sub_cmd_data["sub_commands"])
-            
-            sub_command = SubCommandConfig(
-                name=sub_command_name,
-                arguments=sub_cmd_arguments,
-                sub_commands=nested_sub_commands,  # 🔧 新增嵌套子命令
-                description=sub_cmd_data.get("description")
-            )
+            sub_command = self._parse_single_sub_command(sub_cmd_data)
             sub_commands.append(sub_command)
         
         return sub_commands
 
+    def _parse_single_sub_command(self, sub_cmd_data: dict) -> SubCommandConfig:
+        """解析单个子命令配置"""
+        sub_command_name = sub_cmd_data.get("name")
+        if not sub_command_name:
+            raise ValueError("子命令配置中缺少 name")
+        
+        # 处理 include_arguments_and_subcmds
+        if "include_arguments_and_subcmds" in sub_cmd_data:
+            template_id = sub_cmd_data["include_arguments_and_subcmds"]
+            if template_id not in self._id_templates:
+                raise ValueError(f"未找到模板: {template_id}")
+            
+            # 使用预处理后的模板数据
+            template_data = self._id_templates[template_id]
+            
+            # 深度复制模板内容
+            sub_cmd_arguments = []
+            if "arguments" in template_data:
+                sub_cmd_arguments = self._parse_arguments(template_data["arguments"])
+            
+            nested_sub_commands = []
+            if "sub_commands" in template_data:
+                nested_sub_commands = self._parse_sub_commands(template_data["sub_commands"])
+        else:
+            # 正常解析子命令的参数
+            sub_cmd_arguments = []
+            if "arguments" in sub_cmd_data:
+                sub_cmd_arguments = self._parse_arguments(sub_cmd_data["arguments"])
+            
+            # 递归解析嵌套子命令
+            nested_sub_commands = []
+            if "sub_commands" in sub_cmd_data:
+                nested_sub_commands = self._parse_sub_commands(sub_cmd_data["sub_commands"])
+        
+        sub_command = SubCommandConfig(
+            name=sub_command_name,
+            arguments=sub_cmd_arguments,
+            sub_commands=nested_sub_commands,
+            description=sub_cmd_data.get("description")
+        )
+        
+        return sub_command
 
-# 便捷函数
+
+# 便捷函数（保持不变）
 def load_parser_config_from_data(config_data: Dict[str, Any], program_name: str) -> ParserConfig:
     """
     便捷函数：从配置数据加载指定程序的解析器配置
