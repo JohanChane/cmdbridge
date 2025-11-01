@@ -1,6 +1,8 @@
 # CmdBridge
 
-A tool for converting command lines based on command-line syntax parsing.
+A tool for mapping command lines based on command-line syntax parsing.
+
+<img alt="Welcome to CmdBridge" src="https://github.com/user-attachments/assets/da132b90-ef25-48dd-b6d2-5734dfa7f75d"/>
 
 ## Languages
 
