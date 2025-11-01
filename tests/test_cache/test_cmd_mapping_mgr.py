@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test command mapping manager core functionality
+Test command mapping manager core functionality - Fixed version with separate config and cache dirs
 """
 
 import sys
@@ -13,20 +13,33 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from cmdbridge.cache.cmd_mapping_mgr import CmdMappingMgr
 from cmdbridge.config.path_manager import PathManager
+from cmdbridge.cache.parser_config_mgr import ParserConfigCacheMgr
 from parsers.types import ParserConfig, ParserType, ArgumentConfig, ArgumentCount
 import tomli_w
 
 
 def setup_test_configs():
-    """Set up test configurations"""
-    # Create temporary directory structure
-    temp_dir = tempfile.mkdtemp()
+    """Set up test configurations with separate config and cache directories under same parent"""
+    # Create a parent temporary directory
+    parent_temp_dir = tempfile.mkdtemp()
     
-    # Initialize PathManager
+    # Create separate subdirectories for config and cache under the same parent
+    config_temp_dir = Path(parent_temp_dir) / "config"
+    cache_temp_dir = Path(parent_temp_dir) / "cache"
+    
+    config_temp_dir.mkdir(parents=True, exist_ok=True)
+    cache_temp_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Initialize PathManager with separate directories under same parent
+    PathManager.reset_instance()
     path_manager = PathManager(
-        config_dir=temp_dir,
-        cache_dir=temp_dir
+        config_dir=str(config_temp_dir),
+        cache_dir=str(cache_temp_dir)
     )
+    
+    print(f"Test parent dir: {parent_temp_dir}")
+    print(f"Test config dir: {config_temp_dir}")
+    print(f"Test cache dir: {cache_temp_dir}")
     
     # Create test domain and operation group configurations
     domain_dir = path_manager.get_operation_domain_dir_of_config("test_package")
@@ -48,11 +61,61 @@ def setup_test_configs():
     with open(group_file, 'wb') as f:
         tomli_w.dump(group_config, f)
     
-    return temp_dir, path_manager
+    # Create program parser configuration directory
+    parser_config_dir = path_manager.program_parser_config_dir
+    parser_config_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create apt parser configuration
+    apt_parser_config = {
+        "apt": {
+            "parser_config": {
+                "parser_type": "argparse",
+                "program_name": "apt"
+            },
+            "arguments": [
+                {
+                    "name": "help",
+                    "opt": ["-h", "--help"],
+                    "nargs": "0"
+                }
+            ],
+            "sub_commands": [
+                {
+                    "name": "install",
+                    "arguments": [
+                        {
+                            "name": "pkgs",
+                            "nargs": "+"
+                        }
+                    ]
+                },
+                {
+                    "name": "list", 
+                    "arguments": [
+                        {
+                            "name": "installed",
+                            "opt": ["--installed"],
+                            "nargs": "0"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+    
+    apt_parser_file = parser_config_dir / "apt.toml"
+    with open(apt_parser_file, 'wb') as f:
+        tomli_w.dump(apt_parser_config, f)
+    
+    # Generate parser configuration cache
+    parser_cache_mgr = ParserConfigCacheMgr()
+    parser_cache_mgr.generate_parser_config_cache()
+    
+    return parent_temp_dir, config_temp_dir, cache_temp_dir, path_manager
 
 
 def create_mock_parser_config():
-    """Create mock parser configuration"""
+    """Create mock parser configuration for unit tests"""
     return ParserConfig(
         parser_type=ParserType.ARGPARSE,
         program_name="apt",
@@ -153,7 +216,7 @@ def test_mapping_structure():
     """Test mapping data structure"""
     print("\n=== Testing Mapping Data Structure ===")
     
-    temp_dir, path_manager = setup_test_configs()
+    parent_temp_dir, config_temp_dir, cache_temp_dir, path_manager = setup_test_configs()
     
     try:
         # Create mapping manager
@@ -169,23 +232,25 @@ def test_mapping_structure():
         # Verify program mapping structure
         program_mappings = mapping_data["program_mappings"]
         assert isinstance(program_mappings, dict)
+        assert "apt" in program_mappings  # Should have apt program mappings
         
         # Verify cmd_to_operation structure
         cmd_to_operation = mapping_data["cmd_to_operation"]
         assert isinstance(cmd_to_operation, dict)
+        assert "apt" in cmd_to_operation  # Should have apt operation group
         
         print("✅ Mapping data structure test passed")
         
     finally:
         import shutil
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(parent_temp_dir)
 
 
 def test_file_writing():
     """Test file writing functionality"""
     print("\n=== Testing File Writing ===")
     
-    temp_dir, path_manager = setup_test_configs()
+    parent_temp_dir, config_temp_dir, cache_temp_dir, path_manager = setup_test_configs()
     
     try:
         # Create mapping manager
@@ -201,11 +266,92 @@ def test_file_writing():
         cache_dir = path_manager.get_cmd_mappings_domain_dir_of_cache("test_package")
         assert cache_dir.exists()
         
+        # Verify program mapping files were created
+        program_file = path_manager.get_cmd_mappings_group_program_path_of_cache(
+            "test_package", "apt", "apt"
+        )
+        assert program_file.exists()
+        
+        # Verify cmd_to_operation file was created
+        cmd_to_operation_file = path_manager.get_cmd_to_operation_path("test_package")
+        assert cmd_to_operation_file.exists()
+        
+        # Verify files are actually in the cache directory, not config directory
+        assert str(cache_dir).startswith(str(cache_temp_dir)), "Cache files should be in cache directory"
+        
         print("✅ File writing test passed")
         
     finally:
         import shutil
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(parent_temp_dir)
+
+
+def test_operation_processing():
+    """Test operation processing functionality"""
+    print("\n=== Testing Operation Processing ===")
+    
+    parent_temp_dir, config_temp_dir, cache_temp_dir, path_manager = setup_test_configs()
+    
+    try:
+        # Create mapping manager
+        mapping_mgr = CmdMappingMgr("test_package", "apt")
+        
+        # Generate mapping data
+        mapping_data = mapping_mgr.create_mappings()
+        
+        # Verify operations were processed
+        program_mappings = mapping_data["program_mappings"]
+        apt_mappings = program_mappings.get("apt", {})
+        command_mappings = apt_mappings.get("command_mappings", [])
+        
+        # Should have at least one command mapping
+        assert len(command_mappings) > 0
+        
+        # Verify operation names
+        operation_names = [mapping["operation"] for mapping in command_mappings]
+        assert "install_remote" in operation_names or "list_installed" in operation_names
+        
+        # Verify command node structure
+        for mapping in command_mappings:
+            assert "cmd_node" in mapping
+            assert "operation" in mapping
+            assert "cmd_format" in mapping
+        
+        print("✅ Operation processing test passed")
+        
+    finally:
+        import shutil
+        shutil.rmtree(parent_temp_dir)
+
+
+def test_directory_separation():
+    """Test that config and cache directories are properly separated under same parent"""
+    print("\n=== Testing Directory Separation ===")
+    
+    parent_temp_dir, config_temp_dir, cache_temp_dir, path_manager = setup_test_configs()
+    
+    try:
+        # Verify directories are different but under same parent
+        assert config_temp_dir != cache_temp_dir, "Config and cache directories should be different"
+        assert config_temp_dir.parent == cache_temp_dir.parent, "Config and cache should be under same parent"
+        
+        # Verify PathManager uses correct directories
+        assert str(path_manager.config_dir) == str(config_temp_dir)
+        assert str(path_manager.cache_dir) == str(cache_temp_dir)
+        
+        # Verify config files are in config directory
+        config_file = path_manager.get_operation_group_path_of_config("test_package", "apt")
+        assert str(config_file).startswith(str(config_temp_dir)), "Config files should be in config directory"
+        
+        # Verify cache files are in cache directory
+        cache_file = path_manager.get_cmd_mappings_domain_dir_of_cache("test_package")
+        assert str(cache_file).startswith(str(cache_temp_dir)), "Cache files should be in cache directory"
+        
+        print("✅ Directory separation test passed")
+        
+    finally:
+        import shutil
+        shutil.rmtree(parent_temp_dir)
 
 
 def main():
@@ -218,6 +364,8 @@ def main():
         test_example_command_generation()
         test_mapping_structure()
         test_file_writing()
+        test_operation_processing()
+        test_directory_separation()
         
         print("\n🎉 All core functionality tests passed!")
         

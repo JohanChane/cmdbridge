@@ -28,14 +28,26 @@ class TestOperationMapping:
     
     def setup_method(self):
         """Test setup"""
-        self.temp_dir = tempfile.mkdtemp()
+        # Create a parent temporary directory
+        self.parent_temp_dir = tempfile.mkdtemp()
         
-        # Reset PathManager
+        # Create separate subdirectories for config and cache under the same parent
+        self.config_temp_dir = Path(self.parent_temp_dir) / "config"
+        self.cache_temp_dir = Path(self.parent_temp_dir) / "cache"
+        
+        self.config_temp_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Reset PathManager with separate directories under same parent
         PathManager.reset_instance()
         self.path_manager = PathManager(
-            config_dir=self.temp_dir,
-            cache_dir=self.temp_dir
+            config_dir=str(self.config_temp_dir),
+            cache_dir=str(self.cache_temp_dir)
         )
+        
+        print(f"Test parent dir: {self.parent_temp_dir}")
+        print(f"Test config dir: {self.config_temp_dir}")
+        print(f"Test cache dir: {self.cache_temp_dir}")
         
         # Create domain configuration directory
         package_domain_dir = self.path_manager.get_operation_domain_dir_of_config("package")
@@ -46,16 +58,20 @@ class TestOperationMapping:
     
     def teardown_method(self):
         """Test cleanup"""
-        shutil.rmtree(self.temp_dir)
+        if self.parent_temp_dir and Path(self.parent_temp_dir).exists():
+            shutil.rmtree(self.parent_temp_dir)
         PathManager.reset_instance()
     
     def _create_test_config(self):
         """Create test configuration"""
-        # Create cache directory
+        # Create cache directory (in cache_temp_dir)
         cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache("package")
         cache_dir.mkdir(parents=True, exist_ok=True)
         
-        # Create operation to program mapping file
+        # Verify cache directory is in cache_temp_dir
+        assert str(cache_dir).startswith(str(self.cache_temp_dir)), "Cache directory should be in cache_temp_dir"
+        
+        # Create operation to program mapping file (in cache directory)
         op_to_program = {
             "operation_to_program": {
                 "install": {
@@ -74,7 +90,10 @@ class TestOperationMapping:
         with open(op_file, 'wb') as f:
             tomli_w.dump(op_to_program, f)
         
-        # Create apt command format
+        # Verify operation to program file is in cache directory
+        assert str(op_file).startswith(str(self.cache_temp_dir)), "operation_to_program file should be in cache directory"
+        
+        # Create apt command format (in cache directory)
         apt_dir = self.path_manager.get_operation_mappings_group_dir_of_cache("package", "apt")
         apt_dir.mkdir(parents=True, exist_ok=True)
         
@@ -91,6 +110,9 @@ class TestOperationMapping:
         )
         with open(apt_file, 'wb') as f:
             tomli_w.dump(apt_commands, f)
+        
+        # Verify apt command file is in cache directory
+        assert str(apt_file).startswith(str(self.cache_temp_dir)), "apt command file should be in cache directory"
     
     def test_basic_command_generation(self):
         """Test basic command generation"""
@@ -165,6 +187,29 @@ class TestOperationMapping:
         )
         
         assert cmd == "apt install vim git curl"
+    
+    def test_directory_separation(self):
+        """Test that config and cache directories are properly separated"""
+        # Verify directories are different but under same parent
+        assert self.config_temp_dir != self.cache_temp_dir, "Config and cache directories should be different"
+        assert self.config_temp_dir.parent == self.cache_temp_dir.parent, "Config and cache should be under same parent"
+        
+        # Verify PathManager uses correct directories
+        assert str(self.path_manager.config_dir) == str(self.config_temp_dir)
+        assert str(self.path_manager.cache_dir) == str(self.cache_temp_dir)
+        
+        # Verify all created files are in cache directory, not config directory
+        cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache("package")
+        assert str(cache_dir).startswith(str(self.cache_temp_dir)), "Cache files should be in cache directory"
+        
+        op_file = self.path_manager.get_operation_to_program_path("package")
+        assert str(op_file).startswith(str(self.cache_temp_dir)), "operation_to_program file should be in cache directory"
+        
+        apt_file = self.path_manager.get_operation_mappings_group_program_path_of_cache("package", "apt", "apt")
+        assert str(apt_file).startswith(str(self.cache_temp_dir)), "apt command file should be in cache directory"
+        
+        # Verify config files would be in config directory (if we created any)
+        # For this test, we're only creating cache files, so no config files to verify
 
 
 def run_tests():
@@ -180,6 +225,7 @@ def run_tests():
             test_instance.test_no_parameters_command,
             test_instance.test_nonexistent_operation,
             test_instance.test_parameter_replacement,
+            test_instance.test_directory_separation,
         ]
         
         passed = 0
@@ -193,6 +239,8 @@ def run_tests():
             except Exception as e:
                 failed += 1
                 print(f"❌ {test.__name__} - Failed: {e}")
+                import traceback
+                traceback.print_exc()
         
         print(f"\n📊 Test results: {passed} passed, {failed} failed")
         

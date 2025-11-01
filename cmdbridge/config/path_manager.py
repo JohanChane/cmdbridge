@@ -113,13 +113,16 @@ class PathManager:
             
         # Set default paths
         self._config_dir = Path(
-            config_dir or os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
-        ) / "cmdbridge"
+            config_dir or os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config" / "cmdbridge")
+        )
         
         self._cache_dir = Path(
-            cache_dir or os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")
-        ) / "cmdbridge"
+            cache_dir or os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache" / "cmdbridge")
+        )
         
+        debug(f"Set config_dir: {self._config_dir}")
+        debug(f"Set cache_dir: {self._cache_dir}")
+
         # Initialize internal path managers
         self._config_path_mgr = ConfigPathMgr(self._config_dir)
         self._cache_path_mgr = CachePathMgr(self._cache_dir)

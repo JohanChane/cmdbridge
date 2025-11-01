@@ -25,30 +25,46 @@ class TestCmdMapping:
     
     def setup_method(self):
         """Test setup"""
-        self.temp_dir = tempfile.mkdtemp()
+        # Create a parent temporary directory
+        self.parent_temp_dir = tempfile.mkdtemp()
         
-        # Reset PathManager
+        # Create separate subdirectories for config and cache under the same parent
+        self.config_temp_dir = Path(self.parent_temp_dir) / "config"
+        self.cache_temp_dir = Path(self.parent_temp_dir) / "cache"
+        
+        self.config_temp_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Reset PathManager with separate directories under same parent
         PathManager.reset_instance()
         self.path_manager = PathManager(
-            config_dir=self.temp_dir,
-            cache_dir=self.temp_dir
+            config_dir=str(self.config_temp_dir),
+            cache_dir=str(self.cache_temp_dir)
         )
+        
+        print(f"Test parent dir: {self.parent_temp_dir}")
+        print(f"Test config dir: {self.config_temp_dir}")
+        print(f"Test cache dir: {self.cache_temp_dir}")
         
         # Create test configuration
         self._create_test_config()
     
     def teardown_method(self):
         """Test cleanup"""
-        shutil.rmtree(self.temp_dir)
+        if self.parent_temp_dir and Path(self.parent_temp_dir).exists():
+            shutil.rmtree(self.parent_temp_dir)
         PathManager.reset_instance()
     
     def _create_test_config(self):
         """Create test configuration"""
-        # Create cache directory
+        # Create cache directory (in cache_temp_dir)
         cache_dir = self.path_manager.get_cmd_mappings_domain_dir_of_cache("package")
         cache_dir.mkdir(parents=True, exist_ok=True)
         
-        # Create cmd_to_operation file
+        # Verify cache directory is in cache_temp_dir
+        assert str(cache_dir).startswith(str(self.cache_temp_dir)), "Cache directory should be in cache_temp_dir"
+        
+        # Create cmd_to_operation file (in cache directory)
         cmd_to_op = {
             "cmd_to_operation": {
                 "apt": {
@@ -63,6 +79,9 @@ class TestCmdMapping:
         cmd_to_op_file = self.path_manager.get_cmd_to_operation_path("package")
         with open(cmd_to_op_file, 'wb') as f:
             tomli_w.dump(cmd_to_op, f)
+        
+        # Verify cmd_to_operation file is in cache directory
+        assert str(cmd_to_op_file).startswith(str(self.cache_temp_dir)), "cmd_to_operation file should be in cache directory"
         
         # Create apt command mapping - using correct subcommand structure
         apt_dir = self.path_manager.get_cmd_mappings_group_dir_of_cache("package", "apt")
@@ -124,6 +143,9 @@ class TestCmdMapping:
         with open(apt_file, 'wb') as f:
             tomli_w.dump(apt_mappings, f)
         
+        # Verify apt file is in cache directory
+        assert str(apt_file).startswith(str(self.cache_temp_dir)), "apt command file should be in cache directory"
+        
         # Create pacman command mapping
         pacman_dir = self.path_manager.get_cmd_mappings_group_dir_of_cache("package", "pacman")
         pacman_dir.mkdir(parents=True, exist_ok=True)
@@ -158,6 +180,9 @@ class TestCmdMapping:
         )
         with open(pacman_file, 'wb') as f:
             tomli_w.dump(pacman_mappings, f)
+        
+        # Verify pacman file is in cache directory
+        assert str(pacman_file).startswith(str(self.cache_temp_dir)), "pacman command file should be in cache directory"
     
     def _create_apt_parser_config(self) -> ParserConfig:
         """Create apt parser configuration"""
@@ -321,6 +346,29 @@ class TestCmdMapping:
         mapping = create_cmd_mapping(test_config)
         assert mapping is not None
         assert "test_program" in mapping.mapping_config
+    
+    def test_directory_separation(self):
+        """Test that config and cache directories are properly separated"""
+        # Verify directories are different but under same parent
+        assert self.config_temp_dir != self.cache_temp_dir, "Config and cache directories should be different"
+        assert self.config_temp_dir.parent == self.cache_temp_dir.parent, "Config and cache should be under same parent"
+        
+        # Verify PathManager uses correct directories
+        assert str(self.path_manager.config_dir) == str(self.config_temp_dir)
+        assert str(self.path_manager.cache_dir) == str(self.cache_temp_dir)
+        
+        # Verify all created files are in cache directory, not config directory
+        cache_dir = self.path_manager.get_cmd_mappings_domain_dir_of_cache("package")
+        assert str(cache_dir).startswith(str(self.cache_temp_dir)), "Cache files should be in cache directory"
+        
+        cmd_to_op_file = self.path_manager.get_cmd_to_operation_path("package")
+        assert str(cmd_to_op_file).startswith(str(self.cache_temp_dir)), "cmd_to_operation file should be in cache directory"
+        
+        apt_file = self.path_manager.get_cmd_mappings_group_program_path_of_cache("package", "apt", "apt")
+        assert str(apt_file).startswith(str(self.cache_temp_dir)), "apt command file should be in cache directory"
+        
+        pacman_file = self.path_manager.get_cmd_mappings_group_program_path_of_cache("package", "pacman", "pacman")
+        assert str(pacman_file).startswith(str(self.cache_temp_dir)), "pacman command file should be in cache directory"
 
 
 if __name__ == "__main__":

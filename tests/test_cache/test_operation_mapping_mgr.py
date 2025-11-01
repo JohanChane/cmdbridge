@@ -23,22 +23,34 @@ class TestOperationMappingMgrSimple:
     
     def setup_method(self):
         """Test setup"""
-        self.temp_dir = tempfile.mkdtemp(prefix="cmdbridge_test_")
+        # Create a parent temporary directory
+        self.parent_temp_dir = tempfile.mkdtemp(prefix="cmdbridge_test_")
         
-        # Reset PathManager
+        # Create separate subdirectories for config and cache under the same parent
+        self.config_temp_dir = Path(self.parent_temp_dir) / "config"
+        self.cache_temp_dir = Path(self.parent_temp_dir) / "cache"
+        
+        self.config_temp_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Reset PathManager with separate directories under same parent
         PathManager.reset_instance()
         self.path_manager = PathManager(
-            config_dir=self.temp_dir,
-            cache_dir=self.temp_dir
+            config_dir=str(self.config_temp_dir),
+            cache_dir=str(self.cache_temp_dir)
         )
+        
+        print(f"Test parent dir: {self.parent_temp_dir}")
+        print(f"Test config dir: {self.config_temp_dir}")
+        print(f"Test cache dir: {self.cache_temp_dir}")
         
         # Create minimal test configuration
         self._create_minimal_config()
     
     def teardown_method(self):
         """Test cleanup"""
-        if self.temp_dir and Path(self.temp_dir).exists():
-            shutil.rmtree(self.temp_dir)
+        if self.parent_temp_dir and Path(self.parent_temp_dir).exists():
+            shutil.rmtree(self.parent_temp_dir)
         PathManager.reset_instance()
     
     def _create_minimal_config(self):
@@ -187,16 +199,21 @@ class TestOperationMappingMgrSimple:
         operation_to_program_file = self.path_manager.get_operation_to_program_path("package")
         assert operation_to_program_file.exists(), f"operation_to_program file should exist: {operation_to_program_file}"
         
+        # Verify files are in cache directory, not config directory
+        assert str(operation_to_program_file).startswith(str(self.cache_temp_dir)), "Cache files should be in cache directory"
+        
         # Verify operation group files
         apt_commands_file = self.path_manager.get_operation_mappings_group_program_path_of_cache(
             "package", "apt", "apt"
         )
         assert apt_commands_file.exists(), f"apt command file should exist: {apt_commands_file}"
+        assert str(apt_commands_file).startswith(str(self.cache_temp_dir)), "Cache files should be in cache directory"
         
         pacman_commands_file = self.path_manager.get_operation_mappings_group_program_path_of_cache(
             "package", "pacman", "pacman"
         )
         assert pacman_commands_file.exists(), f"pacman command file should exist: {pacman_commands_file}"
+        assert str(pacman_commands_file).startswith(str(self.cache_temp_dir)), "Cache files should be in cache directory"
         
         print("✅ File generation test passed")
     
@@ -235,6 +252,28 @@ class TestOperationMappingMgrSimple:
         assert isinstance(success, bool)
         
         print("✅ Convenience function test passed")
+    
+    def test_directory_separation(self):
+        """Test that config and cache directories are properly separated"""
+        print("🧪 Testing directory separation...")
+        
+        # Verify directories are different but under same parent
+        assert self.config_temp_dir != self.cache_temp_dir, "Config and cache directories should be different"
+        assert self.config_temp_dir.parent == self.cache_temp_dir.parent, "Config and cache should be under same parent"
+        
+        # Verify PathManager uses correct directories
+        assert str(self.path_manager.config_dir) == str(self.config_temp_dir)
+        assert str(self.path_manager.cache_dir) == str(self.cache_temp_dir)
+        
+        # Verify config files are in config directory
+        config_file = self.path_manager.get_operation_group_path_of_config("package", "apt")
+        assert str(config_file).startswith(str(self.config_temp_dir)), "Config files should be in config directory"
+        
+        # Verify cache files are in cache directory
+        cache_file = self.path_manager.get_operation_mappings_domain_dir_of_cache("package")
+        assert str(cache_file).startswith(str(self.cache_temp_dir)), "Cache files should be in cache directory"
+        
+        print("✅ Directory separation test passed")
 
 
 def run_tests():
@@ -251,6 +290,7 @@ def run_tests():
             test_instance.test_file_generation,
             test_instance.test_program_name_extraction,
             test_instance.test_convenience_function,
+            test_instance.test_directory_separation,
         ]
         
         passed = 0

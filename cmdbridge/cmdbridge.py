@@ -19,7 +19,7 @@ class CmdBridge:
     
     def __init__(self):
         # Initialize path manager
-        self.path_manager = PathManager()
+        self.path_manager = PathManager.get_instance()
         
         # Initialize configuration utilities
         self.cache_mgr = CacheMgr.get_instance()
