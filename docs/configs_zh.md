@@ -122,6 +122,14 @@ nargs = "+"
 name = "install"
 ```
 
+子命令的别名。e.g. `brew list/ls -v vim`:
+
+```toml
+[[brew.sub_commands]]
+name = "list"
+alias = ["ls"]              # list 的别名是 ls
+```
+
 ### 复用子命令的参数配置
 
 **mufw (my ufw) 是自定义的命令**
