@@ -8,7 +8,7 @@ from cmdbridge.cache.cache_mgr import CacheMgr
 from ..cli_common import CommonCliHelper
 
 class CmdBridgeCLIHelper:
-    """cmdbridge 命令行辅助类 - 处理 CLI 业务逻辑"""
+    """cmdbridge command line helper class - handles CLI business logic"""
     
     def __init__(self):
         self._common_cli_helper = CommonCliHelper()
@@ -37,53 +37,53 @@ class CmdBridgeCLIHelper:
         return self._get_common_cli_helper().get_domain_for_group(group_name)
     
     def handle_init_config(self) -> bool:
-        """初始化用户配置"""
+        """Initialize user configuration"""
         success = self._get_cmdbridge().init_config()
         if success:
-            click.echo("✅ 用户配置初始化成功")
+            click.echo("✅ User configuration initialized successfully")
         else:
-            click.echo("❌ 用户配置初始化失败", err=True)
+            click.echo("❌ User configuration initialization failed", err=True)
         return success
 
     def handle_refresh_cache(self) -> bool:
-        """刷新命令映射缓存"""
+        """Refresh command mapping cache"""
         success = self._get_cmdbridge().refresh_cmd_mappings()
         if success:
-            click.echo("✅ 命令映射缓存刷新成功")
+            click.echo("✅ Command mapping cache refreshed successfully")
         else:
-            click.echo("❌ 命令映射缓存刷新失败", err=True)
+            click.echo("❌ Command mapping cache refresh failed", err=True)
         return success
     
     def handle_list_op_cmds(self, domain: Optional[str], dest_group: str) -> None:
-        """输出动作映射 - 使用 shlex 处理参数显示"""
+        """Output operation mappings - use shlex to handle parameter display"""
         cache_mgr = CacheMgr.get_instance()
         domain = domain or self.get_domain_for_group(dest_group)
         if domain is None:
-            raise ValueError("需要指定 domain")
+            raise ValueError("Domain must be specified")
 
         if dest_group:
             operations = cache_mgr.get_supported_operations(domain, dest_group)
             
             if not operations:
-                click.echo("❌ 该程序组不支持任何操作")
+                click.echo("❌ This program group does not support any operations")
                 return
             
-            # 收集所有操作和参数信息
+            # Collect all operation and parameter information
             op_data = []
             for op in sorted(operations):
-                # 获取操作参数
+                # Get operation parameters
                 params = cache_mgr.get_operation_parameters(domain, op, dest_group)
                 op_data.append((op, params))
             
-            # 计算最大操作名称长度用于对齐
+            # Calculate maximum operation name length for alignment
             max_op_len = max(len(op) for op, _ in op_data) if op_data else 0
             
-            # 使用 shlex 安全地格式化参数
+            # Use shlex to safely format parameters
             for op, params in op_data:
                 if params:
-                    # 使用 shlex.quote 确保参数安全显示
+                    # Use shlex.quote to ensure safe parameter display
                     param_display = ' '.join([f'{{{param}}}' for param in params])
-                    # 对齐输出
+                    # Align output
                     click.echo(f"{op:<{max_op_len}} {param_display}")
                 else:
                     click.echo(f"{op:<{max_op_len}}")
@@ -94,29 +94,29 @@ class CmdBridgeCLIHelper:
 
     def handle_list_cmd_mappings(self, domain: Optional[str], source_group: Optional[str], 
                             dest_group: Optional[str]) -> None:
-        """输出命令之间的映射 - 简化版本"""
+        """Output mappings between commands - simplified version"""
         cache_mgr = CacheMgr.get_instance()
         
-        # 设置默认值
+        # Set default values
         if source_group is None:
-            raise ValueError("需要指定 source_group")
+            raise ValueError("Source group must be specified")
         if dest_group is None:
-            raise ValueError("需要指定 dest_group")
+            raise ValueError("Destination group must be specified")
         domain = domain or self.get_domain_for_group(dest_group)
         if domain is None:
-            raise ValueError("需要指定 domain")
+            raise ValueError("Domain must be specified")
 
-        # 获取所有操作
+        # Get all operations
         operations = cache_mgr.get_all_operations(domain)
         if not operations:
-            click.echo("❌ 未找到任何操作")
+            click.echo("❌ No operations found")
             return
         
-        # 收集数据
+        # Collect data
         operation_data = []
         
         for operation in operations:
-            # 获取源命令格式
+            # Get source command format
             source_programs = cache_mgr.get_supported_programs(domain, operation)
             if source_group not in [pg for pg in source_programs]:
                 continue
@@ -125,7 +125,7 @@ class CmdBridgeCLIHelper:
             if not source_cmd_format:
                 continue
                 
-            # 获取目标命令格式
+            # Get target command format
             target_cmd_format = cache_mgr.get_command_format(domain, operation, dest_group)
             final_cmd_format = cache_mgr.get_final_command_format(domain, operation, dest_group)
             
@@ -134,13 +134,13 @@ class CmdBridgeCLIHelper:
                 operation_data.append((operation, source_cmd_format, display_cmd))
         
         if not operation_data:
-            click.echo("❌ 未找到有效的命令映射")
+            click.echo("❌ No valid command mappings found")
             return
         
-        # 计算列宽
+        # Calculate column widths
         max_op_len = max(len(op) for op, _, _ in operation_data)
         max_source_len = max(len(source) for _, source, _ in operation_data)
         
-        # 输出对齐的结果        
+        # Output aligned results        
         for operation, source, target in operation_data:
             click.echo(f"{operation:<{max_op_len}} {source:<{max_source_len}} -> {target}")

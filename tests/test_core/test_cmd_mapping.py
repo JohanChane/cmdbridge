@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CmdMapping 测试
+CmdMapping Tests
 """
 
 import pytest
@@ -10,7 +10,7 @@ from pathlib import Path
 import tomli_w
 import sys
 
-# 添加项目根目录到 Python 路径
+# Add project root directory to Python path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -21,34 +21,34 @@ from parsers.types import ParserConfig, ParserType, ArgumentConfig, ArgumentCoun
 import log
 
 class TestCmdMapping:
-    """CmdMapping 测试类"""
+    """CmdMapping Test Class"""
     
     def setup_method(self):
-        """测试设置"""
+        """Test setup"""
         self.temp_dir = tempfile.mkdtemp()
         
-        # 重置 PathManager
+        # Reset PathManager
         PathManager.reset_instance()
         self.path_manager = PathManager(
             config_dir=self.temp_dir,
             cache_dir=self.temp_dir
         )
         
-        # 创建测试配置
+        # Create test configuration
         self._create_test_config()
     
     def teardown_method(self):
-        """测试清理"""
+        """Test cleanup"""
         shutil.rmtree(self.temp_dir)
         PathManager.reset_instance()
     
     def _create_test_config(self):
-        """创建测试配置"""
-        # 创建缓存目录
+        """Create test configuration"""
+        # Create cache directory
         cache_dir = self.path_manager.get_cmd_mappings_domain_dir_of_cache("package")
         cache_dir.mkdir(parents=True, exist_ok=True)
         
-        # 创建 cmd_to_operation 文件
+        # Create cmd_to_operation file
         cmd_to_op = {
             "cmd_to_operation": {
                 "apt": {
@@ -64,7 +64,7 @@ class TestCmdMapping:
         with open(cmd_to_op_file, 'wb') as f:
             tomli_w.dump(cmd_to_op, f)
         
-        # 创建 apt 命令映射 - 使用正确的子命令结构
+        # Create apt command mapping - using correct subcommand structure
         apt_dir = self.path_manager.get_cmd_mappings_group_dir_of_cache("package", "apt")
         apt_dir.mkdir(parents=True, exist_ok=True)
         
@@ -124,7 +124,7 @@ class TestCmdMapping:
         with open(apt_file, 'wb') as f:
             tomli_w.dump(apt_mappings, f)
         
-        # 创建 pacman 命令映射
+        # Create pacman command mapping
         pacman_dir = self.path_manager.get_cmd_mappings_group_dir_of_cache("package", "pacman")
         pacman_dir.mkdir(parents=True, exist_ok=True)
         
@@ -160,7 +160,7 @@ class TestCmdMapping:
             tomli_w.dump(pacman_mappings, f)
     
     def _create_apt_parser_config(self) -> ParserConfig:
-        """创建 apt 解析器配置"""
+        """Create apt parser configuration"""
         return ParserConfig(
             parser_type=ParserType.ARGPARSE,
             program_name="apt",
@@ -177,7 +177,7 @@ class TestCmdMapping:
                     arguments=[
                         ArgumentConfig(
                             name="packages",
-                            opt=[],  # 位置参数
+                            opt=[],  # positional argument
                             nargs=ArgumentCount.ONE_OR_MORE
                         )
                     ]
@@ -187,20 +187,20 @@ class TestCmdMapping:
                     arguments=[
                         ArgumentConfig(
                             name="query",
-                            opt=[],  # 位置参数
+                            opt=[],  # positional argument
                             nargs=ArgumentCount.ONE_OR_MORE
                         )
                     ]
                 ),
                 SubCommandConfig(
                     name="update",
-                    arguments=[]  # 无参数
+                    arguments=[]  # no arguments
                 )
             ]
         )
     
     def _create_pacman_parser_config(self) -> ParserConfig:
-        """创建 pacman 解析器配置"""
+        """Create pacman parser configuration"""
         return ParserConfig(
             parser_type=ParserType.GETOPT,
             program_name="pacman",
@@ -212,7 +212,7 @@ class TestCmdMapping:
                 ),
                 ArgumentConfig(
                     name="packages",
-                    opt=[],  # 位置参数
+                    opt=[],  # positional argument
                     nargs=ArgumentCount.ONE_OR_MORE
                 )
             ],
@@ -220,8 +220,8 @@ class TestCmdMapping:
         )
     
     def test_load_from_cache(self):
-        """测试从缓存加载"""
-        # 测试加载存在的程序
+        """Test loading from cache"""
+        # Test loading existing program
         mapping = CmdMapping.load_from_cache("package", "apt")
         assert mapping is not None
         assert "apt" in mapping.mapping_config
@@ -229,12 +229,12 @@ class TestCmdMapping:
         command_mappings = mapping.mapping_config["apt"]["command_mappings"]
         assert len(command_mappings) == 3
         
-        # 测试加载不存在的程序
+        # Test loading non-existent program
         nonexistent = CmdMapping.load_from_cache("package", "nonexistent")
         assert nonexistent.mapping_config == {}
     
     def test_basic_command_mapping(self):
-        """测试基本命令映射"""
+        """Test basic command mapping"""
         mapping = CmdMapping.load_from_cache("package", "apt")
         parser_config = self._create_apt_parser_config()
         
@@ -249,7 +249,7 @@ class TestCmdMapping:
         assert result["params"]["pkgs"] == "vim git"
     
     def test_search_command_mapping(self):
-        """测试搜索命令映射"""
+        """Test search command mapping"""
         mapping = CmdMapping.load_from_cache("package", "apt")
         parser_config = self._create_apt_parser_config()
         
@@ -264,7 +264,7 @@ class TestCmdMapping:
         assert result["params"]["query"] == "python"
     
     def test_no_parameters_command(self):
-        """测试无参数命令"""
+        """Test command without parameters"""
         mapping = CmdMapping.load_from_cache("package", "apt")
         parser_config = self._create_apt_parser_config()
         
@@ -276,10 +276,10 @@ class TestCmdMapping:
         
         assert result is not None
         assert result["operation_name"] == "update"
-        assert result["params"] == {}  # 无参数
+        assert result["params"] == {}  # no parameters
     
     def test_pacman_command_mapping(self):
-        """测试 pacman 命令映射"""
+        """Test pacman command mapping"""
         mapping = CmdMapping.load_from_cache("package", "pacman")
         parser_config = self._create_pacman_parser_config()
         
@@ -294,7 +294,7 @@ class TestCmdMapping:
         assert result["params"]["pkgs"] == "vim git"
     
     def test_convenience_function(self):
-        """测试便捷函数"""
+        """Test convenience function"""
         from cmdbridge.core.cmd_mapping import create_cmd_mapping
         
         test_config = {
@@ -324,7 +324,7 @@ class TestCmdMapping:
 
 
 if __name__ == "__main__":
-    # 设置日志级别
+    # Set log level
     log.set_level(log.LogLevel.DEBUG)
     
     import pytest

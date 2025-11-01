@@ -5,35 +5,35 @@ from .cli_helper import CmdBridgeCLIHelper
 from ..cli_common.completor import DomainType, SourceGroupType, DestGroupType, CommandType, OperationType
 
 def print_version(ctx, param, value):
-    """版本信息回调函数"""
+    """Version information callback function"""
     if not value or ctx.resilient_parsing:
         return
     cli_helper = CmdBridgeCLIHelper()
     cli_helper.handle_version()
     ctx.exit()
 
-# Click 命令行接口
+# Click command line interface
 @click.group(invoke_without_command=True)
-@click.option('--debug', is_flag=True, help='启用调试模式')
+@click.option('--debug', is_flag=True, help='Enable debug mode')
 @click.option('--version', is_flag=True, callback=print_version, 
-              expose_value=False, is_eager=True, help='显示版本信息')
+              expose_value=False, is_eager=True, help='Display version information')
 @click.pass_context
 def cli(ctx, debug):
-    """cmdbridge: 输出映射后的命令
+    """cmdbridge: Output mapped commands
     
-    使用 -- 分隔符将命令参数与 cmdbridge 选项分开。
+    Use -- separator to separate command arguments from cmdbridge options.
     
-    示例:
+    Examples:
         cmdbridge map -- pacman -S vim
         cmdbridge op -- install vim git
     """
-    # 创建 CLI 辅助类实例
+    # Create CLI helper class instance
     cli_helper = CmdBridgeCLIHelper()
     
-    # 设置日志级别
+    # Set log level
     cli_helper.handle_debug_mode(debug)
 
-    # 如果没有子命令，显示帮助信息
+    # If no subcommand, display help information
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
         ctx.exit(0)
@@ -43,26 +43,26 @@ def cli(ctx, debug):
 
 @cli.group()
 def config():
-    """配置管理命令"""
+    """Configuration management commands"""
     pass
 
 
 @cli.group()
 def cache():
-    """缓存管理命令"""
+    """Cache management commands"""
     pass
 
 
 @cli.group()
 def list():
-    """列出映射信息命令"""
+    """List mapping information commands"""
     pass
 
 
 @config.command()
 @click.pass_obj
 def init(cli_helper):
-    """初始化用户配置目录"""
+    """Initialize user configuration directory"""
     success = cli_helper.handle_init_config()
     sys.exit(0 if success else 1)
 
@@ -70,19 +70,19 @@ def init(cli_helper):
 @cache.command()
 @click.pass_obj
 def refresh(cli_helper):
-    """刷新命令映射缓存"""
+    """Refresh command mapping cache"""
     success = cli_helper.handle_refresh_cache()
     sys.exit(0 if success else 1)
 
 
 @list.command()
-@click.option('-d', '--domain', type=DomainType(), help='领域名称')
-@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
+@click.option('-d', '--domain', type=DomainType(), help='Domain name')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='Destination program group')
 @click.pass_obj
 def op_cmds(cli_helper, domain, dest_group):
-    """输出动作映射
+    """Output operation mappings
     
-    示例:
+    Examples:
         cmdbridge list op-cmds
         cmdbridge list -d package -t apt op-cmds
     """
@@ -90,14 +90,14 @@ def op_cmds(cli_helper, domain, dest_group):
 
 
 @list.command()
-@click.option('-d', '--domain', type=DomainType(), help='领域名称')
-@click.option('-s', '--source-group',required=True, type=SourceGroupType(), help='源程序组')
-@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
+@click.option('-d', '--domain', type=DomainType(), help='Domain name')
+@click.option('-s', '--source-group', required=True, type=SourceGroupType(), help='Source program group')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='Destination program group')
 @click.pass_obj
 def cmd_mappings(cli_helper, domain, source_group, dest_group):
-    """输出命令之间的映射
+    """Output mappings between commands
     
-    示例:
+    Examples:
         cmdbridge list cmd-mappings
         cmdbridge list -d package -s pacman -t apt cmd-mappings
     """
@@ -105,15 +105,15 @@ def cmd_mappings(cli_helper, domain, source_group, dest_group):
 
 
 @cli.command()
-@click.option('-d', '--domain', type=DomainType(), help='领域名称')
-@click.option('-s', '--source-group', type=SourceGroupType(), help='源程序组（只有无法识别才需要使用）')
-@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
+@click.option('-d', '--domain', type=DomainType(), help='Domain name')
+@click.option('-s', '--source-group', type=SourceGroupType(), help='Source program group (only needed when cannot be automatically identified)')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='Destination program group')
 @click.argument('command', nargs=-1, type=CommandType())
 @click.pass_context
 def map(ctx, domain, source_group, dest_group, command):
-    """映射完整命令
+    """Map complete command
     
-    使用 -- 分隔符将命令参数与 cmdbridge 选项分开：
+    Use -- separator to separate command arguments from cmdbridge options:
     cmdbridge map -t apt -- pacman -S vim
     """
 
@@ -124,14 +124,14 @@ def map(ctx, domain, source_group, dest_group, command):
 
 
 @cli.command()
-@click.option('-d', '--domain', type=DomainType(), help='领域名称')
-@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
+@click.option('-d', '--domain', type=DomainType(), help='Domain name')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='Destination program group')
 @click.argument('operation', nargs=-1, type=OperationType())
 @click.pass_context
 def op(ctx, domain, dest_group, operation):
-    """映射操作和参数
+    """Map operation and parameters
     
-    使用 -- 分隔符将操作参数与 cmdbridge 选项分开：
+    Use -- separator to separate operation arguments from cmdbridge options:
     cmdbridge op -t apt -- install vim git
     """
     cli_helper = ctx.obj
@@ -140,7 +140,7 @@ def op(ctx, domain, dest_group, operation):
     sys.exit(0 if success else 1)
 
 def main():
-    """主入口函数"""
+    """Main entry function"""
     cli()
 
 

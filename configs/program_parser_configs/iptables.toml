@@ -1,7 +1,6 @@
 [iptables.parser_config]
 program_name = "iptables"
 
-# 链名称参数
 [[iptables.arguments]]
 name = "targets"
 nargs = "*"

@@ -13,49 +13,49 @@ from log import debug, warning, error
 
 
 class CommonCompletorHelper:
-    """提供动态补全数据，从缓存中获取实时配置"""
+    """Provides dynamic completion data, retrieves real-time configuration from cache"""
 
     @staticmethod
     def get_domains() -> List[str]:
-        """从配置中返回支持的领域"""
+        """Return supported domains from configuration"""
         try:
             path_manager = PathManager.get_instance()
             domains = path_manager.get_domains_from_config()
-            debug(f"获取领域列表: {domains}")
+            debug(f"Retrieved domain list: {domains}")
             return domains
         except Exception as e:
-            warning(f"获取领域列表失败: {e}")
-            return []  # 默认回退值
+            warning(f"Failed to retrieve domain list: {e}")
+            return []  # Default fallback value
 
     @staticmethod
     def get_operation_groups(domain: str) -> List[str]:
-        """根据领域从配置中返回程序组"""
+        """Return program groups from configuration based on domain"""
         try:
             path_manager = PathManager.get_instance()
             groups = path_manager.get_operation_groups_from_config(domain)
-            debug(f"获取领域 '{domain}' 的程序组: {groups}")
+            debug(f"Retrieved program groups for domain '{domain}': {groups}")
             return groups
         except Exception as e:
-            warning(f"获取领域 '{domain}' 的程序组失败: {e}")
+            warning(f"Failed to retrieve program groups for domain '{domain}': {e}")
             return []
 
     @staticmethod
     def get_all_operation_groups() -> List[str]:
-        """返回所有支持的程序组"""
+        """Return all supported program groups"""
         try:
             path_manager = PathManager.get_instance()
             all_groups = path_manager.get_all_operation_groups_from_config()
-            debug(f"获取所有程序组: {all_groups}")
+            debug(f"Retrieved all program groups: {all_groups}")
             return all_groups
         except Exception as e:
-            warning(f"获取所有程序组失败: {e}")
+            warning(f"Failed to retrieve all program groups: {e}")
             return []
 
     @staticmethod
     def get_commands(domain: Optional[str], source_group: str) -> List[str]:
-        """从缓存中获取指定领域和源程序组的命令列表"""
+        """Retrieve command list for specified domain and source program group from cache"""
         try:
-            # 如果没有指定领域，尝试自动检测
+            # If domain not specified, try auto-detection
             if not domain:
                 domains = CommonCompletorHelper.get_domains()
                 for dom in domains:
@@ -64,7 +64,7 @@ class CommonCompletorHelper:
                         break
             
             if not domain:
-                warning(f"无法确定源程序组 '{source_group}' 所属的领域")
+                warning(f"Cannot determine domain for source program group '{source_group}'")
                 return []
             
             path_manager = PathManager.get_instance()
@@ -76,12 +76,12 @@ class CommonCompletorHelper:
             with open(cmd_to_operation_file, 'rb') as f:
                 cmd_to_operation_data = tomli.load(f)
             
-            # 获取该操作组的所有程序
+            # Get all programs for this operation group
             programs = cmd_to_operation_data.get("cmd_to_operation", {}).get(source_group, {}).get("programs", [])
             if not programs:
                 return []
             
-            # 收集所有程序的命令格式
+            # Collect command formats for all programs
             commands = []
             for program_name in programs:
                 program_file = path_manager.get_cmd_mappings_group_program_path_of_cache(
@@ -93,62 +93,62 @@ class CommonCompletorHelper:
                         with open(program_file, 'rb') as f:
                             program_data = tomli.load(f)
                         
-                        # 提取该程序的所有命令格式
+                        # Extract all command formats for this program
                         for mapping in program_data.get("command_mappings", []):
                             cmd_format = mapping.get("cmd_format", "")
                             if cmd_format:
                                 commands.append(cmd_format)
                                 
                     except Exception as e:
-                        warning(f"读取程序命令文件失败 {program_file}: {e}")
+                        warning(f"Failed to read program command file {program_file}: {e}")
             
             return commands
             
         except Exception as e:
-            warning(f"获取命令列表失败 (domain={domain}, group={source_group}): {e}")
+            warning(f"Failed to retrieve command list (domain={domain}, group={source_group}): {e}")
             return []
         
     @staticmethod
     def get_all_commands(domain: Optional[str]) -> List[str]:
-        """获取指定领域的所有命令"""
+        """Get all commands for specified domain"""
         try:
             all_commands = []
             
-            # 确定要处理的领域列表
+            # Determine domain list to process
             domains = [domain] if domain else CommonCompletorHelper.get_domains()
             
-            # 收集所有领域的命令
+            # Collect commands from all domains
             for dom in domains:
                 groups = CommonCompletorHelper.get_operation_groups(dom)
                 for group in groups:
                     commands = CommonCompletorHelper.get_commands(dom, group)
                     all_commands.extend(commands)
             
-            # 去重并返回
+            # Deduplicate and return
             return list(set(all_commands))
                 
         except Exception as e:
-            warning(f"获取所有命令失败 (domain={domain}): {e}")
+            warning(f"Failed to retrieve all commands (domain={domain}): {e}")
             return []
         
     @staticmethod
     def get_operation_names(domain: Optional[str], dest_group: Optional[str]) -> List[str]:
-        """从缓存中获取操作名称列表"""
+        """Retrieve operation name list from cache"""
         try:
             cache_mgr = CacheMgr.get_instance()
             
             if domain and dest_group:
-                # 获取特定程序组支持的操作
+                # Get operations supported by specific program group
                 supported_ops = cache_mgr.get_supported_operations(domain, dest_group)
-                debug(f"获取 {domain}.{dest_group} 支持的操作: {supported_ops}")
+                debug(f"Retrieved operations supported by {domain}.{dest_group}: {supported_ops}")
                 return supported_ops
             elif domain:
-                # 获取指定领域的所有操作
+                # Get all operations for specified domain
                 all_ops = cache_mgr.get_all_operations(domain)
-                debug(f"获取领域 '{domain}' 的所有操作: {all_ops}")
+                debug(f"Retrieved all operations for domain '{domain}': {all_ops}")
                 return all_ops
             else:
-                # 获取所有操作
+                # Get all operations
                 all_ops = []
                 domains = CommonCompletorHelper.get_domains()
                 for dom in domains:
@@ -157,34 +157,34 @@ class CommonCompletorHelper:
                 return list(set(all_ops))
                 
         except Exception as e:
-            warning(f"获取操作名称失败 (domain={domain}, group={dest_group}): {e}")
+            warning(f"Failed to retrieve operation names (domain={domain}, group={dest_group}): {e}")
             return []
 
     @staticmethod
     def get_all_operation_names(domain: Optional[str] = None) -> List[str]:
-        """获取所有操作名称（兼容性方法）"""
+        """Get all operation names (compatibility method)"""
         return CommonCompletorHelper.get_operation_names(domain, None)
 
     @staticmethod
     def get_operation_with_params(domain: str, operation_name: str, dest_group: str) -> str:
-        """获取带参数信息的操作字符串"""
+        """Get operation string with parameter information"""
         try:
             cache_mgr = CacheMgr.get_instance()
             
-            # 直接调用 cache_mgr 的方法，让它处理 domain 为 None 的情况
+            # Directly call cache_mgr method, let it handle domain=None case
             params = cache_mgr.get_operation_parameters(domain, operation_name, dest_group)
             
             if params:
-                # 格式化显示：操作名 {参数1} {参数2} ...
+                # Format display: operation_name {param1} {param2} ...
                 params_display = " ".join([f"{{{param}}}" for param in params])
                 return f"{operation_name} {params_display}"
             else:
-                # 没有参数的操作
+                # Operation without parameters
                 return operation_name
                 
         except Exception as e:
-            # 如果出错，返回原始操作名
-            warning(f"获取操作参数失败: {e}")
+            # If error occurs, return original operation name
+            warning(f"Failed to retrieve operation parameters: {e}")
             return operation_name
       
     @staticmethod

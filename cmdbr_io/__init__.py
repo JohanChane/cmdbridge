@@ -1,17 +1,17 @@
-"""CmdBridge 工具模块"""
+"""CmdBridge Utility Module"""
 
 from .core import CmdBrIO
 
-# 创建全局实例
+# Create global instance
 cmdbr_io = CmdBrIO()
 
-# 便捷函数
+# Convenience functions
 def cprint(*args, **kwargs):
-    """便捷的智能打印函数"""
+    """Convenient smart print function"""
     cmdbr_io.print(*args, **kwargs)
 
 def csecho(*args, **kwargs):
-    """便捷的带样式智能打印函数"""
+    """Convenient styled smart print function"""
     cmdbr_io.secho(*args, **kwargs)
 
 __all__ = [

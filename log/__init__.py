@@ -2,26 +2,26 @@ from .core import Logger
 from .levels import LogLevel
 from typing import Any, Optional, TextIO
 
-# 全局日志实例
+# Global logger instance
 _global_logger = Logger()
 
 def setup_logging(level: LogLevel = LogLevel.INFO, 
                   show_timestamp: bool = False,
                   use_icons: bool = True) -> None:
-    """设置全局日志配置"""
+    """Set global logging configuration"""
     _global_logger.set_level(level)
     _global_logger.show_timestamp = show_timestamp
     _global_logger.use_icons = use_icons
 
 def set_level(level: LogLevel) -> None:
-    """设置全局日志级别"""
+    """Set global log level"""
     _global_logger.set_level(level)
 
 def set_level_from_string(level_str: str) -> None:
-    """从字符串设置全局日志级别"""
+    """Set global log level from string"""
     _global_logger.set_level_from_string(level_str)
 
-# 便捷函数
+# Convenience functions
 def debug(message: str, **kwargs) -> None:
     _global_logger.debug(message, **kwargs)
 
@@ -50,17 +50,17 @@ def step(message: str, **kwargs) -> None:
     _global_logger.step(message, **kwargs)
 
 def is_debug() -> bool:
-    """是否处于调试模式"""
+    """Check if in debug mode"""
     return _global_logger.is_debug()
 
 def get_logger() -> Logger:
-    """获取全局日志器实例"""
+    """Get global logger instance"""
     return _global_logger
 
 def create_logger(level: LogLevel = LogLevel.INFO, 
                   show_timestamp: bool = False,
                   use_icons: bool = True) -> Logger:
-    """创建日志器实例"""
+    """Create logger instance"""
     return Logger(level, show_timestamp, use_icons)
 
 def set_out(out: Optional[TextIO] = None):

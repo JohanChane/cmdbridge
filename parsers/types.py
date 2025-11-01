@@ -3,31 +3,31 @@ from typing import List, Optional, Union, Dict, Any
 from dataclasses import dataclass, field
 
 
-# === 参数配置 ===
-# 解析器类型
+# === Argument Configuration ===
+# Parser type
 class ParserType(Enum):
     GETOPT = "getopt"
     ARGPARSE = "argparse"
 
-# 参数配置
+# Argument configuration
 @dataclass
 class ArgumentCount:
-    """参数数量规范"""
-    spec: str  # argparse 风格的 nargs 规范
+    """Argument count specification"""
+    spec: str  # argparse-style nargs specification
     
     def __init__(self, spec: str):
-        """初始化参数数量规范"""
-        # 校验 nargs 字符串
+        """Initialize argument count specification"""
+        # Validate nargs string
         valid_specs = {'?', '*', '+', '0'}
         if (spec not in valid_specs and 
             not spec.isdigit() and 
             not self._is_valid_range(spec)):
-            raise ValueError(f"不支持的 nargs 值: {spec}。支持的格式: ?, *, +, 0, 数字, 或数字范围")
+            raise ValueError(f"Unsupported nargs value: {spec}. Supported formats: ?, *, +, 0, numbers, or number ranges")
         
         self.spec = spec
     
     def _is_valid_range(self, spec: str) -> bool:
-        """检查是否是有效的数字范围格式，如 '1..3'"""
+        """Check if it's a valid number range format, e.g., '1..3'"""
         if '..' in spec:
             parts = spec.split('..')
             if len(parts) == 2:
@@ -38,15 +38,15 @@ class ArgumentCount:
         return self.spec
     
     def is_flag(self) -> bool:
-        """检查是否是标志参数（无参数）"""
+        """Check if it's a flag argument (no parameters)"""
         return self.spec == '0'
     
     def validate_count(self, actual_count: int) -> bool:
-        """验证实际参数数量是否符合要求"""
+        """Validate if actual argument count meets requirements"""
         if self.spec == '?':
             return actual_count <= 1
         elif self.spec == '*':
-            return True  # 任意数量
+            return True  # Any number
         elif self.spec == '+':
             return actual_count >= 1
         elif self.spec.isdigit():
@@ -54,7 +54,7 @@ class ArgumentCount:
         elif self.spec == '0':
             return actual_count == 0
         elif '..' in self.spec:
-            # 处理范围格式，如 '1..3' 或 '1..'
+            # Handle range format, e.g., '1..3' or '1..'
             parts = self.spec.split('..')
             min_count = int(parts[0])
             max_count = int(parts[1]) if parts[1].isdigit() else None
@@ -65,12 +65,12 @@ class ArgumentCount:
                 return False
             return True
         else:
-            # 默认情况，argparse 默认是 1
+            # Default case, argparse default is 1
             return actual_count == 1
     
     def is_required(self) -> bool:
-        """检查根据 nargs 是否是必需参数"""
-        # 只有 nargs='+' 或数字 > 0 时才是必需的
+        """Check if it's a required parameter based on nargs"""
+        # Only nargs='+' or numbers > 0 are required
         return self.spec == '+' or (self.spec.isdigit() and int(self.spec) > 0)
     
     def get_exact_count(self) -> Optional[int]:
@@ -78,155 +78,155 @@ class ArgumentCount:
             return int(self.spec)
         return None
     
-# 常用预设
-ArgumentCount.ZERO = ArgumentCount('0')           # 无参数 (标志)
-ArgumentCount.ZERO_OR_ONE = ArgumentCount('?')    # 可选参数
-ArgumentCount.ZERO_OR_MORE = ArgumentCount('*')   # 零个或多个
-ArgumentCount.ONE_OR_MORE = ArgumentCount('+')    # 一个或多个
+# Common presets
+ArgumentCount.ZERO = ArgumentCount('0')           # No arguments (flag)
+ArgumentCount.ZERO_OR_ONE = ArgumentCount('?')    # Optional argument
+ArgumentCount.ZERO_OR_MORE = ArgumentCount('*')   # Zero or more
+ArgumentCount.ONE_OR_MORE = ArgumentCount('+')    # One or more
 
-# 参数配置
+# Argument configuration
 @dataclass
 class ArgumentConfig:
-    """参数配置"""
-    name: str                    # 参数名称
-    opt: List[str]              # 选项名称列表 (如 ["-h", "--help"])
-    nargs: ArgumentCount        # 参数数量规范
-    required: bool = False      # 是否是必需参数
-    description: Optional[str] = None  # 参数描述
+    """Argument configuration"""
+    name: str                    # Argument name
+    opt: List[str]              # Option name list (e.g., ["-h", "--help"])
+    nargs: ArgumentCount        # Argument count specification
+    required: bool = False      # Whether it's a required argument
+    description: Optional[str] = None  # Argument description
     
     def to_dict(self) -> Dict[str, Any]:
-        """序列化为字典"""
+        """Serialize to dictionary"""
         result = {
             "name": self.name,
             "opt": self.opt,
             "nargs": str(self.nargs),
             "required": self.required,
         }
-        # 只有非 None 的 description 才包含
+        # Only include non-None description
         if self.description is not None:
             result["description"] = self.description
         return result
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ArgumentConfig':
-        """从字典反序列化"""
+        """Deserialize from dictionary"""
         return cls(
             name=data["name"],
             opt=data["opt"],
             nargs=ArgumentCount(data["nargs"]),
             required=data.get("required", False),
-            description=data.get("description")  # 允许为 None
+            description=data.get("description")  # Allow None
         )
 
     def is_flag(self) -> bool:
-        """检查是否是标志参数"""
+        """Check if it's a flag argument"""
         return self.nargs.is_flag()
         
     def is_positional(self) -> bool:
-        """检查是否是位置参数"""
+        """Check if it's a positional argument"""
         if not self.opt:
             return True
         
-        # 获取有效的选项（非空字符串）
+        # Get valid options (non-empty strings)
         valid_options = [opt for opt in self.opt if opt and opt.strip()]
         return len(valid_options) == 0
 
     def is_option(self) -> bool:
-        """检查是否是选项参数"""
+        """Check if it's an option argument"""
         if self.is_flag():
             return False
         
-        # 获取有效的选项（非空字符串）
+        # Get valid options (non-empty strings)
         valid_options = [opt for opt in self.opt if opt and opt.strip()]
         return len(valid_options) > 0
     
     def accepts_values(self) -> bool:
-        """检查是否接受值"""
+        """Check if it accepts values"""
         return not self.is_flag()
     
     def get_expected_count(self) -> ArgumentCount:
-        """获取期望的参数数量"""
+        """Get expected argument count"""
         return self.nargs
 
     def validate_count(self, actual_count: int) -> bool:
-        """验证实际参数数量是否符合要求"""
+        """Validate if actual argument count meets requirements"""
         return self.nargs.validate_count(actual_count)
     
     def is_required(self) -> bool:
-        """检查是否是必需参数"""
+        """Check if it's a required argument"""
         return self.required
     
     def matches_option(self, option_name: str) -> bool:
-        """检查选项名称是否匹配此配置"""
-        # 跳过空字符串，只匹配实际的选项名
+        """Check if option name matches this configuration"""
+        # Skip empty strings, only match actual option names
         for opt in self.opt:
             if opt and opt == option_name:
                 return True
         return False
     
     def get_primary_option_name(self) -> Optional[str]:
-        """获取主要选项名称
+        """Get primary option name
 
-        选择规则:
-        1. 优先返回长参数名 (包含 '--' 的选项)
-        2. 如果没有长参数名，返回短参数名 (包含 '-') (如果有多个，返回第一个)
-        3. 如果没有有效的选项名，返回 None
+        Selection rules:
+        1. Prefer long argument names (options containing '--')
+        2. If no long argument names, return short argument name (containing '-') (if multiple, return first)
+        3. If no valid option names, return None
 
         Returns:
-            Optional[str]: 主要选项名称
+            Optional[str]: Primary option name
         """
-        # 1. 查找并返回第一个长参数名 (以 '--' 开头)
+        # 1. Find and return first long argument name (starting with '--')
         for opt in self.opt:
             if opt and opt.startswith('--') and opt.strip():
                 return opt
 
-        # 2. 查找并返回第一个短参数名 (以 '-' 开头)
+        # 2. Find and return first short argument name (starting with '-')
         for opt in self.opt:
             if opt and opt.startswith('-') and not opt.startswith('--') and opt.strip():
                 return opt
 
-        # 3. 如果都没有找到有效选项名，返回 None
+        # 3. If no valid option names found, return None
         return None
 
 @dataclass
 class SubCommandConfig:
-    """子命令配置"""
-    name: str                                           # 子命令名称
-    alias: List[str] = field(default_factory=list)      # 子命令的别名。e.g. `brew list/ls -v pkg`
-    arguments: List[ArgumentConfig] = field(default_factory=list)  # 子命令参数
-    sub_commands: List['SubCommandConfig'] = field(default_factory=list)  # 嵌套子命令
-    description: Optional[str] = None      # 子命令描述
+    """Subcommand configuration"""
+    name: str                                           # Subcommand name
+    alias: List[str] = field(default_factory=list)      # Subcommand aliases. e.g., `brew list/ls -v pkg`
+    arguments: List[ArgumentConfig] = field(default_factory=list)  # Subcommand arguments
+    sub_commands: List['SubCommandConfig'] = field(default_factory=list)  # Nested subcommands
+    description: Optional[str] = None      # Subcommand description
     
     def to_dict(self) -> Dict[str, Any]:
-        """序列化为字典"""
+        """Serialize to dictionary"""
         result = {
             "name": self.name,
             "arguments": [arg.to_dict() for arg in self.arguments],
             "sub_commands": [sub_cmd.to_dict() for sub_cmd in self.sub_commands],
         }
 
-        # 只有非空的 alias 才包含
+        # Only include non-empty alias
         if self.alias:
             result["alias"] = self.alias
 
-        # 只有非 None 的 description 才包含
+        # Only include non-None description
         if self.description is not None:
             result["description"] = self.description
         return result
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'SubCommandConfig':
-        """从字典反序列化"""
+        """Deserialize from dictionary"""
         return cls(
             name=data["name"],
             alias=data.get("alias", []),
             arguments=[ArgumentConfig.from_dict(arg_data) for arg_data in data["arguments"]],
             sub_commands=[SubCommandConfig.from_dict(sub_cmd_data) for sub_cmd_data in data["sub_commands"]],
-            description=data.get("description")  # 允许为 None
+            description=data.get("description")  # Allow None
         )
     
     def find_argument(self, option_name: str) -> Optional[ArgumentConfig]:
-        """根据选项名称查找参数配置"""
+        """Find argument configuration by option name"""
         for arg in self.arguments:
             if arg.matches_option(option_name):
                 return arg
@@ -239,7 +239,7 @@ class SubCommandConfig:
         return None
 
     def matches_subcmd_name(self, subcmd_name: str) -> bool:
-        """检查子命令名称是否匹配（包括别名）"""
+        """Check if subcommand name matches (including aliases)"""
         if subcmd_name == self.name:
             return True
         
@@ -250,14 +250,14 @@ class SubCommandConfig:
 
 @dataclass
 class ParserConfig:
-    """解析器配置"""
-    parser_type: ParserType                # 解析器类型
-    program_name: str                      # 程序名称
-    arguments: List[ArgumentConfig] = field(default_factory=list)  # 全局参数
-    sub_commands: List[SubCommandConfig] = field(default_factory=list)  # 子命令
+    """Parser configuration"""
+    parser_type: ParserType                # Parser type
+    program_name: str                      # Program name
+    arguments: List[ArgumentConfig] = field(default_factory=list)  # Global arguments
+    sub_commands: List[SubCommandConfig] = field(default_factory=list)  # Subcommands
     
     def to_dict(self) -> Dict[str, Any]:
-        """序列化为字典"""
+        """Serialize to dictionary"""
         return {
             "parser_type": self.parser_type.value,
             "program_name": self.program_name,
@@ -267,7 +267,7 @@ class ParserConfig:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ParserConfig':
-        """从字典反序列化"""
+        """Deserialize from dictionary"""
         parser_type_str = data.get("parser_type")
         if parser_type_str:
             parser_type = ParserType(parser_type_str)
@@ -276,27 +276,27 @@ class ParserConfig:
         
         return cls(
             parser_type=parser_type,
-            program_name=data.get("program_name", ""),  # 必需字段但提供默认值
+            program_name=data.get("program_name", ""),  # Required field but provide default value
             arguments=[ArgumentConfig.from_dict(arg_data) for arg_data in data.get("arguments", [])],
             sub_commands=[SubCommandConfig.from_dict(sub_cmd_data) for sub_cmd_data in data.get("sub_commands", [])]
         )
     
     def find_argument(self, opt_name: str) -> Optional[ArgumentConfig]:
-        """根据选项名称查找参数配置"""
+        """Find argument configuration by option name"""
         for arg in self.arguments:
             if arg.matches_option(opt_name):
                 return arg
         return None
     
     def find_subcommand(self, name: str) -> Optional[SubCommandConfig]:
-        """根据名称查找子命令配置"""
+        """Find subcommand configuration by name"""
         for sub_cmd in self.sub_commands:
             if sub_cmd.name == name:
                 return sub_cmd
         return None
     
     def get_positional_arguments(self) -> List[ArgumentConfig]:
-        """获取所有位置参数"""
+        """Get all positional arguments"""
         return [arg for arg in self.arguments if arg.is_positional()]
 
 # === CommandToken ===
@@ -386,19 +386,19 @@ class ArgType(Enum):
 class CommandArg:
     """Command argument in tree structure"""
     node_type: ArgType
-    option_name: Optional[str] = None   # flag 的值放在这里
+    option_name: Optional[str] = None   # flag values go here
     values: List[str] = field(default_factory=list)
     repeat: Optional[int] = None
     placeholder: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """序列化为字典"""
+        """Serialize to dictionary"""
         result = {
             "node_type": self.node_type.value,
             "values": self.values.copy(),
         }
         
-        # 只有非 None 的字段才包含
+        # Only include non-None fields
         if self.option_name is not None:
             result["option_name"] = self.option_name
         if self.repeat is not None:
@@ -410,13 +410,13 @@ class CommandArg:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'CommandArg':
-        """从字典反序列化"""
+        """Deserialize from dictionary"""
         return cls(
             node_type=ArgType(data["node_type"]),
             option_name=data.get("option_name"),
             values=data.get("values", []),
             repeat=data.get("repeat"),
-            placeholder=data.get("placeholder")  # 反序列化 placeholder
+            placeholder=data.get("placeholder")  # Deserialize placeholder
         )
 
 @dataclass
@@ -427,13 +427,13 @@ class CommandNode:
     subcommand: Optional['CommandNode'] = None                # Subcommand node (tree expansion)
     
     def to_dict(self) -> Dict[str, Any]:
-        """序列化为字典"""
+        """Serialize to dictionary"""
         result = {
             "name": self.name,
             "arguments": [arg.to_dict() for arg in self.arguments],
         }
         
-        # 只有非 None 的子命令才包含
+        # Only include non-None subcommand
         if self.subcommand is not None:
             result["subcommand"] = self.subcommand.to_dict()
             
@@ -441,7 +441,7 @@ class CommandNode:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'CommandNode':
-        """从字典反序列化"""
+        """Deserialize from dictionary"""
         arguments = [CommandArg.from_dict(arg_data) for arg_data in data.get("arguments", [])]
         
         node = cls(
@@ -449,7 +449,7 @@ class CommandNode:
             arguments=arguments
         )
         
-        # 递归反序列化子命令
+        # Recursively deserialize subcommand
         if "subcommand" in data and data["subcommand"] is not None:
             node.subcommand = cls.from_dict(data["subcommand"])
             

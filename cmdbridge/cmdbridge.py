@@ -15,86 +15,86 @@ from log import debug, info, warning, error
 
 
 class CmdBridge:
-    """CmdBridge 核心功能类"""
+    """CmdBridge Core Functionality Class"""
     
     def __init__(self):
-        # 初始化路径管理器
+        # Initialize path manager
         self.path_manager = PathManager()
         
-        # 初始化配置工具
+        # Initialize configuration utilities
         self.cache_mgr = CacheMgr.get_instance()
         self.config_mgr = ConfigMgr()
 
-        # 初始化程序配置缓存管理器
+        # Initialize program configuration cache manager
         self.parser_cache_mgr = ParserConfigCacheMgr()
 
-        # 初始化命令映射器
+        # Initialize command mapper
         self.command_mapper = CmdMapping({})
         
-        # 初始化操作映射器 - 简化构造函数
+        # Initialize operation mapper - simplified constructor
         self.operation_mapper = OperationMapping()
         
-        # 初始化映射配置缓存
+        # Initialize mapping configuration cache
         self._mapping_config_cache = {}
         
-        # 加载全局配置
+        # Load global configuration
         self.global_config = self._load_global_config()
 
     def _load_global_config(self) -> dict:
-        """加载全局配置"""
+        """Load global configuration"""
         config_file = self.path_manager.get_global_config_path()
         if config_file.exists():
             try:
                 with open(config_file, 'rb') as f:
                     return tomli.load(f)
             except Exception as e:
-                warning(f"无法读取全局配置文件: {e}")
+                warning(f"Cannot read global configuration file: {e}")
         return {}
     
     def _auto_detect_source_group(self, command: str, domain: str) -> Optional[str]:
-        """自动识别源命令所属的组"""
+        """Automatically detect the group to which the source command belongs"""
         if not command.strip():
             return None
         
-        # 获取命令的第一个单词（程序名）
+        # Get the first word of the command (program name)
         program_name = command.strip().split()[0]
-        debug(f"自动识别源操作组，命令: '{command}', 程序名: '{program_name}', 领域: '{domain}'")
+        debug(f"Auto-detecting source operation group, command: '{command}', program name: '{program_name}', domain: '{domain}'")
         
-        # 使用 cmd_to_operation.toml 查找程序所属的操作组
+        # Use cmd_to_operation.toml to find the operation group to which the program belongs
         cmd_to_operation_file = self.path_manager.get_cmd_to_operation_path(domain)
         if not cmd_to_operation_file.exists():
-            debug(f"cmd_to_operation 文件不存在: {cmd_to_operation_file}")
+            debug(f"cmd_to_operation file does not exist: {cmd_to_operation_file}")
             return None
         
         try:
             with open(cmd_to_operation_file, 'rb') as f:
                 cmd_to_operation_data = tomli.load(f)
             
-            # 在所有操作组中查找包含该程序的操作组
+            # Find the operation group containing this program across all operation groups
             for op_group, group_data in cmd_to_operation_data.get("cmd_to_operation", {}).items():
                 if program_name in group_data.get("programs", []):
-                    debug(f"自动识别成功: 程序 '{program_name}' 属于操作组 '{op_group}'")
+                    debug(f"Auto-detection successful: program '{program_name}' belongs to operation group '{op_group}'")
                     return op_group
                     
-            debug(f"自动识别失败: 未找到程序 '{program_name}' 所属的操作组")
+            debug(f"Auto-detection failed: no operation group found for program '{program_name}'")
             return None
             
         except Exception as e:
-            error(f"读取 cmd_to_operation 文件失败: {e}")
+            error(f"Failed to read cmd_to_operation file: {e}")
             return None
 
     def _get_mapping_config(self, domain: str, group_name: str) -> Dict[str, Any]:
-        """获取指定领域和程序组的映射配置"""
+        """Get mapping configuration for specified domain and program group"""
         cache_key = f"{domain}.{group_name}"
         if cache_key not in self._mapping_config_cache:
-            # 从缓存文件加载该程序组的映射配置
+            # Load mapping configuration for this program group from cache file
             cache_file = self.path_manager.get_cmd_mappings_domain_dir_of_cache(domain) / f"{group_name}.toml"
             if cache_file.exists():
                 try:
                     with open(cache_file, 'rb') as f:
                         self._mapping_config_cache[cache_key] = tomli.load(f)
                 except Exception as e:
-                    warning(f"加载 {cache_key} 映射配置失败: {e}")
+                    warning(f"Failed to load {cache_key} mapping configuration: {e}")
                     self._mapping_config_cache[cache_key] = {}
             else:
                 self._mapping_config_cache[cache_key] = {}
@@ -103,43 +103,43 @@ class CmdBridge:
 
     def map_command(self, domain: Optional[str], src_group: Optional[str], 
                     dest_group: str, command_args: List[str]) -> Optional[str]:
-        """映射完整命令"""
+        """Map complete command"""
         try:
-            # 将参数列表合并为命令字符串
+            # Combine argument list into command string
             command_str = ' '.join(command_args)
             if not command_str:
                 return None
             
-            # 设置默认值
+            # Set default values
             domain = domain or self.path_manager.get_domain_for_group(dest_group)
             if domain is None:
-                raise ValueError("需要指定 domain")
+                raise ValueError("Domain must be specified")
             
-            # 自动识别源组（如果未指定）
+            # Auto-detect source group (if not specified)
             if not src_group:
                 src_group = self._auto_detect_source_group(command_str, domain)
                 if not src_group:
                     return None
             
-            # 从命令中提取实际程序名
+            # Extract actual program name from command
             actual_program_name = command_args[0] if command_args else None
             if not actual_program_name:
                 return None
             
-            # 使用跨操作组查找加载映射配置
+            # Load mapping configuration using cross-operation group lookup
             self.command_mapper = CmdMapping.load_from_cache(domain, actual_program_name)
             
-            # 加载源程序的解析器配置
+            # Load parser configuration for source program
             parser_config_file = self.path_manager.get_parser_config_path_of_cache(actual_program_name)
             if not parser_config_file.exists():
-                error(f"找不到 {actual_program_name} 的解析器配置")
+                error(f"Cannot find parser configuration for {actual_program_name}")
                 return None
             
             # from parsers.config_loader import load_parser_config_from_file
             parser_cache_mgr = ParserConfigCacheMgr()
             source_parser_config = parser_cache_mgr.load_from_cache(actual_program_name)
             
-            # 使用正确的 map_to_operation 方法
+            # Use the correct map_to_operation method
             operation_result = self.command_mapper.map_to_operation(
                 source_cmdline=command_args,
                 source_parser_config=source_parser_config,
@@ -149,7 +149,7 @@ class CmdBridge:
             if not operation_result:
                 return None
             
-            # 使用 OperationMapping 生成最终命令
+            # Use OperationMapping to generate final command
             result_cmd = self.operation_mapper.generate_command(
                 operation_name=operation_result["operation_name"],
                 params=operation_result["params"],
@@ -160,57 +160,57 @@ class CmdBridge:
             return result_cmd
             
         except Exception as e:
-            error(f"命令映射失败: {e}")
+            error(f"Command mapping failed: {e}")
             return None
         
     def map_operation(self, domain: Optional[str], dest_group: str, 
                 operation_args: List[str]) -> Optional[str]:
-        """映射操作和参数"""
+        """Map operation and parameters"""
         try:
-            # 将参数列表合并为操作字符串
+            # Combine argument list into operation string
             operation_str = ' '.join(operation_args)
             if not operation_str:
                 return None
             
-            # 设置默认值
+            # Set default values
             domain = domain or self.path_manager.get_domain_for_group(dest_group)
             if domain is None:
-                raise ValueError("需要指定 domain")
+                raise ValueError("Domain must be specified")
             
-            # 解析操作字符串，提取操作名和参数
+            # Parse operation string, extract operation name and parameters
             parts = operation_str.split()
             if not parts:
                 return None
             
-            # 第一个参数是操作名
+            # First argument is operation name
             operation_name = parts[0]
             params = {}
             
-            # 获取该操作的实际参数列表
+            # Get actual parameter list for this operation
             cache_mgr = CacheMgr.get_instance()
             expected_params = cache_mgr.get_operation_parameters(domain, operation_name, dest_group)
             
             if expected_params:
-                # 根据预期的参数名来解析参数
+                # Parse parameters based on expected parameter names
                 if len(parts) > 1:
-                    # 简单处理：如果只有一个预期参数，把所有剩余参数都给它
+                    # Simple processing: if only one expected parameter, give all remaining arguments to it
                     if len(expected_params) == 1:
                         param_name = expected_params[0]
                         params[param_name] = " ".join(parts[1:])
                     else:
-                        # 如果有多个预期参数，需要更复杂的解析逻辑
-                        # 这里简化处理，按顺序分配
+                        # If multiple expected parameters, need more complex parsing logic
+                        # Simplified processing here, assign in order
                         for i, param_name in enumerate(expected_params):
                             if i + 1 < len(parts):
                                 params[param_name] = parts[i + 1]
                             else:
-                                params[param_name] = ""  # 缺少参数给空值
+                                params[param_name] = ""  # Give empty value for missing parameters
             else:
-                # 没有预期参数，但用户提供了参数，发出警告
+                # No expected parameters, but user provided parameters, issue warning
                 if len(parts) > 1:
-                    warning(f"操作 {operation_name} 不需要参数，但提供了: {' '.join(parts[1:])}")
+                    warning(f"Operation {operation_name} does not require parameters, but provided: {' '.join(parts[1:])}")
             
-            # 调用 OperationMapping 生成命令
+            # Call OperationMapping to generate command
             result = self.operation_mapper.generate_command(
                 operation_name=operation_name,
                 params=params,
@@ -221,83 +221,79 @@ class CmdBridge:
             return result
                 
         except Exception as e:
-            error(f"操作映射失败: {e}")
-            return None
-                
-        except Exception as e:
-            error(f"操作映射失败: {e}")
+            error(f"Operation mapping failed: {e}")
             return None
 
     def refresh_cmd_mappings(self) -> bool:
-        """刷新所有命令映射缓存"""
+        """Refresh all command mapping caches"""
         try:
-            # 1. 删除所有缓存目录
+            # 1. Delete all cache directories
             success = self.cache_mgr.remove_all_cache()
             if not success:
                 return False
             
             if success:
-                # 1. 先刷新解析器配置缓存
+                # 1. First refresh parser configuration cache
                 self.parser_cache_mgr.generate_parser_config_cache()
 
-                # 先合并所有领域配置到缓存目录
-                info("合并领域配置到缓存...")
+                # First merge all domain configurations to cache directory
+                info("Merging domain configurations to cache...")
                 merge_success = self.cache_mgr.merge_all_domain_configs()
                 if not merge_success:
-                    warning("合并领域配置失败")
+                    warning("Failed to merge domain configurations")
                 
-                # 为每个领域生成映射数据
+                # Generate mapping data for each domain
                 domains = self.path_manager.get_domains_from_config()
                 for domain in domains:
-                    # 确保缓存目录存在
+                    # Ensure cache directories exist
                     self.path_manager.get_cmd_mappings_domain_of_cache(domain).mkdir(parents=True, exist_ok=True)
                     self.path_manager.get_operation_mappings_domain_dir_of_cache(domain).mkdir(parents=True, exist_ok=True)
                     
-                    # 获取领域配置目录
+                    # Get domain configuration directory
                     domain_config_dir = self.path_manager.get_operation_domain_dir_of_config(domain)
                     parser_configs_dir = self.path_manager.program_parser_config_dir
                     
                     if domain_config_dir.exists() and parser_configs_dir.exists():
-                        # 获取该领域的所有程序组
+                        # Get all program groups for this domain
                         groups = self.path_manager.get_operation_groups_from_config(domain)
                         
                         for group_name in groups:
                             try:
-                                # 为每个程序组创建 CmdMappingMgr 实例
+                                # Create CmdMappingMgr instance for each program group
                                 group_creator = CmdMappingMgr(domain, group_name)
                                 
-                                # 生成映射数据
+                                # Generate mapping data
                                 mapping_data = group_creator.create_mappings()
                                 
-                                if mapping_data:  # 如果有映射数据才写入
-                                    # 写入映射文件
+                                if mapping_data:  # Only write if there is mapping data
+                                    # Write mapping files
                                     group_creator.write_to()
-                                    info(f"✅ 已生成 {domain}.{group_name} 的命令映射")
+                                    info(f"✅ Generated command mappings for {domain}.{group_name}")
                                 else:
-                                    warning(f"⚠️ {domain}.{group_name} 没有生成映射数据")
+                                    warning(f"⚠️ No mapping data generated for {domain}.{group_name}")
                                     
                             except Exception as e:
-                                error(f"❌ 生成 {domain}.{group_name} 的命令映射失败: {e}")
+                                error(f"❌ Failed to generate command mappings for {domain}.{group_name}: {e}")
                                 continue
                         
-                        # 使用 OperationMappingCreator 生成操作映射文件
+                        # Use OperationMappingCreator to generate operation mapping files
                         from .cache.operation_mapping_mgr import create_operation_mappings_for_domain
                         op_mapping_success = create_operation_mappings_for_domain(domain)
                         if op_mapping_success:
-                            info(f"✅ 已完成 {domain} 领域的操作映射生成")
+                            info(f"✅ Completed operation mapping generation for {domain} domain")
                         else:
-                            warning(f"⚠️ {domain} 领域的操作映射生成失败")
+                            warning(f"⚠️ Failed to generate operation mappings for {domain} domain")
                         
-                        info(f"✅ 已完成 {domain} 领域所有程序组的命令映射生成")
+                        info(f"✅ Completed command mapping generation for all program groups in {domain} domain")
                     else:
-                        warning(f"⚠️  跳过 {domain} 领域：配置目录不存在")
+                        warning(f"⚠️ Skipping {domain} domain: configuration directory does not exist")
                 
                 return True
             return False
         except Exception as e:
-            error(f"刷新命令映射失败: {e}")
+            error(f"Failed to refresh command mappings: {e}")
             return False
 
     def init_config(self) -> bool:
-        """初始化用户配置"""
+        """Initialize user configuration"""
         return self.config_mgr.init_config()

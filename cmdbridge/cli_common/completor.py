@@ -7,7 +7,7 @@ from cmdbridge.config.path_manager import PathManager
 from .cli_helper import CommonCliHelper
 
 def completion_handler(func):
-    """装饰器：在补全模式下正确处理输出流"""
+    """Decorator: Properly handle output stream in completion mode"""
     def wrapper(self, ctx: click.Context, param: click.Parameter, incomplete: str):
         original_out = get_out()
         if bool(ctx and ctx.resilient_parsing):
@@ -114,10 +114,10 @@ class OperationType(click.ParamType):
         else:
             operations = CommonCompletorHelper.get_all_operation_names(domain)
 
-        # 获取带参数的操作字符串
+        # Get operation strings with parameters
         operation_items = []
         for op in operations:
-            # 无论是否指定 domain，都尝试获取带参数的操作字符串
+            # Whether domain is specified or not, try to get operation string with parameters
             op_with_params = self._get_operation_with_params(domain, op, dest_group)
             operation_items.append(
                 click.shell_completion.CompletionItem(op_with_params)
@@ -129,8 +129,8 @@ class OperationType(click.ParamType):
         ]
     
     def _get_operation_with_params(self, domain: Optional[str], operation_name: str, dest_group: Optional[str]) -> str:
-        """获取带参数的操作字符串"""
-        # 如果没有指定 domain，尝试获取默认的 domain
+        """Get operation string with parameters"""
+        # If domain not specified, try to get default domain
         actual_domain = domain
         if not actual_domain:
             path_manager = PathManager.get_instance()
@@ -138,16 +138,16 @@ class OperationType(click.ParamType):
             if domains:
                 actual_domain = domains[0]
         
-        # 如果没有指定 dest_group，尝试获取默认的 dest_group
+        # If dest_group not specified, try to get default dest_group
         target_group = dest_group
         if not target_group and actual_domain:
             groups = path_manager.get_operation_groups_from_config(actual_domain)
             if groups:
                 target_group = groups[0]
         
-        # 如果有 domain 和 dest_group，获取带参数的操作字符串
+        # If domain and dest_group exist, get operation string with parameters
         if actual_domain and target_group:
             return CommonCompletorHelper.get_operation_with_params(actual_domain, operation_name, target_group)
         else:
-            # 回退到原始操作名
+            # Fallback to original operation name
             return operation_name

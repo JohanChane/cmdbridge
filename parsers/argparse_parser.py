@@ -1,5 +1,5 @@
 """
-argparse 风格命令行解析器
+argparse style command line parser
 """
 
 from typing import List, Dict, Any, Optional, Tuple
@@ -12,69 +12,69 @@ from .utils import Utils
 class ArgparseParser(BaseParser):
     def __init__(self, parser_config: ParserConfig):
         """
-        初始化 argparse 解析器
+        Initialize argparse parser
         
         Args:
-            parser_config: 解析器配置
+            parser_config: Parser configuration
         """
         super().__init__(parser_config)
 
     def parse(self, args: List[str]) -> CommandNode:
         """
-        解析 argparse 风格命令行
+        Parse argparse style command line
         
         Args:
-            args: 命令行参数列表
+            args: Command line argument list
             
         Returns:
-            CommandNode: 解析后的命令树
+            CommandNode: Parsed command tree
         """
 
         if args is None:
             raise ValueError("args is None")
 
-        debug(f"开始解析命令行: {args}")
+        debug(f"Starting command line parsing: {args}")
         
-        # 🔧 使用统一的命令行预处理
+        # 🔧 Use unified command line preprocessing
         normalized_args = Utils.normalize_command_line(args)
-        debug(f"预处理后命令行: {normalized_args}")
+        debug(f"Command line after preprocessing: {normalized_args}")
         
         debug(f"parser_config: {self.parser_config}")
 
         tokens = self._tokenize(normalized_args)
-        debug(f"生成的 tokens: {[str(t) for t in tokens]}")
+        debug(f"Generated tokens: {[str(t) for t in tokens]}")
 
         cmd_tree = self._build_command_tree(tokens)
-        debug(f"构建的命令树: {cmd_tree.name}, 参数数量: {len(cmd_tree.arguments)}")
+        debug(f"Built command tree: {cmd_tree.name}, argument count: {len(cmd_tree.arguments)}")
         Utils.print_command_tree(cmd_tree)
         return cmd_tree
     
     def _build_command_tree(self, tokens: List[CommandToken]) -> CommandNode:
         """
-        构建命令节点（统一处理主命令和子命令）
+        Build command node (unified handling of main command and subcommands)
         
         Args:
-            tokens: 该节点的 tokens
-            config_arguments: 该节点对应的参数配置
+            tokens: Tokens for this node
+            config_arguments: Argument configuration corresponding to this node
         """
         
         if not tokens:
-            raise ValueError("没有 tokens")
+            raise ValueError("No tokens")
         
         if tokens[0].token_type != TokenType.PROGRAM:
-            raise ValueError("第一个 token 不是程序名")
+            raise ValueError("First token is not program name")
         
-        # 节点名称从第一个 token 获取
+        # Node name from first token
         program_name = tokens[0].get_first_value()
         cmd_node = CommandNode(name=program_name)
-        debug(f"创建命令节点: {program_name}")
+        debug(f"Created command node: {program_name}")
 
         self._build_arguments_command_node(cmd_node, tokens[1:])
 
         return cmd_node
 
     def _build_arguments_command_node(self, cmd_node: CommandNode, tokens: List[CommandToken]):
-        """构建 CommandNode.arguments 和 CommandNode.subcommand"""
+        """Build CommandNode.arguments and CommandNode.subcommand"""
         argument_tokens, subcmd_token, subcmd_tokens = self._split_tokens_by_subcommand(tokens)
         debug(f"_split_tokens_by_subcommand. argument_tokens: {argument_tokens}, subcmd_token: {subcmd_token}, subcmd_tokens: {subcmd_tokens}")
         self._build_arguments_for_command_node(cmd_node, argument_tokens)
@@ -84,7 +84,7 @@ class ArgparseParser(BaseParser):
             self._build_arguments_command_node(cmd_node.subcommand, subcmd_tokens)
     
     def _build_arguments_for_command_node(self, cmd_node: CommandNode, tokens: List[CommandToken]):
-        """只构建 CommandNode.arguments"""
+        """Only build CommandNode.arguments"""
         def find_flag_cmdarg(token: CommandToken, arguments: List[CommandArg]) -> Optional[CommandArg]:
             for arg in arguments:
                 if arg.node_type == ArgType.FLAG:
@@ -162,7 +162,7 @@ class ArgparseParser(BaseParser):
 
     def _split_tokens_by_subcommand(self, tokens: List[CommandToken]) -> Tuple[List[CommandToken], Optional[CommandToken], List[CommandToken]]:
         """
-        使用列表切片分割 tokens
+        Split tokens using list slicing
         """
         for i, token in enumerate(tokens):
             if token.token_type == TokenType.SUBCOMMAND:
@@ -171,20 +171,20 @@ class ArgparseParser(BaseParser):
                 subcommand_tokens = tokens[i + 1:]
                 return main_tokens, subcommand_token, subcommand_tokens
         
-        # 没有找到子命令
+        # No subcommand found
         return tokens, None, []
 
     def _tokenize(self, args: List[str]) -> List[CommandToken]:
-        """将命令行参数转换为 token 列表"""
+        """Convert command line arguments to token list"""
         tokens = []
 
-        # 第一个参数是程序名
+        # First argument is program name
         if args:
             tokens.append(CommandToken(
                 token_type=TokenType.PROGRAM,
                 values=[args[0]]
             ))
-            debug(f"识别程序名: {args[0]}")
+            debug(f"Identified program name: {args[0]}")
 
         arguments_tokens = ArgparseParser._tokenize_arguments(args[1:], self.parser_config.arguments, self.parser_config.sub_commands)
         # debug(f"arguments_tokens: {arguments_tokens}")
@@ -195,9 +195,9 @@ class ArgparseParser(BaseParser):
     @staticmethod
     def _tokenize_arguments(args: List[str], arguments_config: List[ArgumentConfig], subcmds_config: List[SubCommandConfig]) -> List[CommandToken]:
         """
-        args: 主命令或子命令之后的参数
-        arguments_config: 为当前命令的参数配置
-        subcmd_config: 当前命令的子命令配置
+        args: Arguments after main command or subcommand
+        arguments_config: Argument configuration for current command
+        subcmd_config: Subcommand configuration for current command
         """
 
         tokens = []
@@ -208,7 +208,7 @@ class ArgparseParser(BaseParser):
         current_option_argconfig = None
         current_option_value_num = 0
         current_positional_value_num = 0
-        current_exact_option_value_num = 0      # 表示 option 必须要 n 个参数
+        current_exact_option_value_num = 0      # Indicates option requires exactly n arguments
         
         while arg_idx < arg_cnt:
             arg = args[arg_idx]
@@ -236,44 +236,44 @@ class ArgparseParser(BaseParser):
             if arg.startswith("-"):
                 if current_option_argconfig:
                     debug(f"current_option_argconfig: {current_option_argconfig}")
-                    raise ValueError("option_value 不应该以 `-` 开头")
+                    raise ValueError("option_value should not start with `-`")
                 
                 option_config = ArgparseParser._find_argument_config(arg, arguments_config)
                 if option_config is not None:
-                    current_positional_value_num  = 0       # 有 `-` 开头的参数, 证明位置参数的计算终止了
+                    current_positional_value_num  = 0       # Arguments starting with `-` prove positional argument calculation has ended
                     
                     if option_config.is_flag():
                         tokens.append(CommandToken(
                             token_type=TokenType.FLAG,
-                            values=[option_config.get_primary_option_name()]            # 为了后续的节点判断, 必须统一 option_name
+                            values=[option_config.get_primary_option_name()]            # For subsequent node judgment, must unify option_name
                         ))
                     elif option_config.is_option():
                         tokens.append(CommandToken(
                             token_type=TokenType.OPTION_NAME,
-                            values=[option_config.get_primary_option_name()]            # 为了后续的节点判断, 必须统一 option_name
+                            values=[option_config.get_primary_option_name()]            # For subsequent node judgment, must unify option_name
                         ))
 
                         current_option_argconfig = option_config
                         current_option_value_num = 0
 
-                        # 如果知道 option value 需要的准确的数量或 narg="+", 则直接添加 (这样能处理 option value 和子命令同名的情况, 同时就可以在下次循环时, 直接优先判断是否是子命令)
+                        # If exact number of option values needed is known or narg="+", add directly (this handles cases where option value and subcommand have same name, and can prioritize subcommand check in next loop)
                         option_value_count = option_config.nargs.get_exact_count()
                         debug(f"option_value_count: {option_value_count}")
                         if option_value_count:
-                            # 记录状态
+                            # Record state
                             current_exact_option_value_num = option_value_count
-                        elif option_config.nargs == "+":        # 加一个 optoin_value 就行了 (下次循环时, 直接优先判断是否是子命令)
-                            # 记录状态
+                        elif option_config.nargs == "+":        # Just add one option_value (next loop will prioritize subcommand check)
+                            # Record state
                             current_exact_option_value_num = 1
                     else:
-                        raise ValueError(f"无法处理 arg: {arg}")
+                        raise ValueError(f"Cannot handle arg: {arg}")
 
                 else:
-                    raise ValueError(f"参数配置没有该选项: {arg}")
+                    raise ValueError(f"Argument configuration does not have this option: {arg}")
             # TokenType (OPTION_VALUE)
             elif current_exact_option_value_num > 0:
                 if arg.startswith("-"):
-                    raise ValueError(f"option value 不应该以 `-` 开头: {arg}")
+                    raise ValueError(f"option value should not start with `-`: {arg}")
                 
                 tokens.append(CommandToken(
                     token_type=TokenType.OPTION_VALUE,
@@ -289,22 +289,22 @@ class ArgparseParser(BaseParser):
                     current_exact_option_value_num = 0
             # TokenType (SUBCOMMAND, OPTION_VALUE, POSITIONAL)
             else:
-                # 优先判断 arg 是否是子命令
+                # First check if arg is a subcommand
                 # subcmd_config.sub_commands
                 nested_subcmd_config = ArgparseParser._find_subcmd_config(arg, subcmds_config)
                 if nested_subcmd_config is not None:
                     tokens.append(CommandToken(
                         token_type=TokenType.SUBCOMMAND,
-                        values=[nested_subcmd_config.name]        # 要使用配置的名称, 因为有别名
+                        values=[nested_subcmd_config.name]        # Use configuration name because of aliases
                     ))
                     subcmd_tokens = ArgparseParser._tokenize_arguments(args[arg_idx + 1:], nested_subcmd_config.arguments, nested_subcmd_config.sub_commands)
                     tokens.extend(subcmd_tokens)
                     return tokens
 
-                # 再判断 arg 是否是 OPTION_VALUE (如果不是子命且有 current_option_argconfig)
+                # Then check if arg is OPTION_VALUE (if not subcommand and has current_option_argconfig)
                 elif current_option_argconfig:
                     if not current_option_argconfig.nargs.validate_count(current_option_value_num + 1):
-                        raise ValueError("current_option_argconfig 状态有误, 不应该进入该分支")
+                        raise ValueError("current_option_argconfig state error, should not enter this branch")
                     
                     tokens.append(CommandToken(
                         token_type=TokenType.OPTION_VALUE,
@@ -313,11 +313,11 @@ class ArgparseParser(BaseParser):
 
                     current_option_value_num += 1
 
-                # 不是子命令又不是 option_value, 所以一定是 positional value (有 positional value 的前提下)。
+                # Not subcommand and not option_value, so must be positional value (if positional value exists).
                 else:
                     positional_value_config = ArgparseParser._get_positional_arg_config(arguments_config)
                     if positional_value_config is None:
-                        raise ValueError(f"没有位置参数的参数配置. arguments_config: {arguments_config}")
+                        raise ValueError(f"No positional argument configuration. arguments_config: {arguments_config}")
                     
                     if positional_value_config.nargs.validate_count(current_positional_value_num + 1):
                         tokens.append(CommandToken(
@@ -327,9 +327,9 @@ class ArgparseParser(BaseParser):
 
                         current_positional_value_num += 1
                     else:
-                        raise ValueError(f"有过多的位置参数. positional_value_config.nargs: {positional_value_config.nargs}, current_positional_value_num: {current_positional_value_num}")
+                        raise ValueError(f"Too many positional arguments. positional_value_config.nargs: {positional_value_config.nargs}, current_positional_value_num: {current_positional_value_num}")
 
-                    # 因为有 positional value 则没有子命令, 到下次循环再处理即可
+                    # Since there's positional value, no subcommand, handle in next loop
 
             arg_idx += 1
 
@@ -359,14 +359,14 @@ class ArgparseParser(BaseParser):
     
     def validate(self, command_node: CommandNode) -> bool:
         """
-        验证解析结果是否符合配置
+        Validate if parsing result conforms to configuration
         
         Args:
-            command_node: 解析后的命令树
+            command_node: Parsed command tree
             
         Returns:
-            bool: 是否验证通过
+            bool: Whether validation passed
         """
 
-        # _tokenize 和 build_command_tree 时已经判断了
+        # Already validated during _tokenize and build_command_tree
         return True

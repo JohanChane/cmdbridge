@@ -1,7 +1,7 @@
 from enum import Enum
 
 class LogLevel(Enum):
-    """日志级别枚举"""
+    """Log level enumeration"""
     DEBUG = 10
     INFO = 20
     SUCCESS = 25
@@ -11,7 +11,7 @@ class LogLevel(Enum):
     
     @classmethod
     def from_string(cls, level_str: str) -> 'LogLevel':
-        """从字符串转换为日志级别"""
+        """Convert from string to log level"""
         level_map = {
             'debug': cls.DEBUG,
             'info': cls.INFO,
@@ -22,5 +22,5 @@ class LogLevel(Enum):
         }
         lower_level = level_str.lower()
         if lower_level not in level_map:
-            raise ValueError(f"未知的日志级别: {level_str}")
+            raise ValueError(f"Unknown log level: {level_str}")
         return level_map[lower_level]

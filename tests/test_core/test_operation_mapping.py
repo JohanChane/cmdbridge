@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OperationMapping 核心功能测试
+OperationMapping Core Functionality Tests
 """
 
 import pytest
@@ -15,7 +15,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli
 
-# 添加项目根目录到 Python 路径
+# Add project root directory to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -24,38 +24,38 @@ from cmdbridge.config.path_manager import PathManager
 
 
 class TestOperationMapping:
-    """OperationMapping 核心功能测试"""
+    """OperationMapping Core Functionality Tests"""
     
     def setup_method(self):
-        """测试设置"""
+        """Test setup"""
         self.temp_dir = tempfile.mkdtemp()
         
-        # 重置 PathManager
+        # Reset PathManager
         PathManager.reset_instance()
         self.path_manager = PathManager(
             config_dir=self.temp_dir,
             cache_dir=self.temp_dir
         )
         
-        # 创建领域配置目录
+        # Create domain configuration directory
         package_domain_dir = self.path_manager.get_operation_domain_dir_of_config("package")
         package_domain_dir.mkdir(parents=True, exist_ok=True)
         
-        # 创建测试配置
+        # Create test configuration
         self._create_test_config()
     
     def teardown_method(self):
-        """测试清理"""
+        """Test cleanup"""
         shutil.rmtree(self.temp_dir)
         PathManager.reset_instance()
     
     def _create_test_config(self):
-        """创建测试配置"""
-        # 创建缓存目录
+        """Create test configuration"""
+        # Create cache directory
         cache_dir = self.path_manager.get_operation_mappings_domain_dir_of_cache("package")
         cache_dir.mkdir(parents=True, exist_ok=True)
         
-        # 创建操作到程序映射文件
+        # Create operation to program mapping file
         op_to_program = {
             "operation_to_program": {
                 "install": {
@@ -74,7 +74,7 @@ class TestOperationMapping:
         with open(op_file, 'wb') as f:
             tomli_w.dump(op_to_program, f)
         
-        # 创建 apt 命令格式
+        # Create apt command format
         apt_dir = self.path_manager.get_operation_mappings_group_dir_of_cache("package", "apt")
         apt_dir.mkdir(parents=True, exist_ok=True)
         
@@ -93,7 +93,7 @@ class TestOperationMapping:
             tomli_w.dump(apt_commands, f)
     
     def test_basic_command_generation(self):
-        """测试基本命令生成"""
+        """Test basic command generation"""
         mapping = OperationMapping()
         
         cmd = mapping.generate_command(
@@ -106,7 +106,7 @@ class TestOperationMapping:
         assert cmd == "apt install vim git"
     
     def test_search_command(self):
-        """测试搜索命令"""
+        """Test search command"""
         mapping = OperationMapping()
         
         cmd = mapping.generate_command(
@@ -119,7 +119,7 @@ class TestOperationMapping:
         assert cmd == "apt search python"
     
     def test_no_parameters_command(self):
-        """测试无参数命令"""
+        """Test command without parameters"""
         mapping = OperationMapping()
         
         cmd = mapping.generate_command(
@@ -132,7 +132,7 @@ class TestOperationMapping:
         assert cmd == "apt update"
     
     def test_nonexistent_operation(self):
-        """测试不存在的操作"""
+        """Test non-existent operation"""
         mapping = OperationMapping()
         
         with pytest.raises(ValueError):
@@ -144,7 +144,7 @@ class TestOperationMapping:
             )
     
     def test_parameter_replacement(self):
-        """测试参数替换"""
+        """Test parameter replacement"""
         mapping = OperationMapping()
         
         cmd = mapping.generate_command(
@@ -156,7 +156,7 @@ class TestOperationMapping:
         
         assert cmd == "apt install vim"
         
-        # 测试多个参数
+        # Test multiple parameters
         cmd = mapping.generate_command(
             operation_name="install",
             params={"pkgs": "vim git curl"},
@@ -168,7 +168,7 @@ class TestOperationMapping:
 
 
 def run_tests():
-    """运行所有测试"""
+    """Run all tests"""
     test_instance = TestOperationMapping()
     
     try:
@@ -189,17 +189,17 @@ def run_tests():
             try:
                 test()
                 passed += 1
-                print(f"✅ {test.__name__} - 通过")
+                print(f"✅ {test.__name__} - Passed")
             except Exception as e:
                 failed += 1
-                print(f"❌ {test.__name__} - 失败: {e}")
+                print(f"❌ {test.__name__} - Failed: {e}")
         
-        print(f"\n📊 测试结果: {passed} 通过, {failed} 失败")
+        print(f"\n📊 Test results: {passed} passed, {failed} failed")
         
         if failed == 0:
-            print("🎉 所有测试通过！")
+            print("🎉 All tests passed!")
         else:
-            print("💥 有测试失败，请检查")
+            print("💥 Some tests failed, please check")
             
     finally:
         test_instance.teardown_method()

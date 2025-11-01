@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-测试命令映射管理器核心功能
+Test command mapping manager core functionality
 """
 
 import sys
@@ -8,7 +8,7 @@ import os
 import tempfile
 from pathlib import Path
 
-# 添加项目根目录到 Python 路径
+# Add project root directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from cmdbridge.cache.cmd_mapping_mgr import CmdMappingMgr
@@ -18,21 +18,21 @@ import tomli_w
 
 
 def setup_test_configs():
-    """设置测试配置"""
-    # 创建临时目录结构
+    """Set up test configurations"""
+    # Create temporary directory structure
     temp_dir = tempfile.mkdtemp()
     
-    # 初始化 PathManager
+    # Initialize PathManager
     path_manager = PathManager(
         config_dir=temp_dir,
         cache_dir=temp_dir
     )
     
-    # 创建测试领域和操作组配置
+    # Create test domain and operation group configurations
     domain_dir = path_manager.get_operation_domain_dir_of_config("test_package")
     domain_dir.mkdir(parents=True, exist_ok=True)
     
-    # 创建操作组配置文件
+    # Create operation group configuration file
     group_config = {
         "operations": {
             "install_remote": {
@@ -52,7 +52,7 @@ def setup_test_configs():
 
 
 def create_mock_parser_config():
-    """创建模拟的解析器配置"""
+    """Create mock parser configuration"""
     return ParserConfig(
         parser_type=ParserType.ARGPARSE,
         program_name="apt",
@@ -75,12 +75,12 @@ def create_mock_parser_config():
 
 
 def test_program_extraction():
-    """测试程序名提取功能"""
-    print("=== 测试程序名提取 ===")
+    """Test program name extraction functionality"""
+    print("=== Testing Program Name Extraction ===")
     
     mapping_mgr = CmdMappingMgr("test", "test")
     
-    # 测试各种命令格式
+    # Test various command formats
     test_cases = [
         ("apt install {pkgs}", "apt"),
         ("pacman -S {pkgs}", "pacman"),
@@ -92,89 +92,89 @@ def test_program_extraction():
     
     for cmd_format, expected in test_cases:
         result = mapping_mgr._extract_program_from_cmd_format(cmd_format)
-        assert result == expected, f"对于 '{cmd_format}'，期望 '{expected}'，但得到 '{result}'"
+        assert result == expected, f"For '{cmd_format}', expected '{expected}', but got '{result}'"
     
-    print("✅ 程序名提取测试通过")
+    print("✅ Program name extraction test passed")
 
 
 def test_example_command_generation():
-    """测试示例命令生成功能"""
-    print("\n=== 测试示例命令生成 ===")
+    """Test example command generation functionality"""
+    print("\n=== Testing Example Command Generation ===")
     
     mapping_mgr = CmdMappingMgr("test", "test")
     
-    # 创建模拟的解析器配置
+    # Create mock parser configuration
     parser_config = create_mock_parser_config()
     
-    # 测试命令格式解析
+    # Test command format parsing
     cmd_format = "apt install {pkgs} --config {config_path}"
     example_cmd = mapping_mgr._generate_example_command(cmd_format, parser_config)
     
-    # 验证生成的示例命令
+    # Verify generated example command
     assert len(example_cmd) >= 3
     assert example_cmd[0] == "apt"
     assert example_cmd[1] == "install"
     
-    # 检查是否包含占位符
+    # Check if it contains placeholders
     has_placeholders = any("__param_" in part for part in example_cmd)
-    assert has_placeholders, "示例命令应该包含占位符"
+    assert has_placeholders, "Example command should contain placeholders"
     
-    print("✅ 示例命令生成测试通过")
+    print("✅ Example command generation test passed")
 
 
 def test_param_example_values():
-    """测试参数示例值生成"""
-    print("\n=== 测试参数示例值生成 ===")
+    """Test parameter example value generation"""
+    print("\n=== Testing Parameter Example Value Generation ===")
     
     mapping_mgr = CmdMappingMgr("test", "test")
     
-    # 创建模拟的解析器配置
+    # Create mock parser configuration
     parser_config = create_mock_parser_config()
     
-    # 测试单值参数
+    # Test single-value parameter
     single_values = mapping_mgr._generate_param_example_values("config_path", parser_config)
     assert len(single_values) == 1
     assert "__param_config_path__" in single_values[0]
     
-    # 测试多值参数
+    # Test multi-value parameter
     multi_values = mapping_mgr._generate_param_example_values("pkgs", parser_config)
     assert len(multi_values) == 2
     assert all("__param_pkgs__" in value for value in multi_values)
     
-    # 测试不存在的参数（使用默认值）
+    # Test non-existent parameter (using default value)
     default_values = mapping_mgr._generate_param_example_values("nonexistent", parser_config)
     assert len(default_values) == 1
     assert "__param_nonexistent__" in default_values[0]
     
-    print("✅ 参数示例值生成测试通过")
+    print("✅ Parameter example value generation test passed")
 
 
 def test_mapping_structure():
-    """测试映射数据结构"""
-    print("\n=== 测试映射数据结构 ===")
+    """Test mapping data structure"""
+    print("\n=== Testing Mapping Data Structure ===")
     
     temp_dir, path_manager = setup_test_configs()
     
     try:
-        # 创建映射管理器
+        # Create mapping manager
         mapping_mgr = CmdMappingMgr("test_package", "apt")
         
-        # 生成映射数据
+        # Generate mapping data
         mapping_data = mapping_mgr.create_mappings()
         
-        # 验证返回的数据结构
+        # Verify returned data structure
         assert "program_mappings" in mapping_data
         assert "cmd_to_operation" in mapping_data
         
-        # 验证程序映射结构
+        # Verify program mapping structure
         program_mappings = mapping_data["program_mappings"]
         assert isinstance(program_mappings, dict)
         
-        # 验证 cmd_to_operation 结构
+        # Verify cmd_to_operation structure
         cmd_to_operation = mapping_data["cmd_to_operation"]
         assert isinstance(cmd_to_operation, dict)
         
-        print("✅ 映射数据结构测试通过")
+        print("✅ Mapping data structure test passed")
         
     finally:
         import shutil
@@ -182,26 +182,26 @@ def test_mapping_structure():
 
 
 def test_file_writing():
-    """测试文件写入功能"""
-    print("\n=== 测试文件写入 ===")
+    """Test file writing functionality"""
+    print("\n=== Testing File Writing ===")
     
     temp_dir, path_manager = setup_test_configs()
     
     try:
-        # 创建映射管理器
+        # Create mapping manager
         mapping_mgr = CmdMappingMgr("test_package", "apt")
         
-        # 生成映射数据
+        # Generate mapping data
         mapping_data = mapping_mgr.create_mappings()
         
-        # 写入文件
+        # Write to files
         mapping_mgr.write_to()
         
-        # 验证缓存目录是否创建
+        # Verify cache directory was created
         cache_dir = path_manager.get_cmd_mappings_domain_dir_of_cache("test_package")
         assert cache_dir.exists()
         
-        print("✅ 文件写入测试通过")
+        print("✅ File writing test passed")
         
     finally:
         import shutil
@@ -209,8 +209,8 @@ def test_file_writing():
 
 
 def main():
-    """运行所有测试"""
-    print("开始测试命令映射管理器核心功能...\n")
+    """Run all tests"""
+    print("Starting command mapping manager core functionality tests...\n")
     
     try:
         test_program_extraction()
@@ -219,10 +219,10 @@ def main():
         test_mapping_structure()
         test_file_writing()
         
-        print("\n🎉 所有核心功能测试通过！")
+        print("\n🎉 All core functionality tests passed!")
         
     except Exception as e:
-        print(f"\n❌ 测试失败: {e}")
+        print(f"\n❌ Test failed: {e}")
         import traceback
         traceback.print_exc()
         return 1

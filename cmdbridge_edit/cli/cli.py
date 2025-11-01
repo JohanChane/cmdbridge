@@ -5,35 +5,35 @@ from .cli_helper import CmdBridgeEditCLIHelper
 from cmdbridge.cli_common.completor import DomainType, SourceGroupType, DestGroupType, CommandType, OperationType
 
 def print_version(ctx, param, value):
-    """版本信息回调函数"""
+    """Version information callback function"""
     if not value or ctx.resilient_parsing:
         return
     cli_helper = CmdBridgeEditCLIHelper()
     cli_helper.handle_version()
     ctx.exit()
 
-# Click 命令行接口
+# Click command line interface
 @click.group(invoke_without_command=True)
-@click.option('--debug', is_flag=True, help='启用调试模式')
+@click.option('--debug', is_flag=True, help='Enable debug mode')
 @click.option('--version', is_flag=True, callback=print_version, 
-              expose_value=False, is_eager=True, help='显示版本信息')
+              expose_value=False, is_eager=True, help='Display version information')
 @click.pass_context
 def cli(ctx, debug):
-    """cmdbridge-edit: 将映射后命令放在用户的 line editor
+    """cmdbridge-edit: Place mapped commands in user's line editor
     
-    使用 -- 分隔符将命令参数与 cmdbridge-edit 选项分开。
+    Use -- separator to separate command arguments from cmdbridge-edit options.
     
-    示例:
+    Examples:
         cmdbridge-edit map -- pacman -S vim
         cmdbridge-edit op -- install vim git
     """
-    # 创建 CLI 辅助类实例
+    # Create CLI helper class instance
     cli_helper = CmdBridgeEditCLIHelper()
     
-    # 设置日志级别
+    # Set log level
     cli_helper.handle_debug_mode(debug)
     
-    # 如果没有子命令，显示帮助信息
+    # If no subcommand, display help information
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
         ctx.exit(0)
@@ -42,15 +42,15 @@ def cli(ctx, debug):
 
 
 @cli.command()
-@click.option('-d', '--domain', type= DomainType(), help='领域名称')
-@click.option('-s', '--source-group', type=SourceGroupType(), help='源程序组（只有无法识别才需要使用）')
-@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
+@click.option('-d', '--domain', type= DomainType(), help='Domain name')
+@click.option('-s', '--source-group', type=SourceGroupType(), help='Source program group (only needed when cannot be automatically identified)')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='Destination program group')
 @click.argument('command', nargs=-1, type=CommandType())
 @click.pass_context
 def map(ctx, domain, source_group, dest_group, command):
-    """映射完整命令到 line editor
+    """Map complete command to line editor
     
-    使用 -- 分隔符将命令参数与 cmdbridge-edit 选项分开：
+    Use -- separator to separate command arguments from cmdbridge-edit options:
     cmdbridge-edit map -t apt -- pacman -S vim
     """
     cli_helper = ctx.obj
@@ -60,14 +60,14 @@ def map(ctx, domain, source_group, dest_group, command):
 
 
 @cli.command()
-@click.option('-d', '--domain', type= DomainType(), help='领域名称')
-@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='目标程序组')
+@click.option('-d', '--domain', type= DomainType(), help='Domain name')
+@click.option('-t', '--dest-group', required=True, type=DestGroupType(), help='Destination program group')
 @click.argument('operation', nargs=-1, type=OperationType())
 @click.pass_context
 def op(ctx, domain, dest_group, operation):
-    """映射操作和参数到 line editor
+    """Map operation and parameters to line editor
     
-    使用 -- 分隔符将操作参数与 cmdbridge-edit 选项分开：
+    Use -- separator to separate operation arguments from cmdbridge-edit options:
     cmdbridge-edit op -t apt -- install vim git
     """
     cli_helper = ctx.obj
@@ -77,7 +77,7 @@ def op(ctx, domain, dest_group, operation):
 
 
 def main():
-    """主入口函数"""
+    """Main entry function"""
     cli()
 
 

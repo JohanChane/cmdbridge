@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-测试配置加载器核心功能
+Test configuration loader core functionality
 """
 
 import sys
 import os
 from pathlib import Path
 
-# 添加项目根目录到 Python 路径
+# Add project root directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from parsers.config_loader import ConfigLoader, load_parser_config_from_data
@@ -17,8 +17,8 @@ import tomli_w
 
 
 def test_basic_parser_config():
-    """测试基本解析器配置加载"""
-    print("=== 测试基本解析器配置 ===")
+    """Test basic parser configuration loading"""
+    print("=== Testing Basic Parser Configuration ===")
     
     config_data = {
         "apt": {
@@ -50,32 +50,32 @@ def test_basic_parser_config():
     loader = ConfigLoader(config_data)
     parser_config = loader.load_parser_config("apt")
     
-    # 验证基本属性
+    # Verify basic properties
     assert parser_config.parser_type == ParserType.ARGPARSE
     assert parser_config.program_name == "apt"
     assert len(parser_config.arguments) == 1
     assert len(parser_config.sub_commands) == 1
     
-    # 验证参数
+    # Verify arguments
     help_arg = parser_config.arguments[0]
     assert help_arg.name == "help"
     assert help_arg.opt == ["-h", "--help"]
     assert help_arg.nargs.spec == "0"
     assert help_arg.is_flag()
     
-    # 验证子命令
+    # Verify subcommands
     install_cmd = parser_config.sub_commands[0]
     assert install_cmd.name == "install"
     assert len(install_cmd.arguments) == 1
     assert install_cmd.arguments[0].name == "packages"
     assert install_cmd.arguments[0].nargs.spec == "+"
     
-    print("✅ 基本解析器配置测试通过")
+    print("✅ Basic parser configuration test passed")
 
 
 def test_id_and_include_functionality():
-    """测试 ID 和 include_arguments_and_subcmds 功能"""
-    print("\n=== 测试 ID 和 include 功能 ===")
+    """Test ID and include_arguments_and_subcmds functionality"""
+    print("\n=== Testing ID and Include Functionality ===")
     
     config_data = {
         "mufw": {
@@ -111,29 +111,29 @@ def test_id_and_include_functionality():
     loader = ConfigLoader(config_data)
     parser_config = loader.load_parser_config("mufw")
     
-    # 验证基本结构
+    # Verify basic structure
     assert len(parser_config.sub_commands) == 2
     
-    # 验证 allow 子命令
+    # Verify allow subcommand
     allow_cmd = next(cmd for cmd in parser_config.sub_commands if cmd.name == "allow")
     assert len(allow_cmd.arguments) == 2
     assert allow_cmd.arguments[0].name == "port"
     assert allow_cmd.arguments[1].name == "protocol"
     
-    # 验证 deny 子命令（应该包含 allow 的参数）
+    # Verify deny subcommand (should include allow's arguments)
     deny_cmd = next(cmd for cmd in parser_config.sub_commands if cmd.name == "deny")
     assert len(deny_cmd.arguments) == 2
     assert deny_cmd.arguments[0].name == "port"
     assert deny_cmd.arguments[1].name == "protocol"
     
-    print("✅ ID 和 include 功能测试通过")
+    print("✅ ID and include functionality test passed")
 
 
 def test_file_loading():
-    """测试从文件加载配置"""
-    print("\n=== 测试文件加载 ===")
+    """Test loading configuration from file"""
+    print("\n=== Testing File Loading ===")
     
-    # 创建临时配置文件
+    # Create temporary configuration file
     with tempfile.NamedTemporaryFile(mode='wb', suffix='.toml', delete=False) as f:
         config_data = {
             "file_test": {
@@ -154,7 +154,7 @@ def test_file_loading():
         temp_file = f.name
     
     try:
-        # 使用便捷函数从文件加载
+        # Use convenience function to load from file
         from parsers.config_loader import load_parser_config_from_file
         parser_config = load_parser_config_from_file(temp_file, "file_test")
         
@@ -163,17 +163,17 @@ def test_file_loading():
         assert len(parser_config.arguments) == 1
         assert parser_config.arguments[0].name == "file_arg"
         
-        print("✅ 文件加载测试通过")
+        print("✅ File loading test passed")
     finally:
-        # 清理临时文件
+        # Clean up temporary file
         os.unlink(temp_file)
 
 
 def test_error_handling():
-    """测试错误处理"""
-    print("\n=== 测试错误处理 ===")
+    """Test error handling"""
+    print("\n=== Testing Error Handling ===")
     
-    # 测试缺少程序配置
+    # Test missing program configuration
     config_data = {
         "other_program": {
             "parser_config": {
@@ -186,15 +186,15 @@ def test_error_handling():
     loader = ConfigLoader(config_data)
     try:
         loader.load_parser_config("nonexistent_program")
-        assert False, "应该抛出 ValueError"
+        assert False, "Should raise ValueError"
     except ValueError as e:
-        assert "缺少" in str(e)
-        print("✅ 错误处理测试通过")
+        assert "missing" in str(e).lower() or "missing" in str(e)
+        print("✅ Error handling test passed")
 
 
 def main():
-    """运行所有测试"""
-    print("开始测试配置加载器核心功能...\n")
+    """Run all tests"""
+    print("Starting configuration loader core functionality tests...\n")
     
     try:
         test_basic_parser_config()
@@ -202,10 +202,10 @@ def main():
         test_file_loading()
         test_error_handling()
         
-        print("\n🎉 所有核心功能测试通过！")
+        print("\n🎉 All core functionality tests passed!")
         
     except Exception as e:
-        print(f"\n❌ 测试失败: {e}")
+        print(f"\n❌ Test failed: {e}")
         import traceback
         traceback.print_exc()
         return 1

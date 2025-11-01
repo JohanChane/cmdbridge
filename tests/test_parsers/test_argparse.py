@@ -1,6 +1,6 @@
 import sys, os
 
-# 添加项目根目录到 Python 路径
+# Add project root directory to Python path
 project_root = os.path.join(os.path.dirname(__file__), '../..')
 sys.path.insert(0, project_root)
 
@@ -13,10 +13,10 @@ import log
 
 
 class TestArgparseParser:
-    """ArgparseParser 测试类"""
+    """ArgparseParser Test Class"""
     
     def create_simple_parser_config(self):
-        """创建简单的解析器配置"""
+        """Create simple parser configuration"""
         return ParserConfig(
             parser_type=ParserType.ARGPARSE,
             program_name="test_program",
@@ -46,7 +46,7 @@ class TestArgparseParser:
         )
     
     def create_parser_with_subcommands(self):
-        """创建包含子命令的解析器配置"""
+        """Create parser configuration with subcommands"""
         return ParserConfig(
             parser_type=ParserType.ARGPARSE,
             program_name="git",
@@ -92,7 +92,7 @@ class TestArgparseParser:
         )
     
     def test_parse_simple_command(self):
-        """测试解析简单命令"""
+        """Test parsing simple command"""
         parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "-v", "--config", "config.toml", "file1.txt", "file2.txt"]
         
@@ -101,28 +101,28 @@ class TestArgparseParser:
         assert result.name == "test_program"
         assert len(result.arguments) == 3
         
-        # 检查 verbose 标志
+        # Check verbose flag
         verbose_arg = next(arg for arg in result.arguments if arg.option_name == "--verbose")
         assert verbose_arg.node_type == ArgType.FLAG
         assert verbose_arg.repeat == 1
         
-        # 检查 config 选项
+        # Check config option
         config_arg = next(arg for arg in result.arguments if arg.option_name == "--config")
         assert config_arg.node_type == ArgType.OPTION
         assert config_arg.values == ["config.toml"]
         
-        # 检查位置参数
+        # Check positional arguments
         files_arg = next(arg for arg in result.arguments if arg.node_type == ArgType.POSITIONAL)
         assert files_arg.values == ["file1.txt", "file2.txt"]
     
     def test_parse_command_with_flags(self):
-        """测试解析包含多个标志的命令"""
+        """Test parsing command with multiple flags"""
         parser = ArgparseParser(self.create_simple_parser_config())
-        args = ["test_program", "-v", "-h", "-v"]  # 重复的 -v 标志
+        args = ["test_program", "-v", "-h", "-v"]  # Repeated -v flag
         
         result = parser.parse(args)
         
-        # 检查重复的标志计数
+        # Check repeated flag count
         verbose_arg = next(arg for arg in result.arguments if arg.option_name == "--verbose")
         assert verbose_arg.repeat == 2
         
@@ -130,22 +130,22 @@ class TestArgparseParser:
         assert help_arg.repeat == 1
     
     def test_parse_command_with_separator(self):
-        """测试解析包含分隔符的命令"""
+        """Test parsing command with separator"""
         parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "file1.txt", "--", "-v", "--config=test"]
         
         result = parser.parse(args)
         
-        # 检查位置参数
+        # Check positional arguments
         positional_arg = next(arg for arg in result.arguments if arg.node_type == ArgType.POSITIONAL)
         assert positional_arg.values == ["file1.txt"]
         
-        # 检查额外参数
+        # Check extra arguments
         extra_arg = next(arg for arg in result.arguments if arg.node_type == ArgType.EXTRA)
         assert extra_arg.values == ["-v", "--config=test"]
     
     def test_parse_subcommand(self):
-        """测试解析子命令"""
+        """Test parsing subcommand"""
         parser = ArgparseParser(self.create_parser_with_subcommands())
         args = ["git", "commit", "-m", "Initial commit", "-a"]
         
@@ -155,7 +155,7 @@ class TestArgparseParser:
         assert result.subcommand is not None
         assert result.subcommand.name == "commit"
         
-        # 检查子命令参数
+        # Check subcommand arguments
         message_arg = next(arg for arg in result.subcommand.arguments if arg.option_name == "--message")
         assert message_arg.values == ["Initial commit"]
         
@@ -163,8 +163,8 @@ class TestArgparseParser:
         assert all_arg.node_type == ArgType.FLAG
     
     def test_parse_nested_subcommand(self):
-        """测试解析嵌套子命令（如果支持的话）"""
-        # 注意：当前实现可能不支持嵌套子命令，这里测试基本功能
+        """Test parsing nested subcommand (if supported)"""
+        # Note: Current implementation may not support nested subcommands, testing basic functionality here
         parser = ArgparseParser(self.create_parser_with_subcommands())
         args = ["git", "push", "origin", "--force"]
         
@@ -173,7 +173,7 @@ class TestArgparseParser:
         assert result.name == "git"
         assert result.subcommand.name == "push"
         
-        # 检查 push 子命令参数
+        # Check push subcommand arguments
         force_arg = next(arg for arg in result.subcommand.arguments if arg.option_name == "--force")
         assert force_arg.node_type == ArgType.FLAG
         
@@ -181,7 +181,7 @@ class TestArgparseParser:
         assert remote_arg.values == ["origin"]
     
     def test_parse_combined_short_options(self):
-        """测试解析组合短选项"""
+        """Test parsing combined short options"""
         parser_config = ParserConfig(
             parser_type=ParserType.ARGPARSE,
             program_name="tar",
@@ -210,7 +210,7 @@ class TestArgparseParser:
         
         result = parser.parse(args)
         
-        # 检查分解后的标志
+        # Check decomposed flags
         extract_arg = next(arg for arg in result.arguments if arg.option_name == "-x")
         assert extract_arg.node_type == ArgType.FLAG
         
@@ -221,7 +221,7 @@ class TestArgparseParser:
         assert file_arg.values == ["archive.tar.gz"]
     
     def test_parse_with_equal_sign(self):
-        """测试解析等号形式的选项"""
+        """Test parsing options with equal sign"""
         parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "--config=myconfig.toml"]
         
@@ -231,31 +231,31 @@ class TestArgparseParser:
         assert config_arg.values == ["myconfig.toml"]
     
     def test_invalid_option(self):
-        """测试无效选项"""
+        """Test invalid option"""
         parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "--unknown-option"]
         
-        # 注意：当前实现可能会在 tokenize 阶段抛出异常
-        # 这里主要测试解析器不会崩溃
+        # Note: Current implementation may throw exception during tokenize phase
+        # Mainly testing that parser doesn't crash
         try:
             result = parser.parse(args)
-            # 如果解析成功，检查是否有未知参数处理
+            # If parsing succeeds, check for unknown argument handling
             assert result is not None
         except Exception as e:
-            # 期望的行为：要么正确处理，要么抛出有意义的异常
-            assert "unknown" in str(e).lower() or "未找到" in str(e)
+            # Expected behavior: either handle properly or throw meaningful exception
+            assert "unknown" in str(e).lower() or "not found" in str(e)
     
     def test_validate_method(self):
-        """测试验证方法"""
+        """Test validation method"""
         parser = ArgparseParser(self.create_simple_parser_config())
         args = ["test_program", "-v"]
         result = parser.parse(args)
         
-        # 当前实现中 validate 方法总是返回 True
+        # In current implementation, validate method always returns True
         assert parser.validate(result) is True
     
     def test_complex_command_structure(self):
-        """测试复杂命令结构"""
+        """Test complex command structure"""
         parser_config = ParserConfig(
             parser_type=ParserType.ARGPARSE,
             program_name="docker",
@@ -301,10 +301,10 @@ class TestArgparseParser:
 
 
 class TestTokenization:
-    """专门测试 tokenization 功能"""
+    """Specialized tests for tokenization functionality"""
     
     def test_tokenize_simple_args(self):
-        """测试简单参数 tokenization"""
+        """Test simple argument tokenization"""
         parser_config = ParserConfig(
             parser_type=ParserType.ARGPARSE,
             program_name="test",
@@ -330,7 +330,7 @@ class TestTokenization:
         assert tokens[1].values == ["-v"]
     
     def test_tokenize_with_values(self):
-        """测试带值的参数 tokenization"""
+        """Test argument tokenization with values"""
         parser_config = ParserConfig(
             parser_type=ParserType.ARGPARSE,
             program_name="test",

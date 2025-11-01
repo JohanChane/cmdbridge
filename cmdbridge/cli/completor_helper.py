@@ -14,8 +14,6 @@ from ..cli_common import CommonCompletorHelper
 
 
 class CompletorHelper:
-    """提供动态补全数据，从缓存中获取实时配置"""
-
     @staticmethod
     def get_domains() -> List[str]:
         return CommonCompletorHelper.get_domains()

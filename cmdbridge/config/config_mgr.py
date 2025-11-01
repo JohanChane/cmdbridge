@@ -12,7 +12,7 @@ from log import debug, info, warning, error
 
 
 class ConfigMgr:
-    """配置工具类 - 管理配置和缓存目录，包含所有功能实现"""
+    """Configuration utility class - Manages configuration and cache directories, contains all functionality implementation"""
     
     _instance = None
     
@@ -24,83 +24,83 @@ class ConfigMgr:
     
     def __init__(self):
         """
-        初始化配置工具
+        Initialize configuration utility
         """
         if self._initialized:
             return
             
-        # 直接使用 PathManager 单例
+        # Directly use PathManager singleton
         self.path_manager = PathManager.get_instance()
-        debug("初始化 ConfigMgr")
+        debug("Initializing ConfigMgr")
         self._initialized = True
     
     @classmethod
     def get_instance(cls) -> 'ConfigMgr':
-        """获取单例实例"""
+        """Get singleton instance"""
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
     
     @classmethod
     def reset_instance(cls):
-        """重置单例实例（主要用于测试）"""
+        """Reset singleton instance (mainly for testing)"""
         cls._instance = None
     
     def init_config(self) -> bool:
-        """初始化用户配置"""
+        """Initialize user configuration"""
         try:
-            # 获取包内默认配置路径
+            # Get default configuration path within package
             default_configs_dir = self.path_manager.get_default_configs_dir()
             
-            # 检查默认配置是否存在
+            # Check if default configuration exists
             if not default_configs_dir.exists():
-                error(f"默认配置目录不存在: {default_configs_dir}")
+                error(f"Default configuration directory does not exist: {default_configs_dir}")
                 return False
             
-            info(f"初始化配置目录: {self.path_manager.config_dir}")
-            info(f"初始化缓存目录: {self.path_manager.cache_dir}")
+            info(f"Initializing configuration directory: {self.path_manager.config_dir}")
+            info(f"Initializing cache directory: {self.path_manager.cache_dir}")
             
-            # 复制领域基础文件
+            # Copy domain base files
             base_files = list(default_configs_dir.glob("*.domain.base.toml"))
             if base_files:
-                info("复制领域基础文件...")
+                info("Copying domain base files...")
                 for base_file in base_files:
                     dest_file = self.path_manager.config_dir / base_file.name
                     if dest_file.exists():
-                        info(f"  跳过已存在的: {base_file.name}")
+                        info(f"  Skipping existing: {base_file.name}")
                     else:
                         shutil.copy2(base_file, dest_file)
-                        info(f"  已复制: {base_file.name}")
+                        info(f"  Copied: {base_file.name}")
             else:
-                warning("未找到任何领域基础文件")
+                warning("No domain base files found")
             
-            # 复制领域配置目录
+            # Copy domain configuration directories
             domain_dirs = list(default_configs_dir.glob("*.domain"))
             if domain_dirs:
-                info("复制领域配置目录...")
+                info("Copying domain configuration directories...")
                 for domain_dir in domain_dirs:
-                    # 检查是否是目录（排除 .domain.base.toml 文件）
+                    # Check if it's a directory (exclude .domain.base.toml files)
                     if domain_dir.is_dir():
                         dest_domain_dir = self.path_manager.get_operation_domain_dir_of_config(domain_dir.stem)
                         if dest_domain_dir.exists():
-                            info(f"  跳过已存在的: {domain_dir.name}")
+                            info(f"  Skipping existing: {domain_dir.name}")
                         else:
                             shutil.copytree(domain_dir, dest_domain_dir)
-                            info(f"  已复制: {domain_dir.name}")
+                            info(f"  Copied: {domain_dir.name}")
             else:
-                warning("未找到任何领域配置目录")
+                warning("No domain configuration directories found")
             
-            # 复制 program_parser_configs
+            # Copy program_parser_configs
             parser_configs_dir = default_configs_dir / "program_parser_configs"
             if parser_configs_dir.exists():
                 dest_parser_dir = self.path_manager.program_parser_config_dir
                 
-                # 确保目标目录存在
+                # Ensure target directory exists
                 dest_parser_dir.mkdir(parents=True, exist_ok=True)
                 
-                info(f"复制解析器配置从 {parser_configs_dir} 到 {dest_parser_dir}")
+                info(f"Copying parser configurations from {parser_configs_dir} to {dest_parser_dir}")
                 
-                # 复制所有 .toml 文件
+                # Copy all .toml files
                 config_files = list(parser_configs_dir.glob("*.toml"))
                 if config_files:
                     copied_count = 0
@@ -108,52 +108,51 @@ class ConfigMgr:
                         dest_file = dest_parser_dir / config_file.name
                         if not dest_file.exists():
                             shutil.copy2(config_file, dest_file)
-                            info(f"  已复制: {config_file.name}")
+                            info(f"  Copied: {config_file.name}")
                             copied_count += 1
                         else:
-                            info(f"  跳过已存在的: {config_file.name}")
+                            info(f"  Skipping existing: {config_file.name}")
                     
-                    info(f"解析器配置复制完成: {copied_count} 个文件")
+                    info(f"Parser configuration copy completed: {copied_count} files")
                 else:
-                    warning(f"源目录中没有找到任何 .toml 文件: {parser_configs_dir}")
+                    warning(f"No .toml files found in source directory: {parser_configs_dir}")
             else:
-                error(f"源解析器配置目录不存在: {parser_configs_dir}")
+                error(f"Source parser configuration directory does not exist: {parser_configs_dir}")
                 return False
             
-            # 复制 config.toml
+            # Copy config.toml
             default_config_file = default_configs_dir / "config.toml"
             if default_config_file.exists():
                 dest_config_file = self.path_manager.get_global_config_path()
                 if not dest_config_file.exists():
                     shutil.copy2(default_config_file, dest_config_file)
-                    info("  已复制: config.toml")
+                    info("  Copied: config.toml")
                 else:
-                    info("  跳过已存在的: config.toml")
+                    info("  Skipping existing: config.toml")
             else:
-                # 创建默认的 config.toml
+                # Create default config.toml
                 default_config = """[global_settings]"""
                 dest_config_file = self.path_manager.get_global_config_path()
                 if not dest_config_file.exists():
                     with open(dest_config_file, 'w') as f:
                         f.write(default_config)
-                    info("  已创建默认: config.toml")
+                    info("  Created default: config.toml")
             
-            # 复制 README
+            # Copy README
             readme_files = list(default_configs_dir.glob("README*"))
             if readme_files:
-                info("复制 README 文件...")
+                info("Copying README files...")
                 for readme_file in readme_files:
                     dest_readme_file = self.path_manager.config_dir / readme_file.name
                     if not dest_readme_file.exists():
                         shutil.copy2(readme_file, dest_readme_file)
-                        info(f"  已复制: {readme_file.name}")
+                        info(f"  Copied: {readme_file.name}")
                     else:
-                        info(f"  跳过已存在的: {readme_file.name}")
+                        info(f"  Skipping existing: {readme_file.name}")
             else:
-                info("未找到 README 文件，跳过复制")
+                info("No README files found, skipping copy")
 
             return True
         except Exception as e:
-            error(f"初始化配置失败: {e}")
+            error(f"Configuration initialization failed: {e}")
             return False
-        

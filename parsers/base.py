@@ -1,5 +1,5 @@
 """
-解析器基类
+Parser Base Class
 """
 
 from abc import ABC, abstractmethod
@@ -8,39 +8,39 @@ from .types import CommandNode, ParserConfig
 
 
 class BaseParser(ABC):
-    """命令行解析器基类"""
+    """Command line parser base class"""
     
     def __init__(self, parser_config: ParserConfig):
         """
-        初始化解析器
+        Initialize parser
         
         Args:
-            parser_config: 解析器配置
+            parser_config: Parser configuration
         """
         self.parser_config = parser_config
     
     @abstractmethod
     def parse(self, args: List[str]) -> CommandNode:
         """
-        解析命令行参数
+        Parse command line arguments
         
         Args:
-            args: 命令行参数列表
+            args: Command line argument list
             
         Returns:
-            CommandNode: 解析后的命令树
+            CommandNode: Parsed command tree
         """
         pass
     
     @abstractmethod
     def validate(self, command_node: CommandNode) -> bool:
         """
-        验证解析结果是否符合配置
+        Validate if parsing result conforms to configuration
         
         Args:
-            command_node: 解析后的命令树
+            command_node: Parsed command tree
             
         Returns:
-            bool: 是否验证通过
+            bool: Whether validation passed
         """
         pass

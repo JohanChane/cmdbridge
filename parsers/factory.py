@@ -6,18 +6,18 @@ from log import error
 
 
 class ParserFactory:
-    """解析器工厂 - 根据配置创建对应的解析器实例"""
+    """Parser Factory - Create corresponding parser instances based on configuration"""
     
     @staticmethod
     def create_parser(parser_config: ParserConfig) -> Optional[BaseParser]:
         """
-        根据解析器配置创建对应的解析器实例
+        Create corresponding parser instance based on parser configuration
         
         Args:
-            parser_config: 解析器配置对象
+            parser_config: Parser configuration object
             
         Returns:
-            Optional[BaseParser]: 解析器实例，如果类型不支持则返回 None
+            Optional[BaseParser]: Parser instance, returns None if type is not supported
         """
         try:
             if parser_config.parser_type == ParserType.ARGPARSE:
@@ -25,8 +25,8 @@ class ParserFactory:
             elif parser_config.parser_type == ParserType.GETOPT:
                 return ArgparseParser(parser_config)
             else:
-                error(f"不支持的解析器类型: {parser_config.parser_type}")
+                error(f"Unsupported parser type: {parser_config.parser_type}")
                 return None
         except Exception as e:
-            error(f"创建解析器失败: {e}")
+            error(f"Failed to create parser: {e}")
             return None
