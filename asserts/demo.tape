@@ -13,83 +13,113 @@ Ctrl+L
 Set TypingSpeed 0.10
 
 Sleep 1s
-Type "echo '=== CmdBridge Demo ==='"
+Type "echo '=== Package Domain ==='"
 Enter
-Sleep 1s
+Sleep 2s
 
 Type "echo '1. Basic Package Manager Commands'"
 Enter
-Sleep 0.5s
+Sleep 2s
 
-Type "ame map brew uninstall vim"
+Type "bbe map -t pacman -- brew uninstall vim"
 Enter
-Sleep 3s
+Sleep 2s
 Ctrl+A
 Sleep 2s
 Type "sudo "
-Sleep 3s
+Sleep 2s
 Ctrl+C
-Sleep 3s
+Sleep 2s
 
-Type "ame map brew search vim"
+Type "bbe map -t pacman -- brew search vim"
 Enter
-Sleep 3s
+Sleep 2s
 Enter
-Sleep 3s
+Sleep 2s
 
-Type "ame map brew install vim"
+Type "bbe map -t pacman -- brew install vim"
 Enter
-Sleep 3s
+Sleep 2s
 Ctrl+A
 Sleep 2s
 Type "sudo "
-Sleep 3s
+Sleep 2s
 Ctrl+C
-Sleep 3s
+Sleep 2s
 
-Type "ame map brew info vim"
+Type "bbe map -t pacman -- brew info vim"
 Enter
-Sleep 3s
+Sleep 2s
 Enter
-Sleep 3s
+Sleep 2s
 
-Type "ame map brew ls -v vim"
+Type "bbe map -t pacman -- brew list -v vim"
 Enter
-Sleep 3s
+Sleep 2s
 Enter
-Sleep 3s
+Sleep 2s
 
-Sleep 0.5s
-Type "echo '2. Direct Operation Execution'"
+Type "echo '2. Operation Mappings'"
 Enter
-Sleep 0.5s
+Sleep 2s
 
-Type "ame act "
-Sleep 3s
+Type "bbe op -t pacman -- "
+Sleep 2s
 Tab
-Sleep 3s
-Type "info"
-Sleep 3s
+Sleep 2s
+Type "list_installed"
+Sleep 2s
 Enter
-Sleep 1s
-Type " vim"
-Sleep 3s
+Sleep 2s
 Enter
-Sleep 3s
+Sleep 2s
 Enter
+Sleep 2s
 
-Type "echo '3. System Information'"
+Type "echo '3. List Mappings'"
 Enter
-Sleep 0.5s
+Sleep 2s
 
-Type "cmdbridge --list-cmdbridges"
+Type "cmdbridge list cmd-mappings -s brew -t pacman"
 Enter
 Sleep 6s
 
-Type "cmdbridge --output-cmdbridge brew pacman"
+Type "cmdbridge list op-cmds -t pacman"
 Enter
 Sleep 6s
 
-Type "cmdbridge --output-cmdbridge brew pip"
+Type "echo '=== Firewall Domain ==='"
 Enter
-Sleep 6s
+Sleep 2s
+
+Type "echo '1. Map mufw to iptables'"
+Enter
+Sleep 2s
+
+Type "bbe map -t iptables -- mufw allow --port 8888 --proto tcp"
+Enter
+Sleep 2s
+Ctrl+C
+Sleep 2s
+
+Type "bbe map -t iptables -- mufw delete allow --port 8888 --proto tcp"
+Enter
+Sleep 2s
+Ctrl+C
+Sleep 2s
+
+Type "echo '2. Map iptables to mufw'"
+Enter
+Sleep 2s
+
+Type "bbe map -t mufw -- iptables -A INPUT -p tcp --dport 8888 -j ACCEPT"
+Enter
+Sleep 2s
+Ctrl+C
+Sleep 2s
+
+Type "bbe map -t mufw -- iptables -D INPUT -p tcp --dport 8888 -j ACCEPT"
+Enter
+Sleep 2s
+Ctrl+C
+Sleep 2s
