@@ -53,7 +53,7 @@ class OperationMappingMgr:
             command_formats_by_group = {}  # 结构: {operation_group: {program: {command_formats}}}
             
             # 1. 首先加载领域基础文件
-            base_file = self.path_manager.get_domain_base_config_path(self.domain_name)
+            base_file = self.path_manager.get_domain_base_path_of_config(self.domain_name)
             base_operations = {}
             if base_file.exists():
                 try:

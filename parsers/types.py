@@ -94,6 +94,30 @@ class ArgumentConfig:
     required: bool = False      # 是否是必需参数
     description: Optional[str] = None  # 参数描述
     
+    def to_dict(self) -> Dict[str, Any]:
+        """序列化为字典"""
+        result = {
+            "name": self.name,
+            "opt": self.opt,
+            "nargs": str(self.nargs),
+            "required": self.required,
+        }
+        # 只有非 None 的 description 才包含
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ArgumentConfig':
+        """从字典反序列化"""
+        return cls(
+            name=data["name"],
+            opt=data["opt"],
+            nargs=ArgumentCount(data["nargs"]),
+            required=data.get("required", False),
+            description=data.get("description")  # 允许为 None
+        )
+
     def is_flag(self) -> bool:
         """检查是否是标志参数"""
         return self.nargs.is_flag()
@@ -172,6 +196,28 @@ class SubCommandConfig:
     sub_commands: List['SubCommandConfig'] = field(default_factory=list)  # 🔧 新增：嵌套子命令
     description: Optional[str] = None      # 子命令描述
     
+    def to_dict(self) -> Dict[str, Any]:
+        """序列化为字典"""
+        result = {
+            "name": self.name,
+            "arguments": [arg.to_dict() for arg in self.arguments],
+            "sub_commands": [sub_cmd.to_dict() for sub_cmd in self.sub_commands],
+        }
+        # 只有非 None 的 description 才包含
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SubCommandConfig':
+        """从字典反序列化"""
+        return cls(
+            name=data["name"],
+            arguments=[ArgumentConfig.from_dict(arg_data) for arg_data in data["arguments"]],
+            sub_commands=[SubCommandConfig.from_dict(sub_cmd_data) for sub_cmd_data in data["sub_commands"]],
+            description=data.get("description")  # 允许为 None
+        )
+    
     def find_argument(self, option_name: str) -> Optional[ArgumentConfig]:
         """根据选项名称查找参数配置"""
         for arg in self.arguments:
@@ -192,6 +238,25 @@ class ParserConfig:
     program_name: str                      # 程序名称
     arguments: List[ArgumentConfig] = field(default_factory=list)  # 全局参数
     sub_commands: List[SubCommandConfig] = field(default_factory=list)  # 子命令
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """序列化为字典"""
+        return {
+            "parser_type": self.parser_type.value,
+            "program_name": self.program_name,
+            "arguments": [arg.to_dict() for arg in self.arguments],
+            "sub_commands": [sub_cmd.to_dict() for sub_cmd in self.sub_commands]
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ParserConfig':
+        """从字典反序列化"""
+        return cls(
+            parser_type=ParserType(data["parser_type"]),
+            program_name=data["program_name"],
+            arguments=[ArgumentConfig.from_dict(arg_data) for arg_data in data["arguments"]],
+            sub_commands=[SubCommandConfig.from_dict(sub_cmd_data) for sub_cmd_data in data["sub_commands"]]
+        )
     
     def find_argument(self, opt_name: str) -> Optional[ArgumentConfig]:
         """根据选项名称查找参数配置"""

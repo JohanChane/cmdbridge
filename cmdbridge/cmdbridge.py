@@ -9,6 +9,7 @@ import tomli
 from .config.path_manager import PathManager
 from cmdbridge.cache.cache_mgr import CacheMgr
 from cmdbridge.config.config_mgr import ConfigMgr
+from .cache.parser_config_mgr import ParserConfigCacheMgr
 from .cache.cmd_mapping_mgr import CmdMappingMgr
 from .core.cmd_mapping import CmdMapping
 from .core.operation_mapping import OperationMapping
@@ -25,6 +26,9 @@ class CmdBridge:
         # 初始化配置工具
         self.cache_mgr = CacheMgr.get_instance()
         self.config_mgr = ConfigMgr()
+
+        # 初始化程序配置缓存管理器
+        self.parser_cache_mgr = ParserConfigCacheMgr()
 
         # 初始化命令映射器
         self.command_mapper = CmdMapping({})
@@ -128,13 +132,14 @@ class CmdBridge:
             self.command_mapper = CmdMapping.load_from_cache(domain, actual_program_name)
             
             # 加载源程序的解析器配置
-            parser_config_file = self.path_manager.get_program_parser_config_path(actual_program_name)
+            parser_config_file = self.path_manager.get_parser_config_path_of_cache(actual_program_name)
             if not parser_config_file.exists():
                 error(f"找不到 {actual_program_name} 的解析器配置")
                 return None
             
-            from parsers.config_loader import load_parser_config_from_file
-            source_parser_config = load_parser_config_from_file(str(parser_config_file), actual_program_name)
+            # from parsers.config_loader import load_parser_config_from_file
+            parser_cache_mgr = ParserConfigCacheMgr()
+            source_parser_config = parser_cache_mgr.load_from_cache(actual_program_name)
             
             # 使用正确的 map_to_operation 方法
             operation_result = self.command_mapper.map_to_operation(
@@ -230,6 +235,9 @@ class CmdBridge:
         try:
             success = self.cache_mgr.remove_cmd_mapping()
             if success:
+                # 1. 先刷新解析器配置缓存
+                self.parser_cache_mgr.generate_parser_config_cache()
+
                 # 先合并所有领域配置到缓存目录
                 info("合并领域配置到缓存...")
                 merge_success = self.cache_mgr.merge_all_domain_configs()

@@ -14,6 +14,10 @@ class ConfigPathMgr:
         self._base_config_dir = base_config_dir
         self._program_parser_config_dir = base_config_dir / "program_parser_configs"
     
+    def get_program_parser_path(self, program_name: str) -> Path:
+        """获取程序解析器配置文件路径"""
+        return self._program_parser_config_dir / f"{program_name}.toml"
+    
     def get_domain_base_path(self, domain_name: str) -> Path:
         """获取领域基础配置文件路径"""
         return self._base_config_dir / f"{domain_name}.domain.base.toml"
@@ -72,6 +76,13 @@ class CachePathMgr:
         """获取操作映射缓存文件路径（兼容性方法）"""
         return self.get_operation_mappings_domain_dir(domain_name) / f"{group_name}.toml"
 
+    def get_parser_config_dir(self) -> Path:
+        """获取解析器配置缓存目录"""
+        return self._base_cache_dir / "program_parser_configs"
+    
+    def get_parser_config_path(self, program_name: str) -> Path:
+        """获取指定程序的解析器配置缓存文件路径"""
+        return self.get_parser_config_dir() / f"{program_name}.toml"
 
 class PathManager:
     """路径管理器 - 统一管理配置和缓存目录路径（单例模式）"""
@@ -189,11 +200,11 @@ class PathManager:
         """获取全局配置文件路径"""
         return self._config_dir / "config.toml"
     
-    def get_program_parser_config_path(self, program_name: str) -> Path:
+    def get_program_parser_path_of_config(self, program_name: str) -> Path:
         """获取程序解析器配置文件路径"""
-        return self._program_parser_config_dir / f"{program_name}.toml"
+        return self._config_path_mgr.get_program_parser_path(program_name)
     
-    def get_domain_base_config_path(self, domain_name: str) -> Path:
+    def get_domain_base_path_of_config(self, domain_name: str) -> Path:
         """获取领域基础配置文件路径"""
         return self._config_path_mgr.get_domain_base_path(domain_name)
     
@@ -204,7 +215,15 @@ class PathManager:
     def get_operation_group_path_of_config(self, domain_name: str, group_name: str) -> Path:
         """获取特定操作组的配置文件路径"""
         return self._config_path_mgr.get_operation_group_path(domain_name, group_name)
-        
+    
+    def get_parser_config_dir_of_cache(self) -> Path:
+        """获取解析器配置缓存目录"""
+        return self._cache_path_mgr.get_parser_config_dir()
+    
+    def get_parser_config_path_of_cache(self, program_name: str) -> Path:
+        """获取指定程序的解析器配置缓存文件路径"""
+        return self._cache_path_mgr.get_parser_config_path(program_name)
+    
     def get_operation_mappings_domain_dir_of_cache(self, domain_name: str) -> Path:
         """获取操作映射缓存文件路径"""
         return self._cache_path_mgr.get_operation_mappings_domain_dir(domain_name)
@@ -268,12 +287,12 @@ class PathManager:
     
     def program_parser_config_exists(self, program_name: str) -> bool:
         """检查程序解析器配置是否存在"""
-        config_path = self.get_program_parser_config_path(program_name)
+        config_path = self.get_program_parser_path_of_config(program_name)
         return config_path.exists()
     
     def domain_base_config_exists(self, domain_name: str) -> bool:
         """检查领域基础配置文件是否存在"""
-        return self.get_domain_base_config_path(domain_name).exists()
+        return self.get_domain_base_path_of_config(domain_name).exists()
 
     def rm_cmd_mappings_dir(self, domain_name: Optional[str] = None) -> bool:
         """删除命令映射目录"""

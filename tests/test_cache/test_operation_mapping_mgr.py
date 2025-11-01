@@ -65,7 +65,7 @@ class TestOperationMappingMgrSimple:
             }
         }
         
-        base_file = self.path_manager.get_domain_base_config_path("package")
+        base_file = self.path_manager.get_domain_base_path_of_config("package")
         with open(base_file, 'wb') as f:
             tomli_w.dump(base_config, f)
         

@@ -154,14 +154,16 @@ class CmdMappingMgr:
             }
             debug(f"操作组 {self.group_name} 使用程序: {programs}")
 
-    def _parse_command_and_map_params(self, cmd_format: str, program_cmd: str) -> Optional[CommandNode]:
+    def _parse_command_and_map_params(self, cmd_format: str, program_name: str) -> Optional[CommandNode]:
         """解析命令并设置 placeholder"""
-        debug(f"解析命令: '{cmd_format}', 程序: {program_cmd}")
+        debug(f"解析命令: '{cmd_format}', 程序: {program_name}")
         
         # 加载解析器配置
-        parser_config = self._load_parser_config(program_cmd)
+        from .parser_config_mgr import ParserConfigCacheMgr
+        parser_cache_mgr = ParserConfigCacheMgr()
+        parser_config = parser_cache_mgr.load_from_cache(program_name)
         if not parser_config:
-            error(f"无法加载程序 '{program_cmd}' 的解析器配置")
+            error(f"无法加载程序 '{program_name}' 的解析器配置")
             return None
         
         # 生成示例命令
@@ -276,18 +278,18 @@ class CmdMappingMgr:
         
         return None
     
-    def _load_parser_config(self, program_cmd: str) -> Optional[ParserConfig]:
+    def _load_parser_config(self, program_name: str) -> Optional[ParserConfig]:
         """加载解析器配置"""
         # 使用 PathManager 获取解析器配置文件路径
-        parser_config_file = self.path_manager.get_program_parser_config_path(program_cmd)
+        parser_config_file = self.path_manager.get_program_parser_path_of_config(program_name)
         
         if not parser_config_file.exists():
-            warning(f"找不到程序 {program_cmd} 的解析器配置: {parser_config_file}")
+            warning(f"找不到程序 {program_name} 的解析器配置: {parser_config_file}")
             return None
         
         debug(f"加载解析器配置: {parser_config_file}")
         try:
-            return load_parser_config_from_file(str(parser_config_file), program_cmd)
+            return load_parser_config_from_file(str(parser_config_file), program_name)
         except Exception as e:
             error(f"加载解析器配置失败: {e}")
             return None

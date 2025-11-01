@@ -148,7 +148,7 @@ class CmdMapping:
         if not source_parser.validate(source_node):
             warning(f"源命令验证失败: {' '.join(source_cmdline)}")
             return None
-        
+
         # 2. 在映射配置中查找匹配的操作
         matched_mapping = self._find_matching_mapping(source_node, dst_operation_group)
         if not matched_mapping:
