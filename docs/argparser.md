@@ -1,8 +1,8 @@
-# 命令行解释器的语法解析
+# Command Line Interpreter Syntax Parsing
 
 ## Tokenize
 
-tokenize: 原始的字符处理太不方便了, 先将它解析为我们的熟悉的数据结构 List, 方便之后的处理。可以理解为《Crafting Interpreters》的 Lexemes and Tokens。
+Tokenize: Processing raw characters is too inconvenient, so we first parse them into familiar data structures like Lists for easier subsequent processing. This can be understood as Lexemes and Tokens from "Crafting Interpreters".
 
 ```python
 from enum import Enum
@@ -86,7 +86,7 @@ tokens_tar = [
 ]
 ```
 
-## 构建 CommnadTree
+## Building CommandTree
 
 ```python
 # === Command Tree ===
@@ -161,174 +161,174 @@ tree_tar = CommandNode(
 )
 ```
 
-## getopt 和 argparse 的命令行风格
+## Command Line Styles: getopt and argparse
 
-argparse 风格只比 getopt 多了子命令, 其他都相同。
+The argparse style only adds subcommands compared to getopt, everything else is the same.
 
-getopt 的格式:
-
-```
-<程序名> [<flags>] [<options>] [--] [<位置参数>]        # <flag>, <option> 和 <位置参数> 都属于程序名 (主命令)。<位置参数> 有且只有一个。
-```
-
-argparse 风格:
+getopt format:
 
 ```
-<主命令(程序名)> [<flags>] [<options>] [--] [<位置参数>]
-<主命令(程序名)> [<主命令的 flags>] [<主命令的 options>] <子命令> [<子命令的 flags>] [<子命令的 options>] [--] [<子命令的位置参数>]     # 如果出现子命令则主命令是不能有位置参数的, 否则可能会出现歧义。
+<program_name> [<flags>] [<options>] [--] [<positional_args>]        # <flag>, <option> and <positional_args> all belong to the program name (main command). <positional_args> has exactly one.
 ```
 
-### 共通之处
+argparse style:
 
-1. **多值选项**
+```
+<main_command(program_name)> [<flags>] [<options>] [--] [<positional_args>]
+<main_command(program_name)> [<main_command_flags>] [<main_command_options>] <subcommand> [<subcommand_flags>] [<subcommand_options>] [--] [<subcommand_positional_args>]     # If subcommands appear, the main command cannot have positional arguments, otherwise ambiguity may occur.
+```
+
+### Common Features
+
+1. **Multi-value options**
    ```bash
-   --config path --config path => --config path path   # 可以这样指定多个
+   --config path --config path => --config path path   # Can specify multiple this way
    ```
 
-2. **短选项组合**
+2. **Short option combination**
    ```bash
    tar -zxvf foo.tar.gz -- path_1 path_2 
-   # `-zxvf` 表示 `-z -x -v -f`
-   # `-f` 是需要指定参数的选项，可以连在一起写
-   # 但不能 `tar -zxfv foo.tar.gz -- path_1 path_2`（参数必须在最后）
+   # `-zxvf` means `-z -x -v -f`
+   # `-f` is an option that requires arguments, can be written together
+   # But cannot `tar -zxfv foo.tar.gz -- path_1 path_2` (arguments must be at the end)
    ```
 
-3. **重复计数**
+3. **Repeat counting**
    ```bash
-   -Syy  # 记录 flag 的重复次数，表示 -S -y -y
-   -Sy   # 表示 -S -y
+   -Syy  # Records flag repeat count, means -S -y -y
+   -Sy   # Means -S -y
    ```
 
-### getopt 风格的命令行
+### getopt Style Command Line
 
-1. **严格的参数顺序**
+1. **Strict argument order**
    ```bash
-   # getopt 风格
-   pacman -S -y vim git    # ✅ 正确
-   pacman -S vim -y git    # ❌ -y 可能不会被识别为全局标志
+   # getopt style
+   pacman -S -y vim git    # ✅ Correct
+   pacman -S vim -y git    # ❌ -y may not be recognized as global flag
    ```
 
-2. **选项和参数必须相邻**
+2. **Options and arguments must be adjacent**
    ```bash
-   tar -f archive.tar -xzv  # ✅ -f 和 archive.tar 相邻
-   tar -xzv -f archive.tar  # ✅ 参数跟在选项后面
-   tar -xzv archive.tar -f  # ❌ -f 缺少参数
+   tar -f archive.tar -xzv  # ✅ -f and archive.tar are adjacent
+   tar -xzv -f archive.tar  # ✅ Arguments follow options
+   tar -xzv archive.tar -f  # ❌ -f missing arguments
    ```
 
-3. **不支持子命令**
+3. **No subcommand support**
    ```bash
-   # getopt 程序通常没有子命令概念
-   pacman -S package    # -S 是选项，不是子命令
+   # getopt programs usually have no subcommand concept
+   pacman -S package    # -S is an option, not a subcommand
    ```
 
-4. **长短选项处理**
+4. **Long/short option handling**
    ```bash
-   --help     # 长选项
-   -h         # 短选项  
-   -abc       # 等同于 -a -b -c
+   --help     # Long option
+   -h         # Short option  
+   -abc       # Equivalent to -a -b -c
    ```
-5. **分隔符**
+5. **Separator**
     ```bash
-    pacman -S vim git  -- -s   # 表示安装 vim git,  -s 不作用于 pacman
+    pacman -S vim git  -- -s   # Means install vim git, -s doesn't affect pacman
     ```
 
-### argparse 风格的命令行
+### argparse Style Command Line
 
-1. **子命令限制**
+1. **Subcommand restrictions**
    ```bash
-   # 不能有两个同级的子命令，否则会有歧义
-   git commit push        # ❌ 歧义：commit 和 push 都是一级子命令
-   git commit && git push # ✅ 正确用法
+   # Cannot have two sibling subcommands, otherwise ambiguity occurs
+   git commit push        # ❌ Ambiguity: commit and push are both first-level subcommands
+   git commit && git push # ✅ Correct usage
    ```
 
-2. **主命令位置参数**
+2. **Main command positional arguments**
    ```bash
-   # 如果有子命令，则主命令通常没有位置参数
-   apt install vim        # ✅ install 是子命令，vim 是子命令的位置参数
-   apt vim install        # ❌ 歧义：vim 是主命令位置参数还是子命令？
+   # If there are subcommands, the main command usually has no positional arguments
+   apt install vim        # ✅ install is subcommand, vim is subcommand positional argument
+   apt vim install        # ❌ Ambiguity: is vim a main command positional argument or subcommand?
    ```
 
-3. **灵活的参数位置**
+3. **Flexible argument positions**
    ```bash
-   # argparse 允许选项和位置参数混合
-   apt install -y vim git    # ✅ 正确
-   apt install vim -y git    # ✅ 也正确
-   apt --help install -y vim git  # ✅ 也正确, --help 属于 apt, 而 -y 属于 install
+   # argparse allows mixing options and positional arguments
+   apt install -y vim git    # ✅ Correct
+   apt install vim -y git    # ✅ Also correct
+   apt --help install -y vim git  # ✅ Also correct, --help belongs to apt, while -y belongs to install
    ```
 
-4. **子命令参数隔离**
+4. **Subcommand argument isolation**
    ```bash
-   # 每个子命令有自己独立的参数集
+   # Each subcommand has its own independent argument set
    git commit -m "message" --author="name"
    git push --force
-   # commit 和 push 的参数不会相互干扰
+   # commit and push arguments don't interfere with each other
    ```
 
-### 例子
+### Examples
 
-#### getopt 风格示例
+#### getopt Style Examples
 
 ```bash
 # pacman (Arch Linux package manager)
 pacman -Syu vim git --noconfirm
-# 解析为：
+# Parsed as:
 # -S (sync)
 # -y (refresh)
 # -u (upgrade) 
-# vim git (位置参数)
-# --noconfirm (标志)
+# vim git (positional arguments)
+# --noconfirm (flag)
 
-# tar (归档工具)
+# tar (archiving tool)
 tar -zxvf archive.tar.gz file1 file2
-# 解析为：
+# Parsed as:
 # -z (gzip)
 # -x (extract) 
 # -v (verbose)
-# -f archive.tar.gz (文件参数)
-# file1 file2 (位置参数)
+# -f archive.tar.gz (file argument)
+# file1 file2 (positional arguments)
 ```
 
-#### argparse 风格示例
+#### argparse Style Examples
 
 ```bash
 # apt (Debian package manager)
 apt update
 apt install -y vim git
 apt remove vim --purge
-# 解析为：
-# update (子命令，无参数)
-# install (子命令) + -y (标志) + vim git (子命令位置参数)
-# remove (子命令) + vim (子命令位置参数) + --purge (标志)
+# Parsed as:
+# update (subcommand, no arguments)
+# install (subcommand) + -y (flag) + vim git (subcommand positional arguments)
+# remove (subcommand) + vim (subcommand positional arguments) + --purge (flag)
 
-# git (版本控制)
+# git (version control)
 git commit -m "message" --author="John"
 git push origin main --force
-# 解析为：
-# commit (子命令) + -m "message" (选项) + --author="John" (选项)
-# push (子命令) + origin main (子命令位置参数) + --force (标志)
+# Parsed as:
+# commit (subcommand) + -m "message" (option) + --author="John" (option)
+# push (subcommand) + origin main (subcommand positional arguments) + --force (flag)
 
-# docker (容器管理)
+# docker (container management)
 docker container ls --all
 docker image build -t myapp .
-# 解析为：
-# container (子命令) + ls (子子命令) + --all (标志)
-# image (子命令) + build (子子命令) + -t myapp (选项) + . (位置参数)
+# Parsed as:
+# container (subcommand) + ls (sub-subcommand) + --all (flag)
+# image (subcommand) + build (sub-subcommand) + -t myapp (option) + . (positional argument)
 ```
 
-#### 复杂示例对比
+#### Complex Example Comparison
 
 ```bash
-# getopt 风格 (tar)
+# getopt style (tar)
 tar -czf backup.tar.gz --exclude="*.tmp" src/ docs/
 
-# argparse 风格 (kubectl)
+# argparse style (kubectl)
 kubectl get pods --namespace=production --sort-by=".status.startTime"
 
-# 混合风格 (docker with getopt-like flags)
+# mixed style (docker with getopt-like flags)
 docker run -it --rm -v /host:/guest -p 8080:80 nginx
 ```
 
-## 程序的参数配置
+## Program Parameter Configuration
 
 ### pacman
 
@@ -379,7 +379,7 @@ pacman_config = ParserConfig(
 
 ### apt
 
-比如: `apt --help install --yes pkgs`
+Example: `apt --help install --yes pkgs`
 
 ```toml
 # apt.toml
@@ -391,7 +391,7 @@ program_name = "apt"
 name = "help"
 opt = ["-h", "--help"]
 nargs = "0"
-# required = true/false # 支持 required
+# required = true/false # supports required
 
 [[apt.sub_commands]]
 name = "install"
