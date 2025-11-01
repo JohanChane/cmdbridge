@@ -1,5 +1,3 @@
-# cmdbridge_edit/cli/cli_helper.py
-
 import sys
 from typing import Optional, List
 import click

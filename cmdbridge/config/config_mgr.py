@@ -1,5 +1,3 @@
-# utils/config.py
-
 import os, sys
 from pathlib import Path
 from typing import List, Dict, Any, Optional

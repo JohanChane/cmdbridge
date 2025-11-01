@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CmdMapping 测试 - 修复完整版
+CmdMapping 测试
 """
 
 import pytest
@@ -21,7 +21,7 @@ from parsers.types import ParserConfig, ParserType, ArgumentConfig, ArgumentCoun
 import log
 
 class TestCmdMapping:
-    """CmdMapping 测试类 - 修复完整版"""
+    """CmdMapping 测试类"""
     
     def setup_method(self):
         """测试设置"""
@@ -43,7 +43,7 @@ class TestCmdMapping:
         PathManager.reset_instance()
     
     def _create_test_config(self):
-        """创建测试配置 - 修复版本"""
+        """创建测试配置"""
         # 创建缓存目录
         cache_dir = self.path_manager.get_cmd_mappings_domain_dir_of_cache("package")
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -160,7 +160,7 @@ class TestCmdMapping:
             tomli_w.dump(pacman_mappings, f)
     
     def _create_apt_parser_config(self) -> ParserConfig:
-        """创建 apt 解析器配置 - 修复版本"""
+        """创建 apt 解析器配置"""
         return ParserConfig(
             parser_type=ParserType.ARGPARSE,
             program_name="apt",
@@ -323,11 +323,9 @@ class TestCmdMapping:
         assert "test_program" in mapping.mapping_config
 
 
-# 移除 run_tests() 函数，直接使用 pytest
 if __name__ == "__main__":
     # 设置日志级别
     log.set_level(log.LogLevel.DEBUG)
     
-    # 直接运行 pytest
     import pytest
     pytest.main([__file__, "-v", "-s"])

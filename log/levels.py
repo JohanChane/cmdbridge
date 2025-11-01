@@ -1,4 +1,3 @@
-# log/levels.py
 from enum import Enum
 
 class LogLevel(Enum):

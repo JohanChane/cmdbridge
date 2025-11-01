@@ -1,5 +1,3 @@
-# cmdbridge/cmdbridge.py
-
 import os
 import shutil
 from pathlib import Path
@@ -128,7 +126,7 @@ class CmdBridge:
             if not actual_program_name:
                 return None
             
-            # 🔧 修复：使用跨操作组查找加载映射配置
+            # 使用跨操作组查找加载映射配置
             self.command_mapper = CmdMapping.load_from_cache(domain, actual_program_name)
             
             # 加载源程序的解析器配置

@@ -1,5 +1,3 @@
-# cmdbridge_edit/cli/__init__.py
-
 """CmdBridge Edit CLI Module"""
 
 from .cli import cli, main

@@ -67,7 +67,6 @@ class CommonCompletorHelper:
                 warning(f"无法确定源程序组 '{source_group}' 所属的领域")
                 return []
             
-            # 使用新的缓存结构获取命令
             path_manager = PathManager.get_instance()
             cmd_to_operation_file = path_manager.get_cmd_to_operation_path(domain)
             

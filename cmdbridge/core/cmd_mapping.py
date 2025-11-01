@@ -48,7 +48,7 @@ class CmdMapping:
         """
         path_manager = PathManager.get_instance()
         
-        # 新的缓存结构：从 cmd_to_operation.toml 获取程序列表
+        # 从 cmd_to_operation.toml 获取程序列表
         cmd_to_operation_file = path_manager.get_cmd_to_operation_path(domain_name)
         
         if not cmd_to_operation_file.exists():
@@ -88,7 +88,7 @@ class CmdMapping:
             debug(f"加载程序 {program_name} 的命令映射（来自操作组 {found_group}）")
             debug(f"程序数据: {program_data}")
             
-            # 🔧 修复：确保返回正确的数据结构
+            # 确保返回正确的数据结构
             # 程序文件的结构是 {"command_mappings": [...]}
             # 但 CmdMapping 期望的是 {program_name: {"command_mappings": [...]}}
             mapping_config = {
@@ -183,7 +183,6 @@ class CmdMapping:
         if not arg_config:
             return option_name
         
-        # 使用新的主要选项名方法
         primary_name = arg_config.get_primary_option_name()
         return primary_name or option_name
     

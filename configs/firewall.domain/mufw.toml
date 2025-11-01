@@ -1,4 +1,4 @@
-# === mufw 操作组（ufw 作为最终命令）===
+# === mufw Operation Group（ufw as the final program）===
 
 [operations.allow_port]
 cmd_format = "mufw allow --port {port} --proto {protocol}"

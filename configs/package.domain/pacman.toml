@@ -1,4 +1,5 @@
-# === 动作命令实现 ===
+# === pacman Operation Group ===
+
 [operations.install_remote]
 cmd_format = "pacman -S {pkgs}"
 

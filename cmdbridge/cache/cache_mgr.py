@@ -95,7 +95,6 @@ class CacheMgr:
         cache_key = f"{domain}.{group_name}"
         
         if cache_key not in self._cache_data:
-            # 🔧 修复：使用新的缓存结构
             try:
                 # 从 cmd_to_operation.toml 获取该操作组的所有程序
                 cmd_to_operation_file = self.path_manager.get_cmd_to_operation_path(domain)

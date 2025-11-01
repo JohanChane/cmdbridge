@@ -1,5 +1,3 @@
-# cmdbridge/__init__.py
-
 """CmdBridge - Universal Command Mapping Program"""
 
 __version__ = "1.0.0"
@@ -12,7 +10,6 @@ from .core.cmd_mapping import CmdMapping
 from .cache.cmd_mapping_mgr import CmdMappingMgr
 from .cmdbridge import CmdBridge
 
-# 定义公开的API
 __all__ = [
     'main',
     'cli', 

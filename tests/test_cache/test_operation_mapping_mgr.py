@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OperationMappingMgr 核心功能测试 - 修复版
+OperationMappingMgr 核心功能测试
 """
 
 import pytest
@@ -176,7 +176,7 @@ class TestOperationMappingMgrSimple:
         print("✅ 命令格式收集测试通过")
     
     def test_file_generation(self):
-        """测试文件生成 - 修复版"""
+        """测试文件生成"""
         print("🧪 测试文件生成...")
         
         # 使用便捷函数创建映射，它会自动生成文件

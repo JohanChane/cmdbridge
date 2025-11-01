@@ -188,7 +188,7 @@ class CmdMappingMgr:
         if not param_names:
             return
         
-        # 🔧 修复：创建参数名到 placeholder 的映射
+        # 创建参数名到 placeholder 的映射
         param_mapping = {}
         for param_name in param_names:
             # 对于每个参数名，创建对应的占位符模式
@@ -200,7 +200,7 @@ class CmdMappingMgr:
             for arg in node.arguments:
                 # 检查参数值是否包含占位符
                 for value in arg.values:
-                    # 🔧 修复：使用参数映射来匹配占位符
+                    # 使用参数映射来匹配占位符
                     for param_name, pattern in param_mapping.items():
                         if pattern.match(value):
                             arg.placeholder = param_name  # 使用命令格式中的参数名
@@ -243,7 +243,7 @@ class CmdMappingMgr:
         if arg_config:
             # 根据 nargs 生成相应数量的示例值
             if arg_config.nargs.spec == '+' or arg_config.nargs.spec == '*':
-                # 🔧 修复：对于多值参数，使用相同的参数名（不带数字后缀）
+                # 对于多值参数，使用相同的参数名（不带数字后缀）
                 # 这样参数名就能与命令格式中的占位符保持一致
                 return [
                     f"{PLACEHOLDER_PREFIX}{param_name}{PLACEHOLDER_SUFFIX}",

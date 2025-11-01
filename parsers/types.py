@@ -194,7 +194,7 @@ class SubCommandConfig:
     name: str                                           # 子命令名称
     alias: List[str] = field(default_factory=list)      # 子命令的别名。e.g. `brew list/ls -v pkg`
     arguments: List[ArgumentConfig] = field(default_factory=list)  # 子命令参数
-    sub_commands: List['SubCommandConfig'] = field(default_factory=list)  # 🔧 新增：嵌套子命令
+    sub_commands: List['SubCommandConfig'] = field(default_factory=list)  # 嵌套子命令
     description: Optional[str] = None      # 子命令描述
     
     def to_dict(self) -> Dict[str, Any]:

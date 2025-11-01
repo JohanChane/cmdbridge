@@ -1,3 +1,7 @@
+"""
+目的: 统一输出, 方便以后修改。原因是 click 在补全向 stdout 输出字符会导致补全出错。
+"""
+
 import click
 import sys
 from typing import Optional, TextIO

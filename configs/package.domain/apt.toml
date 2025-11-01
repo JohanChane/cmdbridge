@@ -1,4 +1,5 @@
-# === 动作命令实现 ===
+# === apt Operation Group ===
+
 [operations.install_remote]
 cmd_format = "apt install {pkgs}"
 

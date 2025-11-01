@@ -1,4 +1,4 @@
-# === 防火墙管理接口 ===
+# === Firewall Management Interface ===
 
 [operations.status]
 description = "Show firewall status"
@@ -16,7 +16,7 @@ args = []
 description = "Reset firewall rules to defaults"
 args = []
 
-# 端口操作
+# Port Operations
 [operations.allow_port]
 description = "Allow traffic on specific port"
 args = ["port", "protocol"]
@@ -33,7 +33,7 @@ args = ["port", "protocol"]
 description = "Delete deny rule for specific port"
 args = ["port", "protocol"]
 
-# IP 操作
+# IP Operations
 [operations.allow_ip]
 description = "Allow traffic from specific IP"
 args = ["ip"]
@@ -50,7 +50,7 @@ args = ["ip"]
 description = "Delete deny rule for specific IP"
 args = ["ip"]
 
-# 服务操作
+# Service Operations
 [operations.allow_service]
 description = "Allow traffic for specific service"
 args = ["service"]

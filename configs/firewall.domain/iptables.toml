@@ -1,4 +1,4 @@
-# === iptables 命令实现 ===
+# === iptables Operation Group ===
 
 [operations.allow_port]
 cmd_format = "iptables -A INPUT -p {protocol} --dport {port} -j ACCEPT"

@@ -1,4 +1,4 @@
-# === 管理包的接口===
+# === Package Management Interface ===
 
 [operations.install_remote]
 description = "Install packages from remote repositories"

@@ -1,5 +1,3 @@
-# cmdbridge_edit/__init__.py
-
 """CmdBridge Edit - Line Editor Integration"""
 
 __version__ = "1.0.0"

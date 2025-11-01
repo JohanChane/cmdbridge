@@ -1,5 +1,3 @@
-# cmdbridge/core/operation_mapping.py
-
 import sys
 if sys.version_info >= (3, 11):
     import tomllib as tomli

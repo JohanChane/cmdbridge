@@ -1,5 +1,3 @@
-# cmdbridge/cli/cli.py
-
 import click
 import sys
 
@@ -121,9 +119,6 @@ def map(ctx, domain, source_group, dest_group, command):
 
     cli_helper = ctx.obj
     
-    # 获取 -- 后面的参数（从 ctx.meta 中获取）
-    # command_args = ctx.meta.get('protected_args', [])
-    
     success = cli_helper.handle_map_command(domain, source_group, dest_group, command)
     sys.exit(0 if success else 1)
 
@@ -140,9 +135,6 @@ def op(ctx, domain, dest_group, operation):
     cmdbridge op -t apt -- install vim git
     """
     cli_helper = ctx.obj
-    
-    # 获取 -- 后面的参数（从 ctx.meta 中获取）
-    # operation_args = ctx.meta.get('protected_args', [])
     
     success = cli_helper.handle_map_operation(domain, dest_group, operation)
     sys.exit(0 if success else 1)

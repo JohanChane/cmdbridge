@@ -223,7 +223,7 @@ class ConfigLoader:
         return final_data
 
 
-# 便捷函数（保持不变）
+# 便捷函数
 def load_parser_config_from_data(config_data: Dict[str, Any], program_name: str) -> ParserConfig:
     """
     便捷函数：从配置数据加载指定程序的解析器配置

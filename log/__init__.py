@@ -1,4 +1,3 @@
-# log/__init__.py
 from .core import Logger
 from .levels import LogLevel
 from typing import Any, Optional, TextIO
@@ -61,7 +60,7 @@ def get_logger() -> Logger:
 def create_logger(level: LogLevel = LogLevel.INFO, 
                   show_timestamp: bool = False,
                   use_icons: bool = True) -> Logger:
-    """创建新的日志器实例"""
+    """创建日志器实例"""
     return Logger(level, show_timestamp, use_icons)
 
 def set_out(out: Optional[TextIO] = None):
@@ -70,7 +69,6 @@ def set_out(out: Optional[TextIO] = None):
 def get_out(out: Optional[TextIO] = None) -> Optional[TextIO]:
     return _global_logger.get_out()
 
-# 导出公共接口
 __all__ = [
     'Logger',
     'LogLevel',
