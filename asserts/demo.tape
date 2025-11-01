@@ -2,9 +2,10 @@
 Output demo.gif
 Set Shell "zsh"
 
-Set FontSize 32
-Set Width 2560
-Set Height 1440
+# Set up a 1200x600 terminal with 42px font.
+Set FontSize 20
+Set Width 1200
+Set Height 800
 
 Set TypingSpeed 0.00
 Type "source ~/.zshrc; cd ~"
