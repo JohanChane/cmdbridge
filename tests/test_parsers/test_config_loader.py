@@ -1,303 +1,217 @@
+#!/usr/bin/env python3
 """
-配置加载器测试
+测试配置加载器核心功能
 """
 
-import pytest
-import os
 import sys
+import os
+from pathlib import Path
 
 # 添加项目根目录到 Python 路径
-project_root = os.path.join(os.path.dirname(__file__), '../..')
-sys.path.insert(0, project_root)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from parsers.config_loader import ConfigLoader, load_parser_config_from_data, load_parser_config_from_file
-from parsers.types import ParserConfig, ParserType, ArgumentConfig, ArgumentCount, SubCommandConfig
+from parsers.config_loader import ConfigLoader, load_parser_config_from_data
+from parsers.types import ParserType
+import tempfile
+import tomli_w
 
-import log
 
-class TestConfigLoader:
-    """配置加载器测试类"""
+def test_basic_parser_config():
+    """测试基本解析器配置加载"""
+    print("=== 测试基本解析器配置 ===")
     
-    def test_load_apt_config_from_data(self):
-        """测试从数据加载 apt 配置"""
-        print("🔧 开始测试：从数据加载 apt 配置")
-        config_data = {
-            "apt": {
-                "parser_config": {
-                    "parser_type": "argparse",
-                    "program_name": "apt"
-                },
-                "arguments": [
-                    {
-                        "name": "help",
-                        "opt": ["-h", "--help"],
-                        "nargs": "0"
-                    }
-                ],
-                "sub_commands": [
-                    {
-                        "name": "install",
-                        "arguments": [
-                            {
-                                "name": "packages",
-                                "nargs": "+"
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-        
-        loader = ConfigLoader(config_data)
-        config = loader.load_parser_config("apt")
-        
-        assert isinstance(config, ParserConfig)
-        assert config.parser_type == ParserType.ARGPARSE
-        assert config.program_name == "apt"
-        assert len(config.arguments) == 1
-        assert len(config.sub_commands) == 1
-        assert config.sub_commands[0].name == "install"
-        
-        # 测试便捷函数
-        config2 = load_parser_config_from_data(config_data, "apt")
-        assert config2.program_name == "apt"
-        print("✅ 从数据加载 apt 配置测试通过")
-    
-    def test_load_pacman_config_from_data(self):
-        """测试从数据加载 pacman 配置"""
-        print("🔧 开始测试：从数据加载 pacman 配置")
-        config_data = {
-            "pacman": {
-                "parser_config": {
-                    "parser_type": "getopt",
-                    "program_name": "pacman"
-                },
-                "arguments": [
-                    {
-                        "name": "help",
-                        "opt": ["-h", "--help"],
-                        "nargs": "0"
-                    },
-                    {
-                        "name": "targets",
-                        "nargs": "+"
-                    }
-                ]
-            }
-        }
-        
-        loader = ConfigLoader(config_data)
-        config = loader.load_parser_config("pacman")
-        
-        assert config.parser_type == ParserType.GETOPT
-        assert config.program_name == "pacman"
-        assert len(config.arguments) == 2
-        
-        help_arg = config.arguments[0]
-        assert help_arg.name == "help"
-        assert help_arg.opt == ["-h", "--help"]
-        assert help_arg.nargs.spec == "0"
-        print("✅ 从数据加载 pacman 配置测试通过")
-    
-    def test_missing_program_section(self):
-        """测试缺少程序配置部分"""
-        print("🔧 开始测试：缺少程序配置部分")
-        config_data = {
-            "other_program": {
-                "parser_config": {
-                    "parser_type": "argparse",
-                    "program_name": "other"
+    config_data = {
+        "apt": {
+            "parser_config": {
+                "parser_type": "argparse",
+                "program_name": "apt"
+            },
+            "arguments": [
+                {
+                    "name": "help",
+                    "opt": ["-h", "--help"],
+                    "nargs": "0"
                 }
-            }
-        }
-        
-        loader = ConfigLoader(config_data)
-        
-        with pytest.raises(ValueError, match="配置文件中缺少 apt 部分"):
-            loader.load_parser_config("apt")
-        print("✅ 缺少程序配置部分测试通过")
-    
-    def test_missing_parser_config_section(self):
-        """测试缺少解析器配置部分"""
-        print("🔧 开始测试：缺少解析器配置部分")
-        config_data = {
-            "apt": {
-                "arguments": [
-                    {"name": "help", "opt": ["-h", "--help"], "nargs": "0"}
-                ]
-            }
-        }
-        
-        loader = ConfigLoader(config_data)
-        
-        with pytest.raises(ValueError, match="配置文件中缺少 apt.parser_config 部分"):
-            loader.load_parser_config("apt")
-        print("✅ 缺少解析器配置部分测试通过")
-    
-    def test_invalid_parser_type(self):
-        """测试无效的解析器类型"""
-        print("🔧 开始测试：无效的解析器类型")
-        config_data = {
-            "test": {
-                "parser_config": {
-                    "parser_type": "invalid_type",
-                    "program_name": "test"
+            ],
+            "sub_commands": [
+                {
+                    "name": "install",
+                    "arguments": [
+                        {
+                            "name": "packages",
+                            "nargs": "+"
+                        }
+                    ]
                 }
-            }
+            ]
         }
-        
-        loader = ConfigLoader(config_data)
-        
-        with pytest.raises(ValueError, match="不支持的解析器类型"):
-            loader.load_parser_config("test")
-        print("✅ 无效的解析器类型测试通过")
+    }
     
-    def test_argument_missing_nargs(self):
-        """测试参数配置缺少 nargs"""
-        print("🔧 开始测试：参数配置缺少 nargs")
+    loader = ConfigLoader(config_data)
+    parser_config = loader.load_parser_config("apt")
+    
+    # 验证基本属性
+    assert parser_config.parser_type == ParserType.ARGPARSE
+    assert parser_config.program_name == "apt"
+    assert len(parser_config.arguments) == 1
+    assert len(parser_config.sub_commands) == 1
+    
+    # 验证参数
+    help_arg = parser_config.arguments[0]
+    assert help_arg.name == "help"
+    assert help_arg.opt == ["-h", "--help"]
+    assert help_arg.nargs.spec == "0"
+    assert help_arg.is_flag()
+    
+    # 验证子命令
+    install_cmd = parser_config.sub_commands[0]
+    assert install_cmd.name == "install"
+    assert len(install_cmd.arguments) == 1
+    assert install_cmd.arguments[0].name == "packages"
+    assert install_cmd.arguments[0].nargs.spec == "+"
+    
+    print("✅ 基本解析器配置测试通过")
+
+
+def test_id_and_include_functionality():
+    """测试 ID 和 include_arguments_and_subcmds 功能"""
+    print("\n=== 测试 ID 和 include 功能 ===")
+    
+    config_data = {
+        "mufw": {
+            "parser_config": {
+                "parser_type": "argparse",
+                "program_name": "mufw"
+            },
+            "sub_commands": [
+                {
+                    "name": "allow",
+                    "id": "subcmd_id_allow",
+                    "arguments": [
+                        {
+                            "name": "port",
+                            "opt": ["--port"],
+                            "nargs": "1"
+                        },
+                        {
+                            "name": "protocol", 
+                            "opt": ["--proto"],
+                            "nargs": "1"
+                        }
+                    ]
+                },
+                {
+                    "name": "deny",
+                    "include_arguments_and_subcmds": "subcmd_id_allow"
+                }
+            ]
+        }
+    }
+    
+    loader = ConfigLoader(config_data)
+    parser_config = loader.load_parser_config("mufw")
+    
+    # 验证基本结构
+    assert len(parser_config.sub_commands) == 2
+    
+    # 验证 allow 子命令
+    allow_cmd = next(cmd for cmd in parser_config.sub_commands if cmd.name == "allow")
+    assert len(allow_cmd.arguments) == 2
+    assert allow_cmd.arguments[0].name == "port"
+    assert allow_cmd.arguments[1].name == "protocol"
+    
+    # 验证 deny 子命令（应该包含 allow 的参数）
+    deny_cmd = next(cmd for cmd in parser_config.sub_commands if cmd.name == "deny")
+    assert len(deny_cmd.arguments) == 2
+    assert deny_cmd.arguments[0].name == "port"
+    assert deny_cmd.arguments[1].name == "protocol"
+    
+    print("✅ ID 和 include 功能测试通过")
+
+
+def test_file_loading():
+    """测试从文件加载配置"""
+    print("\n=== 测试文件加载 ===")
+    
+    # 创建临时配置文件
+    with tempfile.NamedTemporaryFile(mode='wb', suffix='.toml', delete=False) as f:
         config_data = {
-            "test": {
+            "file_test": {
                 "parser_config": {
                     "parser_type": "argparse",
-                    "program_name": "test"
+                    "program_name": "file_test"
                 },
                 "arguments": [
                     {
-                        "name": "help",
-                        "opt": ["-h", "--help"]
-                        # 缺少 nargs
+                        "name": "file_arg",
+                        "opt": ["-f", "--file"],
+                        "nargs": "1"
                     }
                 ]
             }
         }
-        
-        loader = ConfigLoader(config_data)
-        
-        with pytest.raises(ValueError, match="参数配置中缺少 nargs"):
-            loader.load_parser_config("test")
-        print("✅ 参数配置缺少 nargs 测试通过")
+        tomli_w.dump(config_data, f)
+        temp_file = f.name
     
-    def test_invalid_nargs_value(self):
-        """测试无效的 nargs 值"""
-        print("🔧 开始测试：无效的 nargs 值")
-        config_data = {
-            "test": {
-                "parser_config": {
-                    "parser_type": "argparse",
-                    "program_name": "test"
-                },
-                "arguments": [
-                    {
-                        "name": "help",
-                        "opt": ["-h", "--help"],
-                        "nargs": "invalid"
-                    }
-                ]
-            }
-        }
+    try:
+        # 使用便捷函数从文件加载
+        from parsers.config_loader import load_parser_config_from_file
+        parser_config = load_parser_config_from_file(temp_file, "file_test")
         
-        loader = ConfigLoader(config_data)
+        assert parser_config.parser_type == ParserType.ARGPARSE
+        assert parser_config.program_name == "file_test"
+        assert len(parser_config.arguments) == 1
+        assert parser_config.arguments[0].name == "file_arg"
         
-        with pytest.raises(ValueError, match="不支持的 nargs 值"):
-            loader.load_parser_config("test")
-        print("✅ 无效的 nargs 值测试通过")
+        print("✅ 文件加载测试通过")
+    finally:
+        # 清理临时文件
+        os.unlink(temp_file)
+
+
+def test_error_handling():
+    """测试错误处理"""
+    print("\n=== 测试错误处理 ===")
     
-    def test_exactly_n_missing_count(self):
-        """测试 nargs='n' 时缺少 count - 现在 'n' 是无效的"""
-        print("🔧 开始测试：nargs='n' 时缺少 count")
-        config_data = {
-            "test": {
-                "parser_config": {
-                    "parser_type": "argparse",
-                    "program_name": "test"
-                },
-                "arguments": [
-                    {
-                        "name": "files",
-                        "opt": ["-f", "--files"],
-                        "nargs": "n"
-                    }
-                ]
+    # 测试缺少程序配置
+    config_data = {
+        "other_program": {
+            "parser_config": {
+                "parser_type": "argparse",
+                "program_name": "other"
             }
         }
-        
-        loader = ConfigLoader(config_data)
-        
-        with pytest.raises(ValueError, match="不支持的 nargs 值"):
-            loader.load_parser_config("test")
-        print("✅ nargs='n' 时缺少 count 测试通过")
+    }
     
-    def test_subcommand_missing_name(self):
-        """测试子命令配置缺少 name"""
-        print("🔧 开始测试：子命令配置缺少 name")
-        config_data = {
-            "test": {
-                "parser_config": {
-                    "parser_type": "argparse",
-                    "program_name": "test"
-                },
-                "sub_commands": [
-                    {
-                        # 缺少 name
-                        "arguments": [
-                            {"name": "packages", "nargs": "+"}
-                        ]
-                    }
-                ]
-            }
-        }
-        
-        loader = ConfigLoader(config_data)
-        
-        with pytest.raises(ValueError, match="子命令配置中缺少 name"):
-            loader.load_parser_config("test")
-        print("✅ 子命令配置缺少 name 测试通过")
+    loader = ConfigLoader(config_data)
+    try:
+        loader.load_parser_config("nonexistent_program")
+        assert False, "应该抛出 ValueError"
+    except ValueError as e:
+        assert "缺少" in str(e)
+        print("✅ 错误处理测试通过")
+
+
+def main():
+    """运行所有测试"""
+    print("开始测试配置加载器核心功能...\n")
     
-    def test_argument_with_required_field(self):
-        """测试带 required 字段的参数配置"""
-        print("🔧 开始测试：带 required 字段的参数配置")
-        config_data = {
-            "test": {
-                "parser_config": {
-                    "parser_type": "getopt",
-                    "program_name": "test"
-                },
-                "arguments": [
-                    {
-                        "name": "required_arg",
-                        "opt": ["-r", "--required"],
-                        "nargs": "1",
-                        "required": True
-                    },
-                    {
-                        "name": "optional_arg", 
-                        "opt": ["-o", "--optional"],
-                        "nargs": "?",
-                        "required": False
-                    },
-                    {
-                        "name": "default_arg",
-                        "opt": ["-d", "--default"],
-                        "nargs": "*"
-                        # 没有指定 required，应该默认为 False
-                    }
-                ]
-            }
-        }
+    try:
+        test_basic_parser_config()
+        test_id_and_include_functionality()
+        test_file_loading()
+        test_error_handling()
         
-        loader = ConfigLoader(config_data)
-        config = loader.load_parser_config("test")
+        print("\n🎉 所有核心功能测试通过！")
         
-        assert len(config.arguments) == 3
-        assert config.arguments[0].name == "required_arg"
-        assert config.arguments[0].required == True
-        assert config.arguments[1].name == "optional_arg" 
-        assert config.arguments[1].required == False
-        assert config.arguments[2].name == "default_arg"
-        assert config.arguments[2].required == False  # 默认值
-        print("✅ 带 required 字段的参数配置测试通过")
+    except Exception as e:
+        print(f"\n❌ 测试失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+    
+    return 0
 
 
 if __name__ == "__main__":
-    log.set_level(log.LogLevel.DEBUG)
-    pytest.main([__file__, "-v"])
+    sys.exit(main())

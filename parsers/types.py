@@ -268,11 +268,17 @@ class ParserConfig:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ParserConfig':
         """从字典反序列化"""
+        parser_type_str = data.get("parser_type")
+        if parser_type_str:
+            parser_type = ParserType(parser_type_str)
+        else:
+            parser_type = ParserType.ARGPARSE
+        
         return cls(
-            parser_type=ParserType(data["parser_type"]),
-            program_name=data["program_name"],
-            arguments=[ArgumentConfig.from_dict(arg_data) for arg_data in data["arguments"]],
-            sub_commands=[SubCommandConfig.from_dict(sub_cmd_data) for sub_cmd_data in data["sub_commands"]]
+            parser_type=parser_type,
+            program_name=data.get("program_name", ""),  # 必需字段但提供默认值
+            arguments=[ArgumentConfig.from_dict(arg_data) for arg_data in data.get("arguments", [])],
+            sub_commands=[SubCommandConfig.from_dict(sub_cmd_data) for sub_cmd_data in data.get("sub_commands", [])]
         )
     
     def find_argument(self, opt_name: str) -> Optional[ArgumentConfig]:
