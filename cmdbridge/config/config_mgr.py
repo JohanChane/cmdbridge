@@ -140,7 +140,22 @@ class ConfigMgr:
                         f.write(default_config)
                     info("  已创建默认: config.toml")
             
+            # 复制 README
+            readme_files = list(default_configs_dir.glob("README*"))
+            if readme_files:
+                info("复制 README 文件...")
+                for readme_file in readme_files:
+                    dest_readme_file = self.path_manager.config_dir / readme_file.name
+                    if not dest_readme_file.exists():
+                        shutil.copy2(readme_file, dest_readme_file)
+                        info(f"  已复制: {readme_file.name}")
+                    else:
+                        info(f"  跳过已存在的: {readme_file.name}")
+            else:
+                info("未找到 README 文件，跳过复制")
+
             return True
         except Exception as e:
             error(f"初始化配置失败: {e}")
             return False
+        
