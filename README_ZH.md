@@ -2,7 +2,7 @@
 
 一个根据命令行语法解析来转换命令行的工具。
 
-<img alt="Welcome to CmdBridge" src="https://github.com/user-attachments/assets/da132b90-ef25-48dd-b6d2-5734dfa7f75d"/>
+<img alt="Welcome to CmdBridge" src="https://github.com/user-attachments/assets/238030ec-1e44-4ff9-95f2-44a146f87164"/>
 
 ## 安装
 
