@@ -2,6 +2,8 @@
 
 一个根据命令行语法解析来转换命令行的工具。
 
+<img alt="Welcome to CmdBridge" src="https://github.com/user-attachments/assets/da132b90-ef25-48dd-b6d2-5734dfa7f75d"/>
+
 ## 安装
 
 ### 从源码安装
