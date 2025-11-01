@@ -191,7 +191,8 @@ class ArgumentConfig:
 @dataclass
 class SubCommandConfig:
     """子命令配置"""
-    name: str                              # 子命令名称
+    name: str                                           # 子命令名称
+    alias: List[str] = field(default_factory=list)      # 子命令的别名。e.g. `brew list/ls -v pkg`
     arguments: List[ArgumentConfig] = field(default_factory=list)  # 子命令参数
     sub_commands: List['SubCommandConfig'] = field(default_factory=list)  # 🔧 新增：嵌套子命令
     description: Optional[str] = None      # 子命令描述
@@ -203,6 +204,11 @@ class SubCommandConfig:
             "arguments": [arg.to_dict() for arg in self.arguments],
             "sub_commands": [sub_cmd.to_dict() for sub_cmd in self.sub_commands],
         }
+
+        # 只有非空的 alias 才包含
+        if self.alias:
+            result["alias"] = self.alias
+
         # 只有非 None 的 description 才包含
         if self.description is not None:
             result["description"] = self.description
@@ -213,6 +219,7 @@ class SubCommandConfig:
         """从字典反序列化"""
         return cls(
             name=data["name"],
+            alias=data.get("alias", []),
             arguments=[ArgumentConfig.from_dict(arg_data) for arg_data in data["arguments"]],
             sub_commands=[SubCommandConfig.from_dict(sub_cmd_data) for sub_cmd_data in data["sub_commands"]],
             description=data.get("description")  # 允许为 None
@@ -230,6 +237,16 @@ class SubCommandConfig:
             if arg.is_positional():
                 return arg
         return None
+
+    def matches_subcmd_name(self, subcmd_name: str) -> bool:
+        """检查子命令名称是否匹配（包括别名）"""
+        if subcmd_name == self.name:
+            return True
+        
+        if subcmd_name in self.alias:
+            return True
+        
+        return False
 
 @dataclass
 class ParserConfig:

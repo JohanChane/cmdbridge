@@ -295,7 +295,7 @@ class ArgparseParser(BaseParser):
                 if nested_subcmd_config is not None:
                     tokens.append(CommandToken(
                         token_type=TokenType.SUBCOMMAND,
-                        values=[arg]
+                        values=[nested_subcmd_config.name]        # 要使用配置的名称, 因为有别名
                     ))
                     subcmd_tokens = ArgparseParser._tokenize_arguments(args[arg_idx + 1:], nested_subcmd_config.arguments, nested_subcmd_config.sub_commands)
                     tokens.extend(subcmd_tokens)
@@ -346,7 +346,7 @@ class ArgparseParser(BaseParser):
     @staticmethod
     def _find_subcmd_config(sub_cmd_name: str, sub_commands: List[SubCommandConfig]) -> Optional[SubCommandConfig]:
         for subcmd in sub_commands:
-            if sub_cmd_name == subcmd.name:
+            if subcmd.matches_subcmd_name(sub_cmd_name):
                 return subcmd
         return None
 

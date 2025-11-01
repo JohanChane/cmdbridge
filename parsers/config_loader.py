@@ -185,46 +185,42 @@ class ConfigLoader:
 
     def _parse_single_sub_command(self, sub_cmd_data: dict) -> SubCommandConfig:
         """解析单个子命令配置"""
-        sub_command_name = sub_cmd_data.get("name")
-        if not sub_command_name:
-            raise ValueError("子命令配置中缺少 name")
+        # 获取最终配置数据
+        final_data = self._get_final_sub_command_data(sub_cmd_data)
         
-        # 处理 include_arguments_and_subcmds
-        if "include_arguments_and_subcmds" in sub_cmd_data:
-            template_id = sub_cmd_data["include_arguments_and_subcmds"]
-            if template_id not in self._id_templates:
-                raise ValueError(f"未找到模板: {template_id}")
-            
-            # 使用预处理后的模板数据
-            template_data = self._id_templates[template_id]
-            
-            # 深度复制模板内容
-            sub_cmd_arguments = []
-            if "arguments" in template_data:
-                sub_cmd_arguments = self._parse_arguments(template_data["arguments"])
-            
-            nested_sub_commands = []
-            if "sub_commands" in template_data:
-                nested_sub_commands = self._parse_sub_commands(template_data["sub_commands"])
-        else:
-            # 正常解析子命令的参数
-            sub_cmd_arguments = []
-            if "arguments" in sub_cmd_data:
-                sub_cmd_arguments = self._parse_arguments(sub_cmd_data["arguments"])
-            
-            # 递归解析嵌套子命令
-            nested_sub_commands = []
-            if "sub_commands" in sub_cmd_data:
-                nested_sub_commands = self._parse_sub_commands(sub_cmd_data["sub_commands"])
-        
+        # 创建基础对象
         sub_command = SubCommandConfig(
-            name=sub_command_name,
-            arguments=sub_cmd_arguments,
-            sub_commands=nested_sub_commands,
-            description=sub_cmd_data.get("description")
+            name=final_data["name"],
+            alias=final_data.get("alias", []),
+            arguments=[],
+            sub_commands=[],
+            description=final_data.get("description")
         )
         
+        # 替换需要解析的字段
+        sub_command.arguments = self._parse_arguments(final_data.get("arguments", []))
+        sub_command.sub_commands = self._parse_sub_commands(final_data.get("sub_commands", []))
+        
         return sub_command
+
+    def _get_final_sub_command_data(self, sub_cmd_data: dict) -> dict:
+        """获取最终的子命令配置数据（处理模板引用）"""
+        if "include_arguments_and_subcmds" not in sub_cmd_data:
+            return sub_cmd_data
+        
+        template_id = sub_cmd_data["include_arguments_and_subcmds"]
+        if template_id not in self._id_templates:
+            raise ValueError(f"未找到模板: {template_id}")
+        
+        # 合并配置
+        template_data = self._id_templates[template_id].copy()
+        final_data = {**template_data, **sub_cmd_data}
+        
+        # 清理模板特定字段
+        final_data.pop("id", None)
+        final_data.pop("include_arguments_and_subcmds", None)
+        
+        return final_data
 
 
 # 便捷函数（保持不变）
