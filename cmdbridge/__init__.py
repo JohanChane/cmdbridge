@@ -1,6 +1,6 @@
 """CmdBridge - Universal Command Mapping Program"""
 
-__version__ = "1.0.0"
+__version__ = "0.1.0"
 __author__ = "CmdBridge Developer"
 
 # 导入主要模块以便可以直接从包级别访问

@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="cmdbridge",
-    version="1.0.0",
+    version="0.1.0",
     packages=find_packages(),
     install_requires=[
         "click>=8.1.0",  # 更新到支持 CompletionItem 的版本
