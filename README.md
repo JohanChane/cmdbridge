@@ -1,20 +1,16 @@
-# CmdBridge - Intelligent Command Mapping Tool
+# CmdBridge
 
-A powerful command-line tool for intelligently mapping commands between different package managers. Let you use familiar package manager syntax on any system!
+A tool for converting command lines based on command-line syntax parsing.
 
-## 🌟 Features
+## Languages
 
-- **Multi-Package Manager Support**: pacman, apt, dnf, brew, zypper
-- **Intelligent Command Parsing**: Automatically recognizes command intent (install, search, update, etc.)
-- **Flexible Mapping**: Map any package manager command to target package manager
-- **Safe Execution**: Interactive confirmation and force execution modes
-- **Easy Extensibility**: Modular design based on configuration files (command mapping implemented via configuration)
-- **Detailed Debugging**: Rich log output and debug information
+[中文](./README_ZH.md)
 
 ## Installation
 
+### Install from Source
+
 ```sh
-# Install from source
 git clone https://github.com/your-username/cmdbridge.git
 cd cmdbridge
 pipx install .
@@ -24,228 +20,201 @@ pipx install .
 
 #### zsh
 
+<details>
+<summary>zshrc</summary>
+
 ```sh
-if command -v cmdbridge &>/dev/null; then
-  eval "$(_CMDBRIDGE_COMPLETE=zsh_source cmdbridge)"
-fi
+# cmdbridge completion
+eval "$(_CMDBRIDGE_COMPLETE=zsh_source cmdbridge)"
 
-if command -v cmdbridge-edit &>/dev/null; then
-  eval "$(_CMDBRIDGE_EDIT_COMPLETE=zsh_source cmdbridge-edit)"
-fi
+# cmdbridge-edit completion
+eval "$(_CMDBRIDGE_EDIT_COMPLETE=zsh_source cmdbridge-edit)"
 
-alias am="cmdbridge"
+# Custom completion function (also, completions after `--` do not use escape characters)
+_cmdbridge_custom_complete() {
+    local -a completions
+    local -a completions_with_descriptions
+    local -a response
+    (( ! $+commands[cmdbridge] )) && return 1
 
-cmde() {
-  local cmd
+    response=("${(@f)$(env COMP_WORDS="${words[*]}" COMP_CWORD=$((CURRENT-1)) _CMDBRIDGE_COMPLETE=zsh_complete cmdbridge)}")
+
+    for type key descr in ${response}; do
+        if [[ "$type" == "no_escape" ]]; then
+            # Special handling: no escaping
+            completions+=("$key")
+        elif [[ "$type" == "plain" ]]; then
+            if [[ "$descr" == "_" ]]; then
+                completions+=("$key")
+            else
+                completions_with_descriptions+=("$key":"$descr")
+            fi
+        fi
+    done
+
+    if [ -n "$completions_with_descriptions" ]; then
+        _describe -V unsorted completions_with_descriptions -U
+    fi
+
+    if [ -n "$completions" ]; then
+        # Key: use the -Q option to avoid escaping
+        compadd -Q -U -V unsorted -a completions
+    fi
+}
+
+_cmdbridge_edit_custom_complete() {
+    local -a completions
+    local -a completions_with_descriptions
+    local -a response
+    (( ! $+commands[cmdbridge-edit] )) && return 1
+
+    response=("${(@f)$(env COMP_WORDS="${words[*]}" COMP_CWORD=$((CURRENT-1)) _CMDBRIDGE_EDIT_COMPLETE=zsh_complete cmdbridge-edit)}")
+
+    for type key descr in ${response}; do
+        if [[ "$type" == "no_escape" ]]; then
+            # Special handling: no escaping
+            completions+=("$key")
+        elif [[ "$type" == "plain" ]]; then
+            if [[ "$descr" == "_" ]]; then
+                completions+=("$key")
+            else
+                completions_with_descriptions+=("$key":"$descr")
+            fi
+        fi
+    done
+
+    if [ -n "$completions_with_descriptions" ]; then
+        _describe -V unsorted completions_with_descriptions -U
+    fi
+
+    if [ -n "$completions" ]; then
+        # Key: use the -Q option to avoid escaping
+        compadd -Q -U -V unsorted -a completions
+    fi
+}
+
+# Register completion functions
+compdef _cmdbridge_custom_complete cmdbridge
+#compdef _cmdbridge_edit_custom_complete cmdbridge-edit
+
+# bbe wrapper function - alias for cmdbridge-edit
+bbe() {
+  local output
   output="$(command cmdbridge-edit "$@" 2>&1)"
   local ret=$?
 
   case $ret in
-    113) print -z -- "$output" ;;   # Return code 113 indicates successful mapping
-    0)   echo "$output" ;;
-    *)   echo "$output" >&2 ;;
+    113) print -z -- "$output" ;;  # Special exit code: populate command line with output
+    0)   echo "$output" ;;         # Normal exit: display output
+    *)   echo "$output" >&2        # Error exit: display to stderr
+         return $ret ;;
   esac
 }
-compdef cmde=cmdbridge-edit
+
+# Also register completion for bbe
+compdef _cmdbridge_edit_custom_complete bbe
 ```
+
+</details>
 
 ## Basic Usage
 
-init-config and set default target cmdbridge:
+Initialize config and refresh cache:
 
 ```sh
-# Initialize user configuration (first-time use)
-cmdbridge-config --init-config
+# Initialize user config (first-time use)
+cmdbridge config init
 
-# Edit ~/.config/cmdbridge/config.toml, configure default
-default_target_cmdbridge = "<your default target>"  # `cmdbridge -t, --target` will override this option
+# Refresh cache after every config update
+cmdbridge cache refresh
 ```
 
-cmde: Put the mapped command into the line editor
--   map: Automatically detect commands after map to map to target cmdbridge
--   op: Use operation name to map commands
+bbe: Places the mapped command into the line editor.
+-   map: Automatically detects the source command and maps it to the target command.
+-   op: Uses the operation name to map commands.
 
-cmde map:
+bbe map:
 
 ```sh
-cmde map -- pacman -S vim git         # If target cmdbridge is `apt`, generates `apt install vim git`
-# If you forget pip command to show package info, you can use any familiar way to edit
-cmde -t pip map -- pacman -Si neovim  # pip show neovim
-cmde -t pip map -- brew info neovim   # pip show neovim
+bbe map -t apt -- pacman -S vim git         # Maps to `apt install vim git`
+# If you forget the pip command to show package info, you can use any familiar way to execute it
+bbe map -t pip -- pacman -Si neovim         # pip show neovim
+bbe map -t pip -- brew info neovim          # pip show neovim
 ```
 
-cmde op:
+bbe op:
 
-```sh
-cmde op -- install vim git           # If target cmdbridge is `pacman`, generates `pacman -S vim git`
-cmde -t pip op -- info neovim        # Generates `pip show neovim`
+```
+bbe op -t pacman -- install vim git           # Maps to `pacman -S vim git`
+bbe op -t pip -- info neovim                  # Maps to `pip show neovim`
 
-# If there's an operation grep_log: cat foo.log bar.log | grep -i '{log_level}' | grep -i '{log_msg}'
-cmde op -- grep_log foo.log bar.log == ERROR == write
-# Will generate cat foo.log bar.log | grep -i 'ERROR' | grep -i 'write'
+# If there is an action grep_log: cat foo.log bar.log | grep -i '{log_level}' | grep -i '{log_msg}'
+bbe op -t <dest_operation_group> -- grep_log "foo.log bar.log" "ERROR" "write"
+# Generates cat foo.log bar.log | grep -i 'ERROR' | grep -i 'write'
 ```
 
-list cmdbridge:
+List command mappings:
 
 ```sh
-cmdbridge --list-cmdbridges
+cmdbridge list cmd-mappings -s apt -t pacman
 ```
 
-output cmdbridge mapping:
+List operation commands:
 
 ```sh
-cmdbridge --output-cmdbridge pacman apt
+cmdbridge list op-cmds -t pacman
 ```
 
 ## 🎯 Usage Examples
 
-### Use Your Familiar Package Manager to Install vim git
+### Use your familiar package manager to install vim git
 
 ```sh
 # debian
-cmde map -- apt install vim git
+bbe map -t apt -- apt install vim git
 # arch
-cmde map -- pacman -S search vim git
+bbe map -t apt -- pacman -S search vim git
 ```
 
-### Use Your Familiar Operation to Install vim git
+### Use your familiar operation name to install vim git
 
 ```sh
-# use `install` operation
-cmdbridge op -- install vim git
+# use `install_remote` operation
+cmdbridge op -t pacman -- install_remote vim git
 ```
 
-### Temporarily Switch Targets
+### Temporarily switch targets
 
-```sh
-# If you forget pip command to show package info, you can use any familiar way to edit
-cmdbridge-edit -t pip map -- pacman -Si <pkg>   # Will map to: pip show <pkg>
+```
+# If you forget the pip command to show package information, you can use any familiar way to execute it
+cmdbridge map -t pip -- pacman -Si <pkg>   # Maps to: pip show <pkg>
 # OR
-cmdbridge-edit -t pip map -- brew info <pkg>
+cmdbridge map -t pip -- brew info <pkg>
 ```
 
 ### cmdbridge
 
-cmdbridge: The difference from cmde is that it only outputs the mapped command
--   map: Same usage as cmde map
--   op: Same usage as cmde op
+cmdbridge: The difference from bbe is that it only outputs the mapped command.
 
 ```sh
-# Map apt command to target cmdbridge
-cmdbridge map -- apt install vim git
-# If target_cmdbridge is "pacman", maps to: pacman -S vim git
-
-# Map pacman command to apt cmdbridge
-cmdbridge -t apt map -- pacman -S vim git  # Maps to: apt install vim git
-
-# View mapping from pacman cmdbridge to apt cmdbridge
-cmdbridge --output-cmdbridge pacman apt
+cmdbridge map -t pacman -- apt install vim git  # Maps to `pacman -S vim git`
+cmdbridge map -t apt -- pacman -S vim git       # Maps to `apt install vim git`
+cmdbridge list cmd-mappings -s pacman -t apt    # View mappings from the `pacman` operation group to the `apt` operation group
 ```
 
 cmdbridge op:
 
 ```sh
-cmdbridge op -- install vim git
-# If target_cmdbridge is "pacman", edit: pacman -S vim git
+cmdbridge op -t pacman -- install vim git       # Maps to `pacman -S vim git`
 ```
 
-## Using cmdbridge-config to Manage cmdbridge Configuration
+## Docs
 
-```sh
-# Initialize user configuration (creates ~/.config/cmdbridge/)
-cmdbridge-config --init-config
+-   [configs](./docs/configs.md)
+-   [cmdbridge_clis](./docs/cmdbridge_clis.md)
 
-# Use cmdbridges
-cmdbridge-config --use-cmdbridges pacman,apt,dnf,brew,zypper,scoop,winget,chocolatey
+See [ref](./docs)
 
-# Add cmdbridges
-cmdbridge-config --add-cmdbridges brew,scoop,winget
+## Useful Configurations
 
-# View supported cmdbridges
-cmdbridge-config --list-cmdbridges
-```
-
-## `cmdbridge-config` cmdbridge Configuration
-
-### Configured cmdbridges
-
-```sh
-cmdbridge --list-cmdbridges
-```
-
-```
-ℹ️ INFO: 📦 Package managers in current configuration:
-  ✅ apt - supports 15 operations
-  ✅ brew - supports 15 operations
-  ✅ cargo - supports 8 operations
-  ✅ chocolatey - supports 15 operations
-  ✅ dnf - supports 15 operations
-  ✅ npm - supports 8 operations
-  ✅ pacman - supports 15 operations
-  ✅ pip - supports 10 operations
-  ✅ scoop - supports 15 operations
-  ✅ winget - supports 15 operations
-  ✅ zypper - supports 15 operations
-```
-
-### output-cmdbridge examples
-
-pacman -> apt:
-
-```sh
-cmdbridge --output-cmdbridge pacman apt
-```
-
-```
-================================================================================
-Status Operation          Source Command            Target Command
---------------------------------------------------------------------------------
-✅    install         pacman -S {pkgs}          apt install {pkgs}
-✅    remove          pacman -R {pkgs}          apt remove {pkgs}
-✅    search          pacman -Ss {pkgs}         apt search {pkgs}
-✅    update          pacman -Sy                apt update
-✅    upgrade         pacman -Syu               apt upgrade
-✅    force_update    pacman -Syy               apt update --refresh-all
-✅    force_upgrade   pacman -Syyu              apt update --refresh-all && apt upgrade
-✅    info            pacman -Si {pkgs}         apt show {pkgs}
-✅    list_installed  pacman -Q                 apt list --installed
-✅    clean           pacman -Sc                apt autoclean
-✅    help            pacman -h                 apt --help
-✅    list_files      pacman -Ql {pkgs}         dpkg -L {pkgs}
-✅    find_file_owner pacman -Qo {files}        dpkg -S {files}
-✅    find_file_owner_remote pacman -F {files}         apt-file search {files}
-✅    download_source asp export {pkgs}         apt source {pkgs}
-================================================================================
-```
-
-pacman -> pip:
-
-```sh
-cmdbridge --output-cmdbridge pacman pip
-```
-
-```
-================================================================================
-Status Operation          Source Command            Target Command
---------------------------------------------------------------------------------
-✅    install         pacman -S {pkgs}          pip install {pkgs}
-✅    remove          pacman -R {pkgs}          pip uninstall {pkgs}
-✅    search          pacman -Ss {pkgs}         pip search {pkgs}
-✅    update          pacman -Sy                pip install --upgrade pip
-✅    upgrade         pacman -Syu               pip install --upgrade {pkgs}
-❌    force_update    pacman -Syy               Not supported
-❌    force_upgrade   pacman -Syyu              Not supported
-✅    info            pacman -Si {pkgs}         pip show {pkgs}
-✅    list_installed  pacman -Q                 pip list
-✅    clean           pacman -Sc                pip cache purge
-✅    help            pacman -h                 pip --help
-❌    list_files      pacman -Ql {pkgs}         Not supported
-❌    find_file_owner pacman -Qo {files}        Not supported
-❌    find_file_owner_remote pacman -F {files}         Not supported
-✅    download_source asp export {pkgs}         pip download {pkgs}
-================================================================================
-```
-
-## CmdBridge Configuration Format Reference
-
-See [ref](./doc/cmdbridge_config.md)
+-   [cmdbridge-configs](https://github.com/JohanChane/cmdbridge-configs)
