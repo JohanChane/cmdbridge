@@ -429,40 +429,21 @@ class CacheMgr:
         return stats
 
     def remove_cmd_mapping(self, domain_name: str = None) -> bool:
-        """
-        刷新命令映射缓存
-        
-        删除指定领域的缓存文件，然后重新生成
-        
-        Args:
-            domain_name: 领域名称，如果为 None 则刷新所有领域
-            
-        Returns:
-            bool: 操作是否成功
-        """
-        try:
-            # 使用 PathManager 的删除方法
-            success = self.path_manager.rm_cmd_mappings_dir(domain_name)
-            
-            if success:
-                # 重新创建目录结构
-                if domain_name is None:
-                    # 为所有领域重新创建目录
-                    domains = self.path_manager.get_domains_from_config()
-                    for domain in domains:
-                        self.path_manager.ensure_cmd_mappings_domain_dir(domain)
-                else:
-                    # 为指定领域重新创建目录
-                    self.path_manager.ensure_cmd_mappings_domain_dir(domain_name)
-                
-                return True
-            else:
-                return False
-                
-        except Exception as e:
-            error(f"刷新命令映射失败: {e}")
-            return False
+        """刷新命令映射缓存（兼容性方法）"""
+        return self.path_manager.rm_cmd_mappings_dir(domain_name)
 
+    def remove_operation_mapping(self, domain_name: str = None) -> bool:
+        """删除操作映射缓存"""
+        return self.path_manager.rm_operation_mappings_dir(domain_name)
+
+    def remove_parser_config_cache(self) -> bool:
+        """删除解析器配置缓存"""
+        return self.path_manager.rm_program_parser_config_dir()
+
+    def remove_all_cache(self) -> bool:
+        """删除所有缓存"""
+        return self.path_manager.rm_all_cache_dirs()
+    
     def merge_all_domain_configs(self) -> bool:
         """合并所有领域配置
         

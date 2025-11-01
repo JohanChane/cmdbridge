@@ -233,7 +233,11 @@ class CmdBridge:
     def refresh_cmd_mappings(self) -> bool:
         """刷新所有命令映射缓存"""
         try:
-            success = self.cache_mgr.remove_cmd_mapping()
+            # 1. 删除所有缓存目录
+            success = self.cache_mgr.remove_all_cache()
+            if not success:
+                return False
+            
             if success:
                 # 1. 先刷新解析器配置缓存
                 self.parser_cache_mgr.generate_parser_config_cache()

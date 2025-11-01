@@ -315,6 +315,50 @@ class PathManager:
             error(f"删除命令映射目录失败: {e}")
             return False
 
+    def rm_operation_mappings_dir(self, domain_name: Optional[str] = None) -> bool:
+        """删除操作映射目录"""
+        try:
+            if domain_name is None:
+                # 删除所有操作映射目录
+                operation_mappings_dir = self._cache_dir / "operation_mappings"
+                if operation_mappings_dir.exists():
+                    shutil.rmtree(operation_mappings_dir)
+                    debug(f"已删除所有操作映射目录: {operation_mappings_dir}")
+                return True
+            else:
+                # 删除指定领域的操作映射目录
+                domain_operation_mappings_dir = self.get_operation_mappings_domain_dir_of_cache(domain_name)
+                if domain_operation_mappings_dir.exists():
+                    shutil.rmtree(domain_operation_mappings_dir)
+                    debug(f"已删除 {domain_name} 领域的操作映射目录: {domain_operation_mappings_dir}")
+                return True
+        except Exception as e:
+            error(f"删除操作映射目录失败: {e}")
+            return False
+
+    def rm_program_parser_config_dir(self) -> bool:
+        """删除程序解析器配置缓存目录"""
+        try:
+            parser_config_dir = self.get_parser_config_dir_of_cache()
+            if parser_config_dir.exists():
+                shutil.rmtree(parser_config_dir)
+                debug(f"已删除程序解析器配置缓存目录: {parser_config_dir}")
+            return True
+        except Exception as e:
+            error(f"删除程序解析器配置缓存目录失败: {e}")
+            return False
+
+    def rm_all_cache_dirs(self) -> bool:
+        """删除所有缓存目录"""
+        try:
+            success1 = self.rm_cmd_mappings_dir()
+            success2 = self.rm_operation_mappings_dir()
+            success3 = self.rm_program_parser_config_dir()
+            return success1 and success2 and success3
+        except Exception as e:
+            error(f"删除所有缓存目录失败: {e}")
+            return False
+        
     def get_domains_from_config(self) -> List[str]:
         """
         列出所有可用的领域名称
