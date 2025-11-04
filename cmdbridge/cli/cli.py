@@ -103,6 +103,11 @@ def cmd_mappings(cli_helper, domain, source_group, dest_group):
     """
     cli_helper.handle_list_cmd_mappings(domain, source_group, dest_group)
 
+@list.command()
+@click.pass_obj
+def all(cli_helper):
+    """Display support status for all domains, operation groups, and operations"""
+    cli_helper.handle_list_all()
 
 @cli.command()
 @click.option('-d', '--domain', type=DomainType(), help='Domain name')

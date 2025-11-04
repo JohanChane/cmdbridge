@@ -6,6 +6,7 @@ from log import set_level, LogLevel, error
 from cmdbridge.cmdbridge import CmdBridge
 from cmdbridge.cache.cache_mgr import CacheMgr
 from ..cli_common import CommonCliHelper
+from cmdbridge.config.path_manager import PathManager
 
 class CmdBridgeCLIHelper:
     """cmdbridge command line helper class - handles CLI business logic"""
@@ -144,3 +145,60 @@ class CmdBridgeCLIHelper:
         # Output aligned results        
         for operation, source, target in operation_data:
             click.echo(f"{operation:<{max_op_len}} {source:<{max_source_len}} -> {target}")
+
+    def handle_list_all(self) -> None:
+        """Display support status for all domains, operation groups, and operations (in a formatted matrix)"""
+        cache_mgr = CacheMgr.get_instance()
+        domains = cache_mgr.get_domains()
+        for domain in sorted(domains):
+            click.secho(f"## {domain}", fg="green", bold=True)
+            
+            operation_groups = sorted(cache_mgr.get_operation_groups(domain))
+            all_operations = sorted(cache_mgr.get_all_operations(domain))
+            
+            if not operation_groups or not all_operations:
+                click.echo("  No operations defined")
+                continue
+            
+            # Calculate column widths
+            max_op_len = max(len(op) for op in all_operations)
+            group_width = 10
+            
+            # Print table header
+            header = " " * (max_op_len + 2)
+            for group in operation_groups:
+                display_group = group[:group_width] 
+                header += f"{display_group:^{group_width}}"
+            click.secho(header, fg="blue")
+            
+            # Print separator line
+            separator_len = max_op_len + 2 + len(operation_groups) * group_width
+            separator = "-" * separator_len
+            click.echo(separator)
+            
+            # Print support status for each operation
+            for operation in all_operations:
+                line = f"{operation:<{max_op_len}}  "
+                
+                for group in operation_groups:
+                    # Check the return type of is_operation_supported
+                    supported_result = cache_mgr.is_operation_supported(domain, operation, group)
+                    
+                    # Ensure the result is boolean
+                    if isinstance(supported_result, bool):
+                        supported = supported_result
+                    else:
+                        # Convert to boolean if not already
+                        supported = bool(supported_result)
+                    
+                    if supported:
+                        symbol = "✓"  # Temporarily not using colors to exclude color code impact
+                    else:
+                        symbol = "✗"
+                    
+                    # Use string formatting directly to avoid alignment issues from color codes
+                    line += f"{symbol:^{group_width}}"
+                
+                click.echo(line)
+            
+            click.echo("")

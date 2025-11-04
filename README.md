@@ -201,6 +201,7 @@ cmdbridge: The difference from bbe is that it only outputs the mapped command.
 ```sh
 cmdbridge map -t pacman -- apt install vim git  # Maps to `pacman -S vim git`
 cmdbridge map -t apt -- pacman -S vim git       # Maps to `apt install vim git`
+cmdbridge list all
 cmdbridge list cmd-mappings -s pacman -t apt    # View mappings from the `pacman` operation group to the `apt` operation group
 ```
 

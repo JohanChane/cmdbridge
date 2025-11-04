@@ -197,6 +197,7 @@ cmdbridge: 和 bbe 的区别是, 它只是输出映射后的命令。
 ```sh
 cmdbridge map -t pacman -- apt install vim git  # 映射为 `pacman -S vim git`
 cmdbridge map -t apt -- pacman -S vim git       # 映射为 `apt install vim git`
+cmdbridge list all
 cmdbridge list cmd-mappings -s pacman -t apt    # 查看 `pacman` operation group 到 `pacman` operation group 的映射
 ```
 
