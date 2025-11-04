@@ -220,4 +220,8 @@ See [ref](./docs)
 
 ## Useful Configurations
 
--   [cmdbridge-configs](https://github.com/JohanChane/cmdbridge-configs)
+Generally speaking, there is no need to learn the configuration syntax of cmdbridge. I will maintain a set of useful configurations:
+- [cmdbridge-configs](https://github.com/JohanChane/cmdbridge-configs)
+  - Currently, package management and firewall management have been added. Repository management (git/svn), process management (ps), etc., will be added later.
+
+If you are familiar with the configuration syntax of cmdbridge, you can customize your own set of configurations or submit a PR to the repository above.

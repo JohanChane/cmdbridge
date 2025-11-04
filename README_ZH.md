@@ -216,4 +216,8 @@ See [ref](./docs)
 
 ## 比较实用的配置
 
+一般来说, 是不用学习 cmdbridge 的配置语法的。我会维护一个比较实用的配置:
 -   [cmdbridge-configs](https://github.com/JohanChane/cmdbridge-configs)
+    -   目前只是添加了包管理和防火墙管理, 后续会添加仓库管理 (git/svn), 进程管理(ps) 等。
+
+如果你会 cmdbridge 的配置语法, 可以自己定制一套配置或者向上面的仓库提交 pr。
